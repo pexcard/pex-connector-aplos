@@ -1,0 +1,103 @@
+<h1>Connector Health</h1>
+
+<clr-progress-bar *ngIf="loadingHealthData" clrLoop></clr-progress-bar>
+
+<div *ngIf="!loadingHealthData" class="clr-row"><div class="clr-col">
+
+<div *ngIf="pingSucceeded" class="alert alert-success" role="alert">
+  <div class="alert-items">
+      <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+              <clr-icon class="alert-icon" shape="check-circle"></clr-icon>
+          </div>
+          <span class="alert-text">Ping succeeded. Current time is: {{currentServerTime}}</span>
+      </div>
+  </div>
+</div>
+
+<div *ngIf="!pingSucceeded" class="alert alert-danger" role="alert">
+  <div class="alert-items">
+      <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+              <clr-icon class="alert-icon" shape="exclamation-circle"></clr-icon>
+          </div>
+          <span class="alert-text">
+              Ping failed.
+          </span>
+      </div>
+  </div>
+</div>
+
+<hr>
+
+<div *ngIf="healthResult && healthResult.AplosApiAvailable" class="alert alert-success" role="alert">
+  <div class="alert-items">
+      <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+              <clr-icon class="alert-icon" shape="check-circle"></clr-icon>
+          </div>
+          <span class="alert-text">Aplos API is connected. Base URL: {{healthResult.aplosBaseUri}}.</span>
+      </div>
+  </div>
+</div>
+
+<div *ngIf="healthResult && !healthResult.AplosApiAvailable" class="alert alert-success" role="alert">
+  <div class="alert-items">
+      <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+              <clr-icon class="alert-icon" shape="check-circle"></clr-icon>
+          </div>
+          <span class="alert-text">Aplos API is not available.</span>
+      </div>
+  </div>
+</div>
+
+<hr>
+
+<div *ngIf="healthResult.pexApiAvailable" class="alert alert-success" role="alert">
+  <div class="alert-items">
+      <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+              <clr-icon class="alert-icon" shape="check-circle"></clr-icon>
+          </div>
+          <span class="alert-text">PEX API is connected. Base URL: {{healthResult.pexBaseUri}}</span>
+      </div>
+  </div>
+</div>
+
+<div *ngIf="!healthResult.pexApiAvailable" class="alert alert-success" role="alert">
+  <div class="alert-items">
+      <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+              <clr-icon class="alert-icon" shape="check-circle"></clr-icon>
+          </div>
+          <span class="alert-text">PEX API is not available.</span>
+      </div>
+  </div>
+</div>
+
+<hr>
+
+<div *ngIf="healthResult.storageAvailable" class="alert alert-success" role="alert">
+  <div class="alert-items">
+      <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+              <clr-icon class="alert-icon" shape="check-circle"></clr-icon>
+          </div>
+          <span class="alert-text">Storage is healthy.</span>
+      </div>
+  </div>
+</div>
+
+<div *ngIf="!healthResult.storageAvailable" class="alert alert-success" role="alert">
+  <div class="alert-items">
+      <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+              <clr-icon class="alert-icon" shape="check-circle"></clr-icon>
+          </div>
+          <span class="alert-text">Storage is not available.</span>
+      </div>
+  </div>
+</div>
+
+</div></div>

@@ -1,0 +1,6 @@
+/* Make loader progress bar thinner */
+.progress {
+    height: 3px;
+    min-height: 3px;
+}
+

@@ -1,0 +1,35 @@
+<div class="clr-row">
+  <div class="clr-col-xl-9 clr-col-lg-9 clr-col-md-8">
+    <h1 style="margin-top: 0px;">PEX &amp; Aplos Sync</h1>
+  </div>
+  <div class="clr-col-xl-3 clr-col-lg-3 clr-col-md-4">
+    <button
+      type="button"
+      [routerLink]="['connect']"
+      class="btn btn-icon btn-primary-outline"
+      aria-label="edit">
+      <clr-icon shape="cog"></clr-icon>CHANGE CONFIGURATION
+    </button>
+  </div>
+</div>
+<ul
+  id="navigationTabs"
+  class="nav"
+  role="tablist"
+>
+  <li role="presentation" class="nav-item" *ngFor="let navItem of subnav">
+    <button
+      id="tab1"
+      class="btn btn-link nav-link"
+      [routerLink]="navItem.routerLink"
+      routerLinkActive="active"
+      aria-controls="panel1"
+      aria-selected="true"
+      type="button"
+    >
+      {{ navItem.navText }}
+    </button>
+  </li>
+</ul>
+
+<router-outlet></router-outlet>

@@ -1,0 +1,57 @@
+{
+  "version": "v2_0_1",
+  "status": 200,
+  "meta": {
+    "available_filters": {
+      "f_accountnumber": "Account number of any line in the transaction",
+      "f_amount": "Total amount of the transaction (always a positive number)",
+      "f_contact": "Contact ID",
+      "f_contactname": "Any part of any contact name (first, last, and/or company), case insensitive",
+      "f_fund": "Fund ID",
+      "f_lastupdated": "Last updated (created or modified). Format: yyyy-MM-ddTHH:mm:ss.SSSZ",
+      "f_memo": "Any part of the memo, case insensitive",
+      "f_note": "Any part of the note, case insensitive",
+      "f_rangeend": "Maximum date range (inclusive). Format: yyyy-MM-dd",
+      "f_rangestart": "Minimum date range (inclusive) Format: yyyy-MM-dd",
+      "f_reconciled": "Whether the transaction is reconciled: y, n"
+    },
+    "resource_count": 50
+  },
+  "links": {
+    "self": "/api/v1/transactions?page_size=50&page_num=1"
+  },
+  "data": {
+    "transactions": [
+      {
+        "id": 15799496,
+        "note": "416294307 | Ty Baker",
+        "date": "2019-12-12",
+        "contact": {
+          "id": 5791245,
+          "companyname": "Dec 17 Test",
+          "type": "company",
+          "is_accounting": false,
+          "is_dm": false
+        },
+        "created": "2020-01-13T12:11:29.349-0800",
+        "amount": 15.87,
+        "in_closed_period": false
+      },
+      {
+        "id": 15799495,
+        "note": "416294302 | Ty Baker",
+        "date": "2019-12-12",
+        "contact": {
+          "id": 5708502,
+          "companyname": "Some Payee",
+          "type": "company",
+          "is_accounting": false,
+          "is_dm": false
+        },
+        "created": "2020-01-13T12:11:28.932-0800",
+        "amount": 26.91,
+        "in_closed_period": false
+      }
+    ]
+  }
+}

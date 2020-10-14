@@ -1,0 +1,39 @@
+{
+  "version": "v2_0_1",
+  "status": 200,
+  "meta": {
+    "available_filters": {
+      "f_email": "Any part of any email, case insensitive",
+      "f_lastupdated": "Last updated (created or modified). Format: yyyy-MM-ddTHH:mm:ss.SSSZ",
+      "f_name": "Any part of any name (first, last and/or company), case insensitive",
+      "f_type": "Type: individual, company"
+    },
+    "resource_count": 2
+  },
+  "links": {
+    "self": "/api/v1/contacts?page_size=50&page_num=1"
+  },
+  "data": {
+    "contacts": [
+      {
+        "id": 5719509,
+        "firstname": "Ty",
+        "lastname": "Baker",
+        "type": "individual",
+        "is_accounting": true,
+        "is_dm": true,
+        "created": "2019-12-06T13:34:01.009-0800"
+      },
+      {
+        "id": 5666276,
+        "companyname": "Chuck E. Cheese",
+        "type": "company",
+        "email": "chuck@thecheese.com",
+        "is_accounting": true,
+        "is_dm": false,
+        "created": "2019-11-26T13:09:31.911-0800",
+        "modified": "2019-12-11T12:07:18.812-0800"
+      }
+    ]
+  }
+}

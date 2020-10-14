@@ -1,0 +1,54 @@
+{
+  "version": "v2_0_1",
+  "status": 200,
+  "meta": {
+    "resource_count": 1
+  },
+  "links": {
+    "self": "/api/v1/transactions/15145647"
+  },
+  "data": {
+    "transaction": {
+      "id": 15145647,
+      "note": "Test 123",
+      "date": "2019-11-25",
+      "contact": {
+        "id": 5656815,
+        "companyname": "Lumber",
+        "type": "company",
+        "is_accounting": false,
+        "is_dm": false
+      },
+      "created": "2019-11-25T07:11:26.197-0800",
+      "amount": 50.00,
+      "is_reconciled": false,
+      "in_closed_period": false,
+      "lines": [
+        {
+          "id": 75372351,
+          "amount": 50.00,
+          "account": {
+            "account_number": 1200,
+            "name": "PEX Account"
+          },
+          "fund": {
+            "id": 225755,
+            "name": "General Fund"
+          }
+        },
+        {
+          "id": 75372350,
+          "amount": -50.00,
+          "account": {
+            "account_number": 1000,
+            "name": "Checking"
+          },
+          "fund": {
+            "id": 225755,
+            "name": "General Fund"
+          }
+        }
+      ]
+    }
+  }
+}
