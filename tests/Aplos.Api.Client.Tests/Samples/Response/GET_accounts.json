@@ -1,0 +1,43 @@
+{
+  "version": "v2_0_1",
+  "status": 200,
+  "meta": {
+    "available_filters": {
+      "f_enabled": "Whether the account is enabled: y, n",
+      "f_name": "Any part of the name, case insensitive",
+      "f_type": "Type of account: asset, liability, equity, income, expense"
+    },
+    "resource_count": 27
+  },
+  "links": {
+    "self": "/api/v1/accounts?page_size=50&page_num=1&f_enabled=y"
+  },
+  "data": {
+    "accounts": [
+      {
+        "account_number": 1601,
+        "name": "Ty Test Asset Dev",
+        "category": "asset",
+        "account_group": {
+          "id": 714020,
+          "name": "Dev",
+          "seq": 5
+        },
+        "is_enabled": true,
+        "type": "Register",
+        "activity": "cash"
+      },
+      {
+        "account_number": 5601.1,
+        "name": "Ty Test Expense Dev",
+        "category": "expense",
+        "account_group": {
+          "id": 714023,
+          "name": "Dev",
+          "seq": 6
+        },
+        "is_enabled": true
+      }
+    ]
+  }
+}

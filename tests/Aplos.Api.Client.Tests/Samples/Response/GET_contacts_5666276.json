@@ -1,0 +1,36 @@
+{
+  "version": "v2_0_1",
+  "status": 200,
+  "meta": {
+    "resource_count": 1
+  },
+  "links": {
+    "self": "/api/v1/contacts/5666276"
+  },
+  "data": {
+    "contact": {
+      "id": 5666276,
+      "companyname": "Chuck E. Cheese",
+      "type": "company",
+      "email": "chuck@thecheese.com",
+      "is_accounting": true,
+      "is_dm": false,
+      "emails": [
+        {
+          "name": "Work",
+          "address": "chuck@thecheese.com",
+          "is_primary": true
+        }
+      ],
+      "phones": [
+        {
+          "name": "Work",
+          "telnum": "2129470100",
+          "is_primary": true
+        }
+      ],
+      "created": "2019-11-26T13:09:31.911-0800",
+      "modified": "2019-12-11T12:07:18.812-0800"
+    }
+  }
+}

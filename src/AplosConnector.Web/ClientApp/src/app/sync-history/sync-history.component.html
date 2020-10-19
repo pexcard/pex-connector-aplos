@@ -1,0 +1,47 @@
+<h4>Sync history</h4>
+<p>
+  Data is automatically synchronized between Aplos and PEX daily. 
+</p>
+
+<button
+  type="button"
+  class="btn btn-icon btn-primary-outline"
+  aria-label="sync"
+  (click)="sync()" 
+  [disabled]="loadingHistory"
+  >
+  <clr-icon shape="sync"></clr-icon> SYNC NOW
+</button>
+
+<div>
+  <span *ngIf="loadingHistory" class="spinner spinner-inline">
+    Loading...
+  </span>
+  
+  <table class="table">
+    <thead>
+      <th>Sync Time</th>
+      <th>Data</th>
+      <th>Status</th>
+      <th>Records</th>
+    </thead>
+    <tbody>
+      <tr *ngFor="let item of syncResults">
+        <td>{{ item.createdUtc | date:"yyyy-MM-dd hh:mm a" }}</td>
+        <td>{{item.syncType}}</td>
+        <td><span
+            [ngClass]="{'label': true, 'label-success': item.syncStatus==='Success', 'label-warning': item.syncStatus==='Partial', 'label-danger': item.syncStatus==='Failed'}">{{item.syncStatus}}</span>
+        </td>
+        <td>
+          {{ item.syncedRecords }}
+          <clr-signpost *ngIf="item.syncNotes?.length>0">
+            <clr-signpost-content *clrIfOpen>
+              <p>{{item.syncNotes}}</p>
+            </clr-signpost-content>
+          </clr-signpost>
+
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

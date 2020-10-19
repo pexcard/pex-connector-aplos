@@ -1,0 +1,80 @@
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+name: $(date:yyyy.MM.dd)$(rev:.r)
+
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+  dotnetVersion: '2.1'
+
+steps:
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '$(dotnetVersion).x'
+
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: '$(solution)'
+    feedsToUse: 'config'
+    nugetConfigPath: 'nuget.config'
+
+- task: SonarCloudPrepare@1
+  inputs:
+    SonarCloud: 'SonarCloud - tbaker'
+    organization: 'pex'
+    projectKey: 'pex-connector-aplos'
+    projectName: 'pex-connector-aplos'
+    projectVersion: '$(Build.BuildNumber)'
+
+- script: dotnet build src --configuration $(buildConfiguration)
+  displayName: 'dotnet build $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet test $(buildConfiguration)'
+  inputs:
+    command: test
+    projects: 'tests/**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: NodeTool@0
+  inputs:
+    versionSpec: '10.x'
+  displayName: 'Install node.js'
+
+- script: |
+    npm install -g @angular/cli
+    cd src/AplosConnector.Web/ClientApp
+    npm install
+    ng build --prod
+  displayName: 'npm install and ng build'
+
+- task: SonarCloudAnalyze@1
+
+- task: SonarCloudPublish@1
+  inputs:
+    pollingTimeoutSec: '300'
+
+- task: WhiteSource@20
+  inputs:
+    cwd: '$(System.DefaultWorkingDirectory)'
+    extensions: '.dll'
+    checkPolicies: 'FAIL_ON_BUILD'
+    productName: 'Marketplace'
+    projectRule: 'projectName'
+    projectName: '$(Build.Repository.Name)'
+    forceCheckAllDependencies: true
+    forceUpdate: true
+    WhiteSourceService: 'WhiteSource'

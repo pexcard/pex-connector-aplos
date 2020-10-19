@@ -1,0 +1,96 @@
+{
+    "version": "v2_0_1",
+    "status": 200,
+    "meta": {
+        "available_filters": {
+            "f_tagname": "Any part of the tag name"
+        },
+        "resource_count": 15
+    },
+    "links": {
+        "self": "/api/v1/tags?page_size=50&page_num=1"
+    },
+    "data": {
+        "tagcategories": [
+            {
+                "id": 87401,
+                "name": "Custom",
+                "tag_groups": [
+                    {
+                        "id": 89292,
+                        "name": "All Tags",
+                        "tags": [
+                            {
+                                "id": 91258,
+                                "name": "Allocate"
+                            },
+                            {
+                                "id": 120732,
+                                "name": "PEX Test"
+                            }
+                        ]
+                    },
+                    {
+                        "id": 110220,
+                        "name": "PEX Group Dev",
+                        "tags": []
+                    },
+                    {
+                        "id": 110221,
+                        "name": "PEX Group QA",
+                        "tags": [
+                            {
+                                "id": 120733,
+                                "name": "PEX Test QA 1",
+                                "sub_tags": [
+                                    {
+                                        "id": 120735,
+                                        "name": "PEX Test QA 1.1"
+                                    },
+                                    {
+                                        "id": 120736,
+                                        "name": "PEX Test QA 1.2"
+                                    }
+                                ]
+                            },
+                            {
+                                "id": 120734,
+                                "name": "PEX Test QA 2"
+                            },
+                            {
+                                "id": 120739,
+                                "name": "Hi I'm Disabled"
+                            }
+                        ]
+                    },
+                    {
+                        "id": 110222,
+                        "name": "PEX Group Prod",
+                        "tags": []
+                    }
+                ]
+            },
+            {
+                "id": 87404,
+                "name": "Departments",
+                "type": "advanced",
+                "tag_groups": [
+                    {
+                        "id": 89295,
+                        "name": "PEX Department",
+                        "tags": [
+                            {
+                                "id": 91261,
+                                "name": "Technology"
+                            },
+                            {
+                                "id": 120737,
+                                "name": "Operations"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -1,0 +1,24 @@
+{
+  "version": "v2_0_1",
+  "status": 200,
+  "meta": {
+    "resource_count": 1
+  },
+  "links": {
+    "self": "/api/v1/accounts/1601"
+  },
+  "data": {
+    "account": {
+      "account_number": 1601,
+      "name": "Ty Test Asset Dev",
+      "category": "asset",
+      "account_group": {
+        "id": 714020,
+        "name": "Dev"
+      },
+      "is_enabled": true,
+      "type": "Register",
+      "activity": "cash"
+    }
+  }
+}

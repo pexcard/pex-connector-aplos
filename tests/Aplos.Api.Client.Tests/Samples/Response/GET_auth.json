@@ -1,0 +1,8 @@
+{
+  "version": "v2_0_1",
+  "status": 200,
+  "data": {
+    "expires": "2020-01-13T12:08:53.000-0800",
+    "token": "{{encryptedAccessToken}}"
+  }
+}

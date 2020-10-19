@@ -1,0 +1,59 @@
+<clr-main-container>
+  <clr-header class="header-4" *ngIf="!(headlessSubject$ | async)">
+    <div class="branding">
+      <a [routerLink]="['/connect']" class="nav-link" style="color:white;">
+        <img src="../assets/Logo-Standard.png" alt="PEX Web Application" style="padding-right: 10px; max-width: 100%; max-height: 100%" />
+        <clr-icon shape="two-way-arrows"></clr-icon>
+        <img
+          src="../assets/Aplos-Logo-White.png"
+          alt="Aplos Logo"
+          style="max-width:100%; max-height:100%"
+        />
+      </a>
+    </div>
+    <div class="header-nav">
+      <a [routerLink]="['/connect']" routerLinkActive="active" class="nav-link"
+        ><span class="nav-text">
+          Connect</span></a
+      >
+
+      <a
+        *ngIf="isLoggedIn"
+        [routerLink]="['/manage-connections']"
+        routerLinkActive="active"
+        class="nav-link"
+        ><span class="nav-text">Manage connector</span></a
+      >
+
+      <a
+        *ngIf="isLoggedIn"
+        [routerLink]="['/sync-history']"
+        routerLinkActive="active"
+        class="nav-link"
+        ><span class="nav-text">Sync history</span></a
+      >      
+
+    </div>
+    <div class="header-actions">
+      <a
+        *ngIf="!isLoggedIn"
+        [routerLink]="['/authenticate-with-pex']"
+        routerLinkActive="active"
+        class="nav-link"
+        ><span class="nav-text">Authenticate with PEX</span></a
+      >
+
+      <a (click)="onLogout()" class="nav-link">
+      <span *ngIf="isLoggedIn" class="nav-text" style="cursor: pointer">Logout</span>
+      </a>
+      <a href="..." class="nav-link nav-icon" aria-label="help">
+        <clr-icon shape="help"></clr-icon>
+      </a>
+    </div>
+  </clr-header>
+  <div class="content-container">
+    <main class="content-area">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</clr-main-container>

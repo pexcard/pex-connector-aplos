@@ -1,0 +1,36 @@
+{
+  "version": "v2_0_1",
+  "status": 200,
+  "meta": {
+    "available_filters": {
+      "f_accountnumber": "The fund balance account number",
+      "f_name": "Any part of the name, case insensitive"
+    },
+    "resource_count": 3
+  },
+  "links": {
+    "self": "/api/v1/funds?page_size=50&page_num=1"
+  },
+  "data": {
+    "funds": [
+      {
+        "id": 225755,
+        "name": "General Fund",
+        "balance_account_name": "General Fund - Fund Balance",
+        "balance_account_number": 3000
+      },
+      {
+        "id": 225756,
+        "name": "Building Fund",
+        "balance_account_name": "Building Fund - Fund Balance",
+        "balance_account_number": 3100
+      },
+      {
+        "id": 225793,
+        "name": "Allocate Fund",
+        "balance_account_name": "Allocate Fund - Fund Balance",
+        "balance_account_number": 3101
+      }
+    ]
+  }
+}

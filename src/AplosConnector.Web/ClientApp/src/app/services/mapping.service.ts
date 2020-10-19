@@ -1,0 +1,130 @@
+import { Injectable, Inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+import { retryWithBackoff } from '../operators/retryWithBackoff.operator';
+import { CacheRepositoryService } from './cache-repository.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class MappingService {
+  constructor(
+    private httpClient: HttpClient,
+    @Inject('BASE_URL') private baseUrl: string,
+    private cache: CacheRepositoryService
+  ) {}
+
+  private readonly CACHE_KEY_GET_AUTHENTICATION_STATUS = 'mapping.getAplosAuthenticationStatus';
+  private readonly CACHE_KEY_GET_SETTINGS = 'mapping.getSettings';
+  private readonly CACHE_KEY_GET_SYNC_RESULTS = 'mapping.getSyncResults';
+
+  private buildUrl(sessionId: string, endpoint: string): string {
+    return this.baseUrl + `api/Mapping/${endpoint}?sessionId=${sessionId}`;
+  }
+
+  private clearCache() {
+    this.cache.clearCache(this.CACHE_KEY_GET_SETTINGS);
+    this.cache.clearCache(this.CACHE_KEY_GET_SYNC_RESULTS);
+  }
+
+  getAplosAuthenticationStatus(sessionId: string){
+    return this.cache.runAndCacheOrGetFromCache(
+      this.CACHE_KEY_GET_AUTHENTICATION_STATUS,
+      this.httpClient
+        .get<{ clientId: string; clientSecret: string }>(
+          this.buildUrl(sessionId, 'AplosAuthenticationStatus')
+        )
+        .pipe(retryWithBackoff(50, 1, 500)),
+      5
+    );
+  }
+
+  getSettings(sessionId: string): Observable<SettingsModel> {
+    return this.cache.runAndCacheOrGetFromCache(this.CACHE_KEY_GET_SETTINGS, this.httpClient
+      .get<SettingsModel>(this.buildUrl(sessionId, 'Settings'))
+      .pipe(retryWithBackoff()), 5);
+  }
+
+  saveSettings(sessionId: string, settings: SettingsModel) {
+    this.clearCache();
+    return this.httpClient.put(this.buildUrl(sessionId, 'Settings'), settings);
+  }
+
+  getSyncResults(sessionId: string) {
+    return this.cache.runAndCacheOrGetFromCache(this.CACHE_KEY_GET_SYNC_RESULTS, this.httpClient
+      .get<SyncResultModel[]>(this.buildUrl(sessionId, 'SyncResults'))
+      .pipe(retryWithBackoff()), 5);
+  }
+
+  sync(sessionId: string) {
+    this.clearCache();
+    return this.httpClient.post(this.buildUrl(sessionId, 'Sync'), null);
+  }
+
+  disconnect(sessionId: string) {
+    this.clearCache();
+    return this.httpClient.delete(this.buildUrl(sessionId, ''));
+  }
+}
+
+export interface SyncResultModel {
+  createdUtc: Date;
+  syncType: string;
+  syncStatus: string;
+  syncedRecords: number;
+  syncNotes: string;
+  PEXBusinessAcctId: number;
+}
+
+export interface SettingsModel {
+  syncTransactions: boolean;
+  syncTags: boolean;
+  
+  syncApprovedOnly: boolean;
+  earliestTransactionDateToSync: string;
+  syncTransfers: boolean;
+  syncPexFees: boolean;
+
+  transfersAplosContactId: number;
+  transfersAplosFundId: number;
+  transfersAplosTransactionAccountNumber: number;
+
+  pexFeesAplosRegisterAccountNumber: number;
+  pexFeesAplosContactId: number;
+  pexFeesAplosFundId: number;
+  pexFeesAplosTransactionAccountNumber: number;
+
+  aplosRegisterAccountNumber: number;
+
+  syncTransactionsCreateContact: boolean;
+  defaultAplosContactId: number;
+
+  syncFundsToPex: boolean;
+  pexFundsTagId: string;
+  defaultAplosFundId: number
+
+  syncTransactionAccountsToPex: boolean;
+  defaultAplosTransactionAccountNumber: number;
+
+  connectedOn: Date;
+  lastSync: Date;
+
+  aplosClientId: string;
+  aplosPrivateKey: string;
+
+  expenseAccountMappings: ExpenseAccountMappingModel[];
+  tagMappings: TagMappingModel[];
+}
+
+export interface ExpenseAccountMappingModel {
+  //quickBooksExpenseCategoryIdFilter: number;
+  syncExpenseAccounts: boolean;
+  expenseAccountsPexTagId: string;
+}
+
+export interface TagMappingModel {
+  aplosTagId: string;
+  pexTagId: string;
+  syncToPex: boolean;
+}
