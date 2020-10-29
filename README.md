@@ -1,20 +1,13 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+# PEX Connector for Aplos 
+Connect PEX with Aplos to track your expenses in a true fund accounting software made for nonprofits and churches. The Aplos platform includes donation tracking, people management, financial reporting, and communication tools. To learn how to build your own app for the PEX Marketplace visit https://marketplace.pexcard.com
 
 # Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+This app is written in .NET Core and Angular 10. The simplest way to get started is by using the Azure Storage Emulator to run the code locally.
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+1.	Open the solution file in Visual Studio 2019
+2.	Start Azure Storage Emulator
+3.	Restore packages
+4.	Build solution
 
 # Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
-
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+If you have questions about this app or if you would like to contribute, please reach out to github@pexcard.com
