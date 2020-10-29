@@ -30,7 +30,7 @@ export class ConnectComponent implements OnInit {
   ) { }
 
   private _open = true;
-  @ViewChild('wizard') wizard: ClrWizard;
+  @ViewChild('wizard', { static: true }) wizard: ClrWizard;
   expenseAccountForm: FormGroup = new FormGroup({
     expenseAccounts: new FormArray([
       new FormGroup({
