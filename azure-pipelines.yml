@@ -8,6 +8,8 @@ name: $(date:yyyy.MM.dd)$(rev:.r)
 trigger:
 - master
 
+pr: none
+
 pool:
   vmImage: 'ubuntu-latest'
 
