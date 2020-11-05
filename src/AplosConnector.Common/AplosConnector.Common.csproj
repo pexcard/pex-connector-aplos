@@ -18,7 +18,6 @@
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="2.1.1" />
     <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.3.1" />
     <PackageReference Include="Microsoft.Azure.Storage.Blob" Version="11.1.2" />
-    <PackageReference Include="Microsoft.Azure.Storage.DataMovement" Version="1.2.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.1.1" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="PexCard.Api.Client.Core" Version="1.0.0" />
