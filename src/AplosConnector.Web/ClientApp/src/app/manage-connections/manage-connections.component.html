@@ -131,22 +131,22 @@
               ></clr-icon>
             </td>
           </tr>
-          <tr>
+          <tr *ngFor="let accountMapping of tagNameAccount">
             <td class="left">Account</td>
             <td class="left">
-                {{tagNameAccount}} 
+              {{accountMapping.expenseAccountsPexTagId}}
             </td>
             <td>
               <clr-icon
-                *ngIf="settings.syncTags && settings.syncTransactionAccountsToPex"
+                *ngIf="settings.syncTags && accountMapping.syncExpenseAccounts"
                 shape="success-standard"
                 class="is-solid is-success"
               ></clr-icon>
               <clr-icon
-                *ngIf="!(settings.syncTags && settings.syncTransactionAccountsToPex)"
+                *ngIf="!(settings.syncTags && accountMapping.syncExpenseAccounts)"
                 shape="ban"
                 class="is-solid is-error"
-              ></clr-icon>          
+              ></clr-icon>
             </td>
           </tr>
           <tr *ngFor="let tagMapping of tagMappings">
@@ -166,7 +166,7 @@
                 *ngIf="!(settings.syncTags && tagMapping.syncToPex)"
                 shape="ban"
                 class="is-solid is-error"
-              ></clr-icon>          
+              ></clr-icon>
             </td>
           </tr>
         </tbody>
@@ -189,31 +189,31 @@
         <tbody>
           <tr class="left" *ngIf="settings.syncTransfers && transferContact">
             <th>Contact for transfers</th>
-            <td>{{transferContact.toDisplayFormat()}}</td>
+            <td>{{transferContact.name}}</td>
           </tr>
           <tr class="left" *ngIf="settings.syncTransfers && transferFund">
             <th>Fund for transfers</th>
-            <td>{{transferFund.toDisplayFormat()}}</td>
+            <td>{{transferFund.name}}</td>
           </tr>
           <tr class="left" *ngIf="settings.syncTransfers && transferAccount">
             <th>Transaction account for transfers</th>
-            <td>{{transferAccount.toDisplayFormat()}}</td>
+            <td>{{transferAccount | aplosAccount}}</td>
           </tr>
 
           <tr class="left" *ngIf="settings.syncPexFees && feesContact">
             <th>Contact for fees</th>
-            <td>{{feesContact.toDisplayFormat()}}</td>
+            <td>{{feesContact.name}}</td>
           </tr>
           <tr class="left" *ngIf="settings.syncPexFees && feesFund">
             <th>Fund for fees</th>
-            <td>{{feesFund.toDisplayFormat()}}</td>
+            <td>{{feesFund.name}}</td>
           </tr>
           <tr class="left" *ngIf="settings.syncPexFees && feesAccount">
             <th>Transaction account for fees</th>
-            <td>{{feesAccount.toDisplayFormat()}}</td>
+            <td>{{feesAccount | aplosAccount}}</td>
           </tr>
         </tbody>
-      </table>      
+      </table>
 
     <clr-modal [(clrModalOpen)]="disconnectModal">
       <h3 class="modal-title">Are you sure?</h3>

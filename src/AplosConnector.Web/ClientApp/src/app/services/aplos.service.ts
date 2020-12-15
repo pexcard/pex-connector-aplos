@@ -65,32 +65,12 @@ export class AplosService {
   }
 }
 
-export class AplosObject {
+export interface AplosObject {
   id: number;
   name: string;
-
-  constructor(id: number, name: string) {
-    this.id = id;
-    this.name = name;
-  }
-
-  toDisplayFormat(): string {
-    return this.name;
-  }
 }
 
-export class AplosAccount implements AplosObject {
-  id: number;
-  name: string;
-
-  constructor(id: number, name: string) {
-    this.id = id;
-    this.name = name;
-  }
-
-  toDisplayFormat(): string {
-    return `${this.id} - ${this.name}`;
-  }
+export interface AplosAccount extends AplosObject {
 }
 
 export interface AplosPreferences{

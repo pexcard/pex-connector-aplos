@@ -16,6 +16,7 @@ import { LoadingPlaceholderComponent } from './loading-placeholder/loading-place
 import { SyncHistoryComponent } from './sync-history/sync-history.component';
 import { HeadlessComponent } from './headless/headless.component';
 import { HandlePexJwtComponent } from './handle-pex-jwt/handle-pex-jwt.component';
+import { AplosAccountPipe } from "./pipes/aplosAccount";
 
 @NgModule({
   declarations: [
@@ -28,7 +29,8 @@ import { HandlePexJwtComponent } from './handle-pex-jwt/handle-pex-jwt.component
     LoadingPlaceholderComponent,
     SyncHistoryComponent,
     HeadlessComponent,
-    HandlePexJwtComponent
+    HandlePexJwtComponent,
+    AplosAccountPipe,
   ],
   imports: [
     BrowserModule,

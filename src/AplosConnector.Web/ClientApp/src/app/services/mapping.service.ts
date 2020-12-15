@@ -104,7 +104,6 @@ export interface SettingsModel {
   pexFundsTagId: string;
   defaultAplosFundId: number
 
-  syncTransactionAccountsToPex: boolean;
   defaultAplosTransactionAccountNumber: number;
 
   connectedOn: Date;
