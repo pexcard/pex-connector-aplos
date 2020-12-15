@@ -64,11 +64,11 @@
     >
       <clr-input-container>
         <label>Client ID</label>
-        <input 
-          clrInput 
+        <input
+          clrInput
           required
-          placeholder="" 
-          name="aplosClientId" 
+          placeholder=""
+          name="aplosClientId"
           [(ngModel)]="settingsModel.aplosClientId"
           style="width: 500px" />
         <clr-control-error>You must enter a Client ID</clr-control-error>
@@ -76,11 +76,11 @@
 
       <clr-input-container>
         <label>Private Key</label>
-        <input 
-          clrInput 
+        <input
+          clrInput
           required
-          placeholder="" 
-          name="aplosPrivateKey" 
+          placeholder=""
+          name="aplosPrivateKey"
           style="width: 500px"
           [(ngModel)]="settingsModel.aplosPrivateKey" />
         <clr-control-error>You must enter a Private Key</clr-control-error>
@@ -100,18 +100,18 @@
 
     <div class="alert alert-warning" role="alert" *ngIf="!hasTagsAvailable">
       <div class="alert-items">
-          <div class="alert-item static">
-              <div class="alert-icon-wrapper">
-                  <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
-              </div>
-              <span class="alert-text">
-                  Your PEX account does not support Tags. To enable this feature for integration with Aplos, 
-                  please contact <a href="email:adminsupport@pexcard.com">adminsupport@pexcard.com</a>.
-              </span>
+        <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+            <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
           </div>
+          <span class="alert-text">
+            Your PEX account does not support Tags. To enable this feature for integration with Aplos,
+            please contact <a href="email:adminsupport@pexcard.com">adminsupport@pexcard.com</a>.
+          </span>
+        </div>
       </div>
     </div>
-    
+
     <clr-spinner *ngIf="savingSettings">
       Saving...
     </clr-spinner>
@@ -160,9 +160,9 @@
           clrToggle
           name="syncTransfers"
           [(ngModel)]="settingsModel.syncTransfers"
-        />
+          />
         <label>
-            Automatically import PEX transfers into Aplos.
+          Automatically import PEX transfers into Aplos.
         </label>
       </clr-toggle-wrapper>
 
@@ -176,95 +176,95 @@
         <label>
           Automatically import Fees into Aplos.
         </label>
-      </clr-toggle-wrapper>      
+      </clr-toggle-wrapper>
 
-      <div class="card" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers">     
-          <div class="card-block">
-              <app-loading-placeholder
-              [loadingState]="loadingAplosAccounts"
-              [errorState]="errorLoadingAplosAccounts"
-              (retry)="getBankAccounts()"
-              ></app-loading-placeholder>
+      <div class="card" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers">
+        <div class="card-block">
+          <app-loading-placeholder
+            [loadingState]="loadingAplosAccounts"
+            [errorState]="errorLoadingAplosAccounts"
+            (retry)="getBankAccounts()"
+          ></app-loading-placeholder>
 
-              <div class="card-text">
-                Please choose an account you have set up to represent your PEX funds:
-                <div class="clr-select-wrapper">
-                  <select
-                  id="aplosRegisterAccountNumber"
-                  class="clr-select"
-                  [(ngModel)]="settingsModel.aplosRegisterAccountNumber"
-                  name="aplosRegisterAccountNumber"
-                >
-                  <option></option>
-                  <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount.toDisplayFormat()}}</option>
-                </select>
-                </div>
-                <p>
-                  <strong>Tip:</strong> Consider creating a new account in Aplos called 'PEX' if you would like to book all of your PEX purchases against a single account.
-                </p>
-              </div>
-          </div>
-        </div>
-
-        <div class="card" *ngIf="settingsModel.syncTransactions">
-          <div class="card-header">
-            <clr-toggle-wrapper>
-              <input
-                type="checkbox"
-                clrToggle
-                name="settingsModel.syncTransactionsCreateContact"
-                [disabled]="settingsModel.defaultAplosContactId > 0"
-                [(ngModel)]="settingsModel.syncTransactionsCreateContact"
-              />
-              <label>Create a contact for each unique merchant</label>
-            </clr-toggle-wrapper>
-          </div>
-          <div class="card-block">
-            <div class="card-text" *ngIf="settingsModel.syncTransactionsCreateContact">
-              If a contact matching the merchant name does not exist in Aplos, it will be automatically created.
+          <div class="card-text">
+            Please choose an account you have set up to represent your PEX funds:
+            <div class="clr-select-wrapper">
+              <select
+                id="aplosRegisterAccountNumber"
+                class="clr-select"
+                [(ngModel)]="settingsModel.aplosRegisterAccountNumber"
+                name="aplosRegisterAccountNumber"
+              >
+                <option></option>
+                <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount | aplosAccount}}</option>
+              </select>
             </div>
+            <p>
+              <strong>Tip:</strong> Consider creating a new account in Aplos called 'PEX' if you would like to book all of your PEX purchases against a single account.
+            </p>
+          </div>
+        </div>
+      </div>
 
-            <app-loading-placeholder
-              [loadingState]="loadingAplosContacts"
-              [errorState]="errorLoadingAplosContacts"
-              (retry)="getContacts()"
-            ></app-loading-placeholder>
+      <div class="card" *ngIf="settingsModel.syncTransactions">
+        <div class="card-header">
+          <clr-toggle-wrapper>
+            <input
+              type="checkbox"
+              clrToggle
+              name="settingsModel.syncTransactionsCreateContact"
+              [disabled]="settingsModel.defaultAplosContactId > 0"
+              [(ngModel)]="settingsModel.syncTransactionsCreateContact"
+            />
+            <label>Create a contact for each unique merchant</label>
+          </clr-toggle-wrapper>
+        </div>
+        <div class="card-block">
+          <div class="card-text" *ngIf="settingsModel.syncTransactionsCreateContact">
+            If a contact matching the merchant name does not exist in Aplos, it will be automatically created.
+          </div>
 
-            <div class="card-text" *ngIf="!settingsModel.syncTransactionsCreateContact">
-              Please choose a contact for your purchases:
-              <div class="clr-select-wrapper">
-                <select
-                  id="select-full-vendor"
-                  class="clr-select"
-                  name="settingsModel.defaultAplosContactId"
-                  [(ngModel)]="settingsModel.defaultAplosContactId"
-                >
-                  <option value="0"></option>
-                  <option [value]="vendor.id" *ngFor="let vendor of aplosContacts">{{vendor.name}}</option>
-                </select>
-              </div>
-              <p>
-                <strong>Tip:</strong> Consider creating a new contact in Aplos called 'PEX' if you would like to book all of your PEX purchases against a single contact.
-              </p>
+          <app-loading-placeholder
+            [loadingState]="loadingAplosContacts"
+            [errorState]="errorLoadingAplosContacts"
+            (retry)="getContacts()"
+          ></app-loading-placeholder>
+
+          <div class="card-text" *ngIf="!settingsModel.syncTransactionsCreateContact">
+            Please choose a contact for your purchases:
+            <div class="clr-select-wrapper">
+              <select
+                id="select-full-vendor"
+                class="clr-select"
+                name="settingsModel.defaultAplosContactId"
+                [(ngModel)]="settingsModel.defaultAplosContactId"
+              >
+                <option value="0"></option>
+                <option [value]="vendor.id" *ngFor="let vendor of aplosContacts">{{vendor.name}}</option>
+              </select>
             </div>
+            <p>
+              <strong>Tip:</strong> Consider creating a new contact in Aplos called 'PEX' if you would like to book all of your PEX purchases against a single contact.
+            </p>
           </div>
         </div>
+      </div>
 
-        <p></p>
-        <p></p>
-        <div class="clr-row" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers">
-          <div class="clr-col">
-            Please specify a start date for the sync. Transactions made prior to this date will not be imported into Aplos. All transactions after this date will be imported automatically.
-            <clr-date-container>
-                <label>Start date</label>
-                <input 
-                  type="date" 
-                  clrDate
-                  name="earliestTransactionDateToSync" 
-                  [(ngModel)]="settingsModel.earliestTransactionDateToSync">
-            </clr-date-container>
-          </div>
+      <p></p>
+      <p></p>
+      <div class="clr-row" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers">
+        <div class="clr-col">
+          Please specify a start date for the sync. Transactions made prior to this date will not be imported into Aplos. All transactions after this date will be imported automatically.
+          <clr-date-container>
+            <label>Start date</label>
+            <input
+              type="date"
+              clrDate
+              name="earliestTransactionDateToSync"
+              [(ngModel)]="settingsModel.earliestTransactionDateToSync">
+          </clr-date-container>
         </div>
+      </div>
 
     </form>
 
@@ -465,7 +465,7 @@
               [(ngModel)]="settingsModel.defaultAplosFundId"
             >
             <option></option>
-            <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.toDisplayFormat()}}</option>
+            <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
             </select>
           </div>
         <br>           
@@ -480,7 +480,7 @@
           [(ngModel)]="settingsModel.defaultAplosTransactionAccountNumber"
         >
           <option></option>
-          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount.toDisplayFormat()}}</option>
+          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount | aplosAccount}}</option>
         </select>
         </div>
       </div>
@@ -497,7 +497,7 @@
               [(ngModel)]="settingsModel.transfersAplosContactId"
             >
               <option></option>
-              <option [value]="aplosContact.id" *ngFor="let aplosContact of aplosContacts">{{aplosContact.toDisplayFormat()}}</option>
+              <option [value]="aplosContact.id" *ngFor="let aplosContact of aplosContacts">{{aplosContact.name}}</option>
             </select>
           </div>
           <br>
@@ -512,7 +512,7 @@
               [(ngModel)]="settingsModel.transfersAplosFundId"
             >
               <option></option>
-              <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.toDisplayFormat()}}</option>
+              <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
             </select>
           </div>
         <br>           
@@ -527,7 +527,7 @@
           [(ngModel)]="settingsModel.transfersAplosTransactionAccountNumber"
         >
           <option></option>
-          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount.toDisplayFormat()}}</option>
+          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount | aplosAccount}}</option>
         </select>
         </div>      
       </div>
@@ -544,7 +544,7 @@
               [(ngModel)]="settingsModel.pexFeesAplosContactId"
             >
               <option></option>
-              <option [value]="aplosContact.id" *ngFor="let aplosContact of aplosContacts">{{aplosContact.toDisplayFormat()}}</option>
+              <option [value]="aplosContact.id" *ngFor="let aplosContact of aplosContacts">{{aplosContact.name}}</option>
             </select>
           </div>
           <br>
@@ -559,7 +559,7 @@
               [(ngModel)]="settingsModel.pexFeesAplosFundId"
             >
               <option></option>
-              <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.toDisplayFormat()}}</option>
+              <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
             </select>
           </div>
         <br>           
@@ -574,7 +574,7 @@
           [(ngModel)]="settingsModel.pexFeesAplosTransactionAccountNumber"
         >
           <option></option>
-          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount.toDisplayFormat()}}</option>
+          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount | aplosAccount}}</option>
         </select>
         </div>  
       </div>

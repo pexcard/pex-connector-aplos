@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild } from "@angular/core";
 import { Router, ActivatedRoute } from "@angular/router";
 import { ClrWizard } from "@clr/angular";
-import { FormGroup, Form, FormArray, FormControl, Validators } from "@angular/forms";
+import { FormGroup, FormArray, FormControl, Validators } from "@angular/forms";
 
 import { AuthService } from "../services/auth.service";
 import {
@@ -81,7 +81,6 @@ export class ConnectComponent implements OnInit {
     pexFundsTagId: '',
     aplosRegisterAccountNumber: 0,
     syncFundsToPex: false,
-    syncTransactionAccountsToPex: false,
     syncTags: true,
     pexFeesAplosContactId: 0,
     pexFeesAplosFundId: 0,
@@ -185,11 +184,8 @@ export class ConnectComponent implements OnInit {
 
     return this.aplos.getBankAccounts(this.sessionId).subscribe(
       aplosAccounts => {
-        this.aplosAccounts = [];
         console.log('getting bank accounts', aplosAccounts);
-        for (let aplosAccount of aplosAccounts) {
-          this.aplosAccounts.push(new AplosAccount(aplosAccount.id, aplosAccount.name));
-        }
+        this.aplosAccounts = [ ...aplosAccounts ];
         this.loadingAplosAccounts = false;
         console.log('got bank accounts', this.aplosAccounts);
       },
@@ -208,11 +204,8 @@ export class ConnectComponent implements OnInit {
 
     return this.aplos.getContacts(this.sessionId).subscribe(
       aplosContacts => {
-        this.aplosContacts = [];
         console.log('getting contacts', aplosContacts);
-        for (let aplosContact of aplosContacts) {
-          this.aplosContacts.push(new AplosObject(aplosContact.id, aplosContact.name));
-        }
+        this.aplosContacts = [ ...aplosContacts ];
         this.loadingAplosContacts = false;
         console.log('got contacts', this.aplosContacts);
       },
@@ -231,11 +224,8 @@ export class ConnectComponent implements OnInit {
 
     return this.aplos.getFunds(this.sessionId).subscribe(
       aplosFunds => {
-        this.aplosFunds = [];
         console.log('getting funds', aplosFunds);
-        for (let aplosFund of aplosFunds) {
-          this.aplosFunds.push(new AplosObject(aplosFund.id, aplosFund.name));
-        }
+        this.aplosFunds = [ ...aplosFunds];
         this.loadingAplosFunds = false;
         console.log('got funds', this.aplosFunds);
       },
@@ -254,11 +244,8 @@ export class ConnectComponent implements OnInit {
 
     return this.aplos.getTagCategories(this.sessionId).subscribe(
       aplosTagCategories => {
-        this.aplosTagCategories = [];
         console.log('getting TagCategories', aplosTagCategories);
-        for (let aplosTagCategory of aplosTagCategories) {
-          this.aplosTagCategories.push(new AplosObject(aplosTagCategory.id, aplosTagCategory.name));
-        }
+        this.aplosTagCategories = [ ...aplosTagCategories];
         this.loadingAplosTagCategories = false;
         console.log('got TagCategories', this.aplosTagCategories);
       },
@@ -296,10 +283,7 @@ export class ConnectComponent implements OnInit {
   }
 
   initExpenseAccountMappingFormFromSettings(settings: SettingsModel) {
-    //After upgrading to Angular 8+, this can be replaced with .clear().
-    while (this.getExpenseAccountFormElements().length !== 0) {
-      this.getExpenseAccountFormElements().removeAt(0);
-    }
+    this.getExpenseAccountFormElements().clear();
     if (settings.expenseAccountMappings && settings.expenseAccountMappings.length) {
       settings.expenseAccountMappings.forEach(
         mapping => {
@@ -314,7 +298,7 @@ export class ConnectComponent implements OnInit {
   }
 
   initTagMappingFormFromSettings(settings: SettingsModel) {
-    //After upgrading to Angular 8+, this can be replaced with .clear().
+    this.getTagMappingFormElements().clear();
     while (this.getTagMappingFormElements().length !== 0) {
       this.getTagMappingFormElements().removeAt(0);
     }
@@ -370,7 +354,6 @@ export class ConnectComponent implements OnInit {
           this.saveSettings().subscribe(() => {
             this.savingSettings = false;
 
-            this.validatePexSetup();
             this.getSettings();
             this.handleStepCompleted();
           });
@@ -463,11 +446,13 @@ export class ConnectComponent implements OnInit {
   }
 
   getDropDownTags(): PexTagInfoModel[] {
-    return this.availablePexTags.filter(t => t.type == CustomFieldType.Dropdown);
+    const tags = this.availablePexTags.filter(t => t.type == CustomFieldType.Dropdown);
+    return [ ...tags ];
   }
 
   getYesNoTags(): PexTagInfoModel[] {
-    return this.availablePexTags.filter(t => t.type == CustomFieldType.YesNo);
+    const tags = this.availablePexTags.filter(t => t.type == CustomFieldType.YesNo);
+    return [ ...tags ];
   }
 
   onCloseWizard() {
