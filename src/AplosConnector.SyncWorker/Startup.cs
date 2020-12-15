@@ -113,7 +113,8 @@ namespace AplosConnector.SyncWorker
                     dataProtectionBlobName)
                 .ProtectKeysWithAzureKeyVault(
                     keyVaultClient,
-                    dataProtectionKeyIdentifier);
+                    dataProtectionKeyIdentifier)
+                .DisableAutomaticKeyGeneration();
         }
 
         private static IAsyncPolicy<HttpResponseMessage> GetPexRetryPolicy()
