@@ -93,7 +93,10 @@
     clrWizardPagePreventDefault="true"
     (clrWizardPageOnCommit)="onSettingsCommit()"
     (clrWizardPageOnCancel)="onCloseWizard()"
-    [clrWizardPageNextDisabled]="!optionsForm.valid"
+    [clrWizardPageNextDisabled]="!optionsForm.valid
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers) && !settingsModel.aplosRegisterAccountNumber)
+                   || (settingsModel.syncTransactions && !settingsModel.syncTransactionsCreateContact && !settingsModel.defaultAplosContactId)
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers) && !settingsModel.earliestTransactionDateToSync)"
   >
 
     <ng-template clrPageTitle>Choose what to sync</ng-template>
@@ -196,7 +199,7 @@
                 name="aplosRegisterAccountNumber"
               >
                 <option></option>
-                <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount | aplosAccount}}</option>
+                <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAssetAccounts">{{aplosAccount | aplosAccount}}</option>
               </select>
             </div>
             <p>
@@ -270,11 +273,14 @@
 
   </clr-wizard-page>
 
-  <clr-wizard-page *ngIf="isAuthenticated && ( settingsModel.syncTransactions || settingsModel.syncTags) && hasTagsAvailable"
-                   (clrWizardPageOnCommit)="onTagMappingCommit()"
-                   (clrWizardPageOnCancel)="onCloseWizard()"
-                   clrWizardPagePreventDefault="true"
-                   [clrWizardPageNextDisabled]="! aplosFieldMappingForm.valid">
+  <clr-wizard-page
+    *ngIf="isAuthenticated && ( settingsModel.syncTransactions || settingsModel.syncTags) && hasTagsAvailable"
+    (clrWizardPageOnCommit)="onTagMappingCommit()"
+    (clrWizardPageOnCancel)="onCloseWizard()"
+    clrWizardPagePreventDefault="true"
+    [clrWizardPageNextDisabled]="! aplosFieldMappingForm.valid
+                   || !expenseAccountForm.valid
+                   || !tagMappingForm.valid">
     <ng-template clrPageTitle>Configure tag mapping</ng-template>
 
     <clr-spinner *ngIf="savingSettings">
@@ -350,7 +356,9 @@
             <td class="left">
               <div class="clr-select-wrapper">
                 <select class="clr-select"
+                        required
                         formControlName="expenseAccount">
+                  <option></option>
                   <option [value]="tag.id" *ngFor="let tag of getDropDownTags()">{{tag.name}}</option>
                 </select>
               </div>
@@ -468,7 +476,7 @@
             <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
             </select>
           </div>
-        <br>           
+        <br>
           
         Please choose a transaction account to use when importing purchases into Aplos:
         <div class="clr-select-wrapper">
@@ -480,7 +488,7 @@
           [(ngModel)]="settingsModel.defaultAplosTransactionAccountNumber"
         >
           <option></option>
-          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount | aplosAccount}}</option>
+          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
         </select>
         </div>
       </div>
@@ -515,9 +523,9 @@
               <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
             </select>
           </div>
-        <br>           
+        <br>
           
-        Please choose a transaction account to use when importing transfers into Aplos:
+        Please choose a bank account to use when importing transfers into Aplos:
         <div class="clr-select-wrapper">
           <select
           id="transfersAplosTransactionAccountNumber"
@@ -527,7 +535,7 @@
           [(ngModel)]="settingsModel.transfersAplosTransactionAccountNumber"
         >
           <option></option>
-          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount | aplosAccount}}</option>
+          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAssetAccounts">{{aplosAccount | aplosAccount}}</option>
         </select>
         </div>      
       </div>
@@ -562,7 +570,7 @@
               <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
             </select>
           </div>
-        <br>           
+        <br>
           
         Please choose a transaction account to use when importing fees into Aplos:
         <div class="clr-select-wrapper">
@@ -574,7 +582,7 @@
           [(ngModel)]="settingsModel.pexFeesAplosTransactionAccountNumber"
         >
           <option></option>
-          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAccounts">{{aplosAccount | aplosAccount}}</option>
+          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
         </select>
         </div>  
       </div>

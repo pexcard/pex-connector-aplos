@@ -46,13 +46,14 @@ export class AplosService {
       .pipe(retryWithBackoff()), 60);
   }
 
-  getBankAccounts(sessionId: string): Observable<AplosAccount[]> {
-    return this.cache.runAndCacheOrGetFromCache("Aplos.getBankAccounts", this.httpClient
-        .get<AplosAccount[]>(this.buildUrl(sessionId, "Accounts"))
+  getAccounts(sessionId: string, category: AplosAccountCategory): Observable<AplosAccount[]> {
+    const url = this.buildUrl(sessionId, "Accounts") + `&category=${category}`
+    return this.cache.runAndCacheOrGetFromCache(`Aplos.getBankAccounts.${category}`, this.httpClient
+      .get<AplosAccount[]>(url)
       .pipe(retryWithBackoff()), 60);
   }
 
-  getBankAccount(sessionId: string, bankAccountNumber: number): Observable<AplosAccount> {
+  getAccount(sessionId: string, bankAccountNumber: number): Observable<AplosAccount> {
     return this.cache.runAndCacheOrGetFromCache("Aplos.getBankAccount"+bankAccountNumber, this.httpClient
         .get<AplosAccount>(`${this.buildUrl(sessionId, "Account")}&accountNumber=${bankAccountNumber}`)
       .pipe(retryWithBackoff()), 60);
@@ -64,6 +65,8 @@ export class AplosService {
       .pipe(retryWithBackoff()), 60);
   }
 }
+
+export type AplosAccountCategory = "asset" | "expense";
 
 export interface AplosObject {
   id: number;
