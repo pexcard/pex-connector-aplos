@@ -135,7 +135,7 @@ export class ManageConnectionsComponent implements OnInit {
         }
       );
 
-      this.aplos.getBankAccount(this.sessionId, this.settings.transfersAplosTransactionAccountNumber).subscribe(
+      this.aplos.getAccount(this.sessionId, this.settings.transfersAplosTransactionAccountNumber).subscribe(
         account => {
           console.log('got transfer account', account);
           this.transferAccount = { ...account };
@@ -160,7 +160,7 @@ export class ManageConnectionsComponent implements OnInit {
         }
       );
 
-      this.aplos.getBankAccount(this.sessionId, this.settings.pexFeesAplosTransactionAccountNumber).subscribe(
+      this.aplos.getAccount(this.sessionId, this.settings.pexFeesAplosTransactionAccountNumber).subscribe(
         account => {
           console.log('got fees account', account);
           this.feesAccount = { ...account };
@@ -189,7 +189,7 @@ export class ManageConnectionsComponent implements OnInit {
     }
 
     if (this.settings.defaultAplosTransactionAccountNumber > 0) {
-      this.aplos.getBankAccount(this.sessionId, this.settings.defaultAplosTransactionAccountNumber).subscribe(
+      this.aplos.getAccount(this.sessionId, this.settings.defaultAplosTransactionAccountNumber).subscribe(
         account => {
           console.log('got default transaction account', account);
           this.defaultTransactionAccount = { ...account };

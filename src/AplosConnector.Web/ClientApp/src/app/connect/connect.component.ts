@@ -57,7 +57,8 @@ export class ConnectComponent implements OnInit {
   projectForm: FormGroup;
   savingProjects = false;
   aplosContacts: AplosObject[] = [];
-  aplosAccounts: AplosAccount[] = [];
+  aplosAssetAccounts: AplosAccount[] = [];
+  aplosExpenseAccounts: AplosAccount[] = [];
   aplosFunds: AplosObject[] = [];
   aplosTagCategories: AplosObject[] = [];
   hasTagsAvailable = true;
@@ -178,20 +179,40 @@ export class ConnectComponent implements OnInit {
 
   loadingAplosAccounts = false;
   errorLoadingAplosAccounts = false;
-  getBankAccounts() {
+  getAssetAccounts() {
     this.loadingAplosAccounts = true;
     this.errorLoadingAplosAccounts = false;
 
-    return this.aplos.getBankAccounts(this.sessionId).subscribe(
+    return this.aplos.getAccounts(this.sessionId, "asset").subscribe(
       aplosAccounts => {
-        console.log('getting bank accounts', aplosAccounts);
-        this.aplosAccounts = [ ...aplosAccounts ];
+        console.log('getting asset accounts', aplosAccounts);
+        this.aplosAssetAccounts = [ ...aplosAccounts ];
         this.loadingAplosAccounts = false;
-        console.log('got bank accounts', this.aplosAccounts);
+        console.log('got asset accounts', this.aplosAssetAccounts);
       },
       () => {
         this.loadingAplosAccounts = false;
         this.errorLoadingAplosAccounts = true;
+      }
+    )
+  }
+
+  loadingExpenseAccounts = false;
+  errorLoadingExpenseAccounts = false;
+  getExpenseAccounts() {
+    this.loadingExpenseAccounts = true;
+    this.errorLoadingExpenseAccounts = false;
+
+    return this.aplos.getAccounts(this.sessionId, "expense").subscribe(
+      expenseAccounts => {
+        console.log('getting expense accounts', expenseAccounts);
+        this.aplosExpenseAccounts = [...expenseAccounts];
+        this.loadingExpenseAccounts = false;
+        console.log('got expense accounts', this.aplosExpenseAccounts);
+      },
+      () => {
+        this.loadingExpenseAccounts = false;
+        this.errorLoadingExpenseAccounts = true;
       }
     )
   }
@@ -274,7 +295,8 @@ export class ConnectComponent implements OnInit {
       this.settingsModel.earliestTransactionDateToSync = newDate;
 
       this.getContacts();
-      this.getBankAccounts();
+      this.getAssetAccounts();
+      this.getExpenseAccounts();
       this.getFunds();
       this.getTagCategories();
       this.initExpenseAccountMappingFormFromSettings(this.settingsModel);
