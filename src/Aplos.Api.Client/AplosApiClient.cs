@@ -367,7 +367,7 @@ namespace Aplos.Api.Client
         {
             return await InvokeAplosApiWithAccessToken<AplosApiPartnerVerificationResponse>(
                 HttpMethod.Get,
-                $"{APLOS_ENDPOINT_PARTNERS_VERIFY}?aplos-account-id=TODO");
+                $"{APLOS_ENDPOINT_PARTNERS_VERIFY}?aplos-account-id={_aplosAccountId}");
         }
 
         public Task<bool> IsHealthy()
