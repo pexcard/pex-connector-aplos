@@ -21,6 +21,8 @@ namespace Aplos.Api.Client
         private const string APLOS_ENDPOINT_CONTACTS = "contacts/";
         private const string APLOS_ENDPOINT_FUNDS = "funds/";
         private const string APLOS_ENDPOINT_TRANSACTIONS = "transactions/";
+        private const string APLOS_ENDPOINT_PARTNERS = "partners/";
+        private const string APLOS_ENDPOINT_PARTNERS_VERIFY = APLOS_ENDPOINT_PARTNERS + "/verify";
         private const string APLOS_ENDPOINT_TAGS = "tags/";
 
         private const string APLOS_ACCOUNT_CATEGORY_ASSET = "asset";
@@ -355,6 +357,13 @@ namespace Aplos.Api.Client
                 HttpMethod.Post,
                 APLOS_ENDPOINT_TRANSACTIONS,
                 aplosTransaction);
+        }
+
+        public async Task<AplosApiPartnerVerificationResponse> VerifyPartner()
+        {
+            return await InvokeAplosApiWithAccessToken<AplosApiPartnerVerificationResponse>(
+                HttpMethod.Get,
+                $"{APLOS_ENDPOINT_PARTNERS_VERIFY}?aplos-account-id=TODO");
         }
 
         public Task<bool> IsHealthy()
