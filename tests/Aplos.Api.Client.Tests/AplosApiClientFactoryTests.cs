@@ -31,6 +31,7 @@ namespace Aplos.Api.Client.Tests
 
             //Act
             IAplosApiClient aplosApiClient = aplosApiClientFactory.CreateClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),

@@ -29,6 +29,7 @@ namespace Aplos.Api.Client
         private const string APLOS_ACCOUNT_CATEGORY_EXPENSE = "expense";
         private static readonly ImmutableHashSet<string> _validAplosAccountCategories = new HashSet<string> { APLOS_ACCOUNT_CATEGORY_ASSET, APLOS_ACCOUNT_CATEGORY_EXPENSE }.ToImmutableHashSet();
 
+        private readonly string _aplosAccountId;
         private readonly string _aplosClientId;
         private readonly string _aplosPrivateKey;
         private readonly Uri _aplosApiEndpointUri;
@@ -39,6 +40,7 @@ namespace Aplos.Api.Client
         private readonly Func<AplosAuthModel, ILogger, Task> _onAuthRefreshed;
 
         public AplosApiClient(
+            string aplosAccountId,
             string aplosClientId,
             string aplosPrivateKey,
             Uri aplosApiEndpointUri,
@@ -48,6 +50,7 @@ namespace Aplos.Api.Client
             Func<ILogger, AplosAuthModel> onAuthInitializing = null,
             Func<AplosAuthModel, ILogger, Task> onAuthRefreshed = null)
         {
+            _aplosAccountId = aplosAccountId;
             _aplosClientId = aplosClientId;
             _aplosPrivateKey = aplosPrivateKey;
             _aplosApiEndpointUri = aplosApiEndpointUri;
@@ -74,6 +77,7 @@ namespace Aplos.Api.Client
 
             //Aplos uses a nonstandard Authorization header; we have to purposely add it without validation or we'll get an exception.
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer: {aplosAccessToken}");
+            httpClient.DefaultRequestHeaders.Add("aplos-account-id", _aplosAccountId);
 
             return httpClient;
         }

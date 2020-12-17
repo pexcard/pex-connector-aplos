@@ -24,6 +24,7 @@ namespace Aplos.Api.Client
         }
 
         public IAplosApiClient CreateClient(
+            string aplosAccountId,
             string aplosClientId,
             string aplosPrivateKey,
             Uri aplosEndpointUri,
@@ -31,6 +32,7 @@ namespace Aplos.Api.Client
             Func<AplosAuthModel, ILogger, Task> onTokenRefreshed)
         {
             return new AplosApiClient(
+                aplosAccountId,
                 aplosClientId,
                 aplosPrivateKey,
                 aplosEndpointUri,

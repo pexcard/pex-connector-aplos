@@ -53,6 +53,7 @@ namespace AplosConnector.Common.Services
         private IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping)
         {
             return _aplosApiClientFactory.CreateClient(
+                mapping.AplosAccountId,
                 mapping.AplosClientId,
                 mapping.AplosPrivateKey,
                 _appSettings.AplosApiBaseURL,
