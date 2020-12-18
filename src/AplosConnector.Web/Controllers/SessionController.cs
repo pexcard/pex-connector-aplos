@@ -90,8 +90,11 @@ namespace AplosConnector.Web.Controllers
                 await _pex2AplosMappingStorage.CreateAsync(mapping);
             }
 
-            PartnerModel parterInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken);
-            mapping.AplosAccountId = parterInfo.PartnerBusinessId;
+            if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+            {
+                PartnerModel parterInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken);
+                mapping.AplosAccountId = parterInfo.PartnerBusinessId;
+            }
 
             mapping.AplosClientId = model.AplosClientId;
             mapping.AplosPrivateKey = model.AplosPrivateKey;
