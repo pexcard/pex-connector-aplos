@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Aplos.Api.Client.Models.Detail;
+using Aplos.Api.Client.Abstractions;
 
 namespace AplosConnector.Common.Services.Abstractions
 {
@@ -22,6 +23,7 @@ namespace AplosConnector.Common.Services.Abstractions
         Task<IEnumerable<PexAplosApiObject>> GetAplosFunds(Pex2AplosMappingModel mapping);
         Task<IEnumerable<PexAplosApiObject>> GetAplosTagCategories(Pex2AplosMappingModel mapping);
         Task<List<AplosApiTransactionDetail>> GetTransactions(Pex2AplosMappingModel mapping, DateTime startDate);
+        IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping);
         Task Sync(Pex2AplosMappingModel mapping, ILogger log);
         Task<TransactionSyncResult> SyncTransaction(IEnumerable<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)> allocationDetails, Pex2AplosMappingModel mapping, TransactionModel transaction, CardholderDetailsModel cardholderDetails);
         Task<bool> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping);

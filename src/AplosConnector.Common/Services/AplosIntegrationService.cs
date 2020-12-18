@@ -50,7 +50,7 @@ namespace AplosConnector.Common.Services
             _mappingStorage = mappingStorage;
         }
 
-        private IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping)
+        public IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping)
         {
             return _aplosApiClientFactory.CreateClient(
                 mapping.AplosAccountId,
