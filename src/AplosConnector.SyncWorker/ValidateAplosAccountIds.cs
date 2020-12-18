@@ -84,7 +84,7 @@ namespace AplosConnector.SyncWorker
                     {
                         IAplosApiClient aplosClient = _aplosIntegrationService.MakeAplosApiClient(mapping);
 
-                        AplosApiPartnerVerificationResponse aplosResponse = await aplosClient.VerifyPartner();
+                        AplosApiPartnerVerificationResponse aplosResponse = await aplosClient.GetPartnerVerification();
                         _logger.LogInformation($"Received partner verification response: {JsonConvert.SerializeObject(aplosResponse)}");
 
                         if (aplosResponse?.Data == null)

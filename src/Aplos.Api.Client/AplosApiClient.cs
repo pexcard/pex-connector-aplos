@@ -363,7 +363,7 @@ namespace Aplos.Api.Client
                 aplosTransaction);
         }
 
-        public async Task<AplosApiPartnerVerificationResponse> VerifyPartner()
+        public async Task<AplosApiPartnerVerificationResponse> GetPartnerVerification()
         {
             return await InvokeAplosApiWithAccessToken<AplosApiPartnerVerificationResponse>(
                 HttpMethod.Get,

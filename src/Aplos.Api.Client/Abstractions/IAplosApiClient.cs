@@ -27,6 +27,6 @@ namespace Aplos.Api.Client.Abstractions
         Task<List<AplosApiTransactionDetail>> GetTransactions(DateTime startDate);
         Task<AplosApiTransactionListResponse> GetTransactions(DateTime startDate, int pageSize, int pageNum);
         Task<bool> IsHealthy();
-        Task<AplosApiPartnerVerificationResponse> VerifyPartner();
+        Task<AplosApiPartnerVerificationResponse> GetPartnerVerification();
     }
 }
