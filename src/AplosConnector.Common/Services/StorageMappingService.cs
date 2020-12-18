@@ -53,6 +53,7 @@ namespace AplosConnector.Common.Services
                     SyncApprovedOnly = model.SyncApprovedOnly,
                     EarliestTransactionDateToSync = model.EarliestTransactionDateToSync,
 
+                    AplosAccountId = model.AplosAccountId,
                     AplosClientId = encryptedAplosClientId,
                     AplosPrivateKey = encryptedAplosPrivateKey,
                     AplosAccessToken = encryptedAplosAccessToken,
@@ -142,6 +143,7 @@ namespace AplosConnector.Common.Services
                     SyncApprovedOnly = model.SyncApprovedOnly,
                     EarliestTransactionDateToSync = model.EarliestTransactionDateToSync,
 
+                    AplosAccountId = model.AplosAccountId,
                     AplosClientId = decryptedAplosClientId,
                     AplosPrivateKey = decryptedAplosPrivateKey,
                     AplosAccessToken = decryptedAplosAccessToken,

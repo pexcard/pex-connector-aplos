@@ -7,7 +7,6 @@ namespace AplosConnector.Common.Models
         public DateTime ConnectedOn { get; set; }
         public DateTime? LastSync { get; set; }
 
-        public string AplosAccountId { get; set; }
         public string AplosClientId { get; set; }
         public string AplosPrivateKey { get; set; }
 
