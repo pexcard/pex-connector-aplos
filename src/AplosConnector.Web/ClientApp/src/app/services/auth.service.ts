@@ -33,21 +33,12 @@ export class AuthService {
       );
   }
 
-  createAplosToken(sessionId: string, aplosClientId: string, aplosPrivateKey: string) {
-    return this.httpClient.post(this.baseUrl + `api/Session/AplosToken/?sessionId=${sessionId}`,
-        {
-          aplosClientId: aplosClientId,
-          aplosPrivateKey: aplosPrivateKey
-        });
-      // .subscribe(
-      //   () => {
-      //     console.info('Created Aplos access token')
-      //     this.router.navigate(['/', 'connect']);
-      //   },
-      //   () => {
-      //     console.warn('Error creating Aplos access token')
-      //   }
-      // );
+  createAplosToken(sessionId: string, aplosClientId: string, aplosPrivateKey: string): Observable<AplosCredentialVerificationResult> {
+    return this.httpClient.post<AplosCredentialVerificationResult>(this.baseUrl + `api/Session/AplosToken/?sessionId=${sessionId}`,
+      {
+        aplosClientId: aplosClientId,
+        aplosPrivateKey: aplosPrivateKey
+      });
   }
 
   login(sessionId: string) {
@@ -114,4 +105,10 @@ interface SessionValidityModel {
 
 interface TokenModel{
   token: string;
+}
+
+interface AplosCredentialVerificationResult {
+  canObtainAccessToken: boolean;
+  isPartnerVerified: boolean;
+  PartnerVerificationUrl: string;
 }
