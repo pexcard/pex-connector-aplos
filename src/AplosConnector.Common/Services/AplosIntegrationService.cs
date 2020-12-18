@@ -1,4 +1,5 @@
 ﻿using Aplos.Api.Client.Abstractions;
+using Aplos.Api.Client.Exceptions;
 using Aplos.Api.Client.Models;
 using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
@@ -10,6 +11,7 @@ using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Core.Storages;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PexCard.Api.Client.Core;
@@ -244,8 +246,15 @@ namespace AplosConnector.Common.Services
 
             if (result.CanObtainAccessToken && !result.IsPartnerVerified && !string.IsNullOrWhiteSpace(mapping.AplosAccountId))
             {
-                AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification();
-                result.IsPartnerVerified = aplosResponse.Data.Authorized;
+                try
+                {
+                    AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification();
+                    result.IsPartnerVerified = aplosResponse.Data.Authorized;
+                }
+                catch (AplosApiException ex) when (ex.AplosApiError.Status == StatusCodes.Status422UnprocessableEntity)
+                {
+                    //Expected if they aren't verified yet
+                }
 
                 if (!result.IsPartnerVerified && _appSettings.EnforceAplosPartnerVerification)
                 {
