@@ -32,10 +32,10 @@ namespace AplosConnector.Web.Tests
             var controller = new SessionController(null, null, Options.Create<AppSettingsModel>(null), null, null, null);
 
             //Act
-            ActionResult result = await controller.CreateAplosToken(sessionId, null);
+            var result = await controller.CreateAplosToken(sessionId, null);
 
             //Assert
-            Assert.Equal(typeof(BadRequestResult), result.GetType());
+            Assert.Equal(typeof(BadRequestResult), result.Result.GetType());
         }
 
         [Fact]

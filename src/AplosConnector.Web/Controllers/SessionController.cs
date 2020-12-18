@@ -67,7 +67,7 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<ActionResult> CreateAplosToken(string sessionId, [FromBody] AplosTokenRequestModel model)
+        public async Task<ActionResult<AplosCredentialVerficiationResult>> CreateAplosToken(string sessionId, [FromBody] AplosTokenRequestModel model)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
