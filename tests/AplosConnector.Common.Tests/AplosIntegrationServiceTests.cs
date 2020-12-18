@@ -413,10 +413,10 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            bool isValid = await service.ValidateAplosApiCredentials(new Pex2AplosMappingModel());
+            var validationResult = await service.ValidateAplosApiCredentials(new Pex2AplosMappingModel());
 
             //Assert
-            Assert.Equal(expectedResult, isValid);
+            Assert.Equal(expectedResult, validationResult.CanObtainAccessToken);
         }
 
         [Fact]

@@ -12,6 +12,7 @@ using AplosConnector.Common.Models.Response;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Models;
 using AplosConnector.Common.Services.Abstractions;
+using AplosConnector.Common.Services;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -96,12 +97,12 @@ namespace AplosConnector.Web.Controllers
             mapping.AplosClientId = model.AplosClientId;
             mapping.AplosPrivateKey = model.AplosPrivateKey;
 
-            bool isValid = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping);
-            if (!isValid) return BadRequest();
+            AplosCredentialVerficiationResult result = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping);
+            if (!result.CanObtainAccessToken) return BadRequest();
 
             await _pex2AplosMappingStorage.UpdateAsync(mapping);
 
-            return Ok();
+            return Ok(result);
         }
 
         [HttpPost, Route("JWT")]
