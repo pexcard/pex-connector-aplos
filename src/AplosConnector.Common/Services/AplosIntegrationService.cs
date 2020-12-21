@@ -244,7 +244,7 @@ namespace AplosConnector.Common.Services
 
             result.CanObtainAccessToken = await aplosApiClient.GetAndValidateAplosAccessToken();
 
-            if (result.CanObtainAccessToken && !result.IsPartnerVerified && !string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+            if (result.CanObtainAccessToken && !result.IsPartnerVerified && (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) || _appSettings.EnforceAplosPartnerVerification))
             {
                 try
                 {
