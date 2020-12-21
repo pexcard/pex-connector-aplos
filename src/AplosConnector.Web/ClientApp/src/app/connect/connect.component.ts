@@ -375,8 +375,9 @@ export class ConnectComponent implements OnInit {
         this.saveSettings().subscribe(() => {
           this.savingSettings = false;
 
-          if (!result.isPartnerVerified && result.PartnerVerificationUrl) {
-            window.location.href = result.PartnerVerificationUrl;
+          if (!result.isPartnerVerified && result.partnerVerificationUrl) {
+            console.log("Redirecting", result.partnerVerificationUrl);
+            window.location.href = result.partnerVerificationUrl;
           } else {
             this.getSettings();
             this.handleStepCompleted();

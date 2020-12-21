@@ -110,5 +110,5 @@ interface TokenModel{
 interface AplosCredentialVerificationResult {
   canObtainAccessToken: boolean;
   isPartnerVerified: boolean;
-  PartnerVerificationUrl: string;
+  partnerVerificationUrl: string;
 }
