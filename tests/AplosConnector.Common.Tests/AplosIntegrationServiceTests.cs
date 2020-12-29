@@ -413,10 +413,10 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            bool isValid = await service.ValidateAplosApiCredentials(new Pex2AplosMappingModel());
+            var validationResult = await service.ValidateAplosApiCredentials(new Pex2AplosMappingModel());
 
             //Assert
-            Assert.Equal(expectedResult, isValid);
+            Assert.Equal(expectedResult, validationResult.CanObtainAccessToken);
         }
 
         [Fact]
@@ -508,7 +508,13 @@ namespace AplosConnector.Common.Tests
         {
             _mockOptions.Setup(mockOptions => mockOptions.Value).Returns(new AppSettingsModel());
             _mockAplosApiClientFactory
-                .Setup(mockAplosClientFactory => mockAplosClientFactory.CreateClient(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<Func<ILogger, AplosAuthModel>>(), It.IsAny<Func<AplosAuthModel, ILogger, Task>>()))
+                .Setup(mockAplosClientFactory => mockAplosClientFactory.CreateClient(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<Uri>(),
+                    It.IsAny<Func<ILogger, AplosAuthModel>>(),
+                    It.IsAny<Func<AplosAuthModel, ILogger, Task>>()))
                 .Returns(_mockAplosApiClient.Object);
 
             return new AplosIntegrationService(

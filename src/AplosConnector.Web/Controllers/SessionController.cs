@@ -12,6 +12,7 @@ using AplosConnector.Common.Models.Response;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Models;
 using AplosConnector.Common.Services.Abstractions;
+using AplosConnector.Common.Services;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -66,7 +67,7 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<ActionResult> CreateAplosToken(string sessionId, [FromBody] AplosTokenRequestModel model)
+        public async Task<ActionResult<AplosCredentialVerficiationResult>> CreateAplosToken(string sessionId, [FromBody] AplosTokenRequestModel model)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
@@ -90,15 +91,21 @@ namespace AplosConnector.Web.Controllers
                 await _pex2AplosMappingStorage.CreateAsync(mapping);
             }
 
+            if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+            {
+                PartnerModel parterInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken);
+                mapping.AplosAccountId = parterInfo.PartnerBusinessId;
+            }
+
             mapping.AplosClientId = model.AplosClientId;
             mapping.AplosPrivateKey = model.AplosPrivateKey;
 
-            bool isValid = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping);
-            if (!isValid) return BadRequest();
+            AplosCredentialVerficiationResult result = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping);
+            if (!result.CanObtainAccessToken) return BadRequest();
 
             await _pex2AplosMappingStorage.UpdateAsync(mapping);
 
-            return Ok();
+            return Ok(result);
         }
 
         [HttpPost, Route("JWT")]

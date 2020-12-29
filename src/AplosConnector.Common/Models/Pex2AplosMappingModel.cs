@@ -101,6 +101,9 @@ namespace AplosConnector.Common.Models
         public bool SyncPexFees { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
+
+        public string AplosAccountId { get; set; }
+        public bool AplosPartnerVerified { get; set; }
         public string AplosClientId { get; set; }
         public string AplosPrivateKey { get; set; }
 

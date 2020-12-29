@@ -1,4 +1,5 @@
 ﻿using Aplos.Api.Client.Abstractions;
+using Aplos.Api.Client.Exceptions;
 using Aplos.Api.Client.Models;
 using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
@@ -10,6 +11,7 @@ using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Core.Storages;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PexCard.Api.Client.Core;
@@ -25,7 +27,7 @@ using System.Threading.Tasks;
 
 namespace AplosConnector.Common.Services
 {
-    public class AplosIntegrationService : IAplosIntegrationService
+    public partial class AplosIntegrationService : IAplosIntegrationService
     {
         private readonly AppSettingsModel _appSettings;
         private readonly IAplosApiClientFactory _aplosApiClientFactory;
@@ -50,9 +52,10 @@ namespace AplosConnector.Common.Services
             _mappingStorage = mappingStorage;
         }
 
-        private IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping)
+        public IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping)
         {
             return _aplosApiClientFactory.CreateClient(
+                mapping.AplosAccountId,
                 mapping.AplosClientId,
                 mapping.AplosPrivateKey,
                 _appSettings.AplosApiBaseURL,
@@ -230,12 +233,36 @@ namespace AplosConnector.Common.Services
             return await aplosApiClient.GetAplosAccessToken();
         }
 
-        public async Task<bool> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping)
+        public async Task<AplosCredentialVerficiationResult> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping)
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
-            bool isValid = await aplosApiClient.GetAndValidateAplosAccessToken();
 
-            return isValid;
+            var result = new AplosCredentialVerficiationResult
+            {
+                IsPartnerVerified = mapping.AplosPartnerVerified,
+            };
+
+            result.CanObtainAccessToken = await aplosApiClient.GetAndValidateAplosAccessToken();
+
+            if (result.CanObtainAccessToken && !result.IsPartnerVerified && (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) || _appSettings.EnforceAplosPartnerVerification))
+            {
+                try
+                {
+                    AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification();
+                    result.IsPartnerVerified = aplosResponse.Data.Authorized;
+                }
+                catch (AplosApiException ex) when (ex.AplosApiError.Status == StatusCodes.Status422UnprocessableEntity)
+                {
+                    //Expected if they aren't verified yet
+                }
+
+                if (!result.IsPartnerVerified && _appSettings.EnforceAplosPartnerVerification)
+                {
+                    result.PartnerVerificationUrl = _appSettings.AplosPartnerVerificationUrl;
+                }
+            }
+
+            return result;
         }
 
         public async Task Sync(Pex2AplosMappingModel mapping, ILogger log)

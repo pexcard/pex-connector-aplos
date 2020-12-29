@@ -367,26 +367,30 @@ export class ConnectComponent implements OnInit {
     console.info("Saving Aplos credentials...")
 
     this.auth.createAplosToken(this.sessionId, this.settingsModel.aplosClientId, this.settingsModel.aplosPrivateKey)
-      .subscribe(
-        () => {
-          this.savingAplosCredentials = false;
+      .subscribe(result => {
+        this.savingAplosCredentials = false;
 
-          console.info("Aplos credentials validated and saved.")
+        console.info(result);
 
-          this.saveSettings().subscribe(() => {
-            this.savingSettings = false;
+        this.saveSettings().subscribe(() => {
+          this.savingSettings = false;
 
+          if (!result.isPartnerVerified && result.partnerVerificationUrl) {
+            console.log("Redirecting", result.partnerVerificationUrl);
+            window.location.href = result.partnerVerificationUrl;
+          } else {
             this.getSettings();
             this.handleStepCompleted();
-          });
-        },
-        () => {
-          console.warn("Error saving Aplos credentials.");
+          }
+        });
+      },
+      () => {
+        console.warn("Error saving Aplos credentials.");
 
-          this.savingAplosCredentials = false;
-          this.errorSavingAplosCredentials = true;
-        }
-      );
+        this.savingAplosCredentials = false;
+        this.errorSavingAplosCredentials = true;
+      }
+    );
   }
 
   saveSettings(closeWizard: boolean = false) {

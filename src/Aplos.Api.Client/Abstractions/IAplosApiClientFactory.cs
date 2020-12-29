@@ -7,6 +7,6 @@ namespace Aplos.Api.Client.Abstractions
 {
     public interface IAplosApiClientFactory
     {
-        IAplosApiClient CreateClient(string aplosClientId, string aplosPrivateKey, Uri aplosEndpointUri, Func<ILogger, AplosAuthModel> onAuthInitializing, Func<AplosAuthModel, ILogger, Task> onTokenRefreshed);
+        IAplosApiClient CreateClient(string aplosAccountId, string aplosClientId, string aplosPrivateKey, Uri aplosEndpointUri, Func<ILogger, AplosAuthModel> onAuthInitializing, Func<AplosAuthModel, ILogger, Task> onTokenRefreshed);
     }
 }

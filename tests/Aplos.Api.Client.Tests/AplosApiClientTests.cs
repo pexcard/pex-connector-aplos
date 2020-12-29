@@ -44,6 +44,7 @@ namespace Aplos.Api.Client.Tests
             _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
 
             var aplosApiClient = new AplosApiClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),
@@ -90,6 +91,7 @@ namespace Aplos.Api.Client.Tests
             _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
 
             var aplosApiClient = new AplosApiClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),
@@ -129,6 +131,7 @@ namespace Aplos.Api.Client.Tests
             _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
 
             var aplosApiClient = new AplosApiClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),
@@ -177,6 +180,7 @@ namespace Aplos.Api.Client.Tests
             _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
 
             var aplosApiClient = new AplosApiClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),
@@ -214,6 +218,7 @@ namespace Aplos.Api.Client.Tests
             _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
 
             var aplosApiClient = new AplosApiClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),
@@ -257,6 +262,7 @@ namespace Aplos.Api.Client.Tests
             _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
 
             var aplosApiClient = new AplosApiClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),
@@ -312,6 +318,7 @@ namespace Aplos.Api.Client.Tests
             _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
 
             var aplosApiClient = new AplosApiClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),
@@ -366,6 +373,7 @@ namespace Aplos.Api.Client.Tests
             _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
 
             var aplosApiClient = new AplosApiClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),
@@ -440,6 +448,7 @@ namespace Aplos.Api.Client.Tests
             _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
 
             var aplosApiClient = new AplosApiClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),
@@ -500,6 +509,7 @@ namespace Aplos.Api.Client.Tests
             _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
 
             var aplosApiClient = new AplosApiClient(
+                "acctid",
                 "clientid",
                 "pk",
                 new Uri("https://www.pexcard.com/"),

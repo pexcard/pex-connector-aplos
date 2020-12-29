@@ -16,5 +16,8 @@ namespace AplosConnector.Common.Models.Settings
         public string DataProtectionBlobContainer { get; set; }
         public string DataProtectionBlobName { get; set; }
         public string DataProtectionKeyIdentifier { get; set; }
+
+        public bool EnforceAplosPartnerVerification { get; set; }
+        public Uri AplosPartnerVerificationUrl { get; set; }
     }
 }
