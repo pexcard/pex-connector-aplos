@@ -14,7 +14,7 @@ namespace AplosConnector.Common.Services.Abstractions
     public interface IAplosIntegrationService
     {
         Task<string> GetAplosAccessToken(Pex2AplosMappingModel mapping);
-        Task<AplosCredentialVerficiationResult> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping);
+        Task<bool> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping);
         Task<PexAplosApiObject> GetAplosAccount(Pex2AplosMappingModel mapping, decimal aplosAccountNumber);
         Task<IEnumerable<PexAplosApiObject>> GetAplosAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null);
         Task<PexAplosApiObject> GetAplosContact(Pex2AplosMappingModel mapping, int aplosContactId);

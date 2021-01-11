@@ -1,4 +1,5 @@
 ﻿using System;
+using AplosConnector.Common.Models;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace AplosConnector.Common.Entities
@@ -26,6 +27,8 @@ namespace AplosConnector.Common.Entities
         public bool AplosPartnerVerified { get; set; }
         public string AplosClientId { get; set; }
         public string AplosPrivateKey { get; set; }
+        public int AplosAuthenticationMode { get; set; }
+
         public string AplosAccessToken { get; set; }
         public DateTime? AplosAccessTokenExpiresAt { get; set; }
 

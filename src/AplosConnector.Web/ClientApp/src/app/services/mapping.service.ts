@@ -70,6 +70,7 @@ export class MappingService {
 
 export interface AplosAuthenticationStatusModel {
   aplosAuthenticationMode: AplosAuthenticationMode,
+  isAuthenticated: boolean,
   partnerVerificationUrl: string,
 }
 
@@ -137,6 +138,6 @@ export interface TagMappingModel {
 }
 
 export enum AplosAuthenticationMode {
-  clientAuthentication = 1,
-  partnerAuthentication = 2,
+  clientAuthentication = 0,
+  partnerAuthentication = 1,
 }

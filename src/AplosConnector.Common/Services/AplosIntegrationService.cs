@@ -297,45 +297,30 @@ namespace AplosConnector.Common.Services
             return await aplosApiClient.GetAplosAccessToken();
         }
 
-        public async Task<AplosCredentialVerficiationResult> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping)
+        public async Task<bool> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping)
         {
+            switch (mapping.AplosAuthenticationMode)
+            {
+                case AplosAuthenticationMode.ClientAuthentication:
+                    if (string.IsNullOrWhiteSpace(mapping.AplosClientId) || string.IsNullOrWhiteSpace(mapping.AplosPrivateKey))
+                    {
+                        return false;
+                    }
+                    break;
+                case AplosAuthenticationMode.PartnerAuthentication:
+                    if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+                    {
+                        return false;
+                    }
+                    break;
+                default:
+                    throw new InvalidEnumArgumentException(nameof(mapping.AplosAuthenticationMode), (int)mapping.AplosAuthenticationMode, typeof(AplosAuthenticationMode));
+            }
+
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
 
-            var result = new AplosCredentialVerficiationResult
-            {
-                IsPartnerVerified = mapping.AplosPartnerVerified,
-            };
-
-            if (_appSettings.EnforceAplosPartnerVerification)
-            {
-
-            }
-            else
-            {
-
-            }
-
-            result.CanObtainAccessToken = await aplosApiClient.GetAndValidateAplosAccessToken();
-
-            if (result.CanObtainAccessToken && !result.IsPartnerVerified && (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) || _appSettings.EnforceAplosPartnerVerification))
-            {
-                try
-                {
-                    AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification();
-                    result.IsPartnerVerified = aplosResponse.Data.Authorized;
-                }
-                catch (AplosApiException ex) when (ex.AplosApiError.Status == StatusCodes.Status422UnprocessableEntity)
-                {
-                    //Expected if they aren't verified yet
-                }
-
-                if (!result.IsPartnerVerified && _appSettings.EnforceAplosPartnerVerification)
-                {
-                    result.PartnerVerificationUrl = _appSettings.AplosPartnerVerificationUrl;
-                }
-            }
-
-            return result;
+            var canObtainAccessToken = await aplosApiClient.GetAndValidateAplosAccessToken();
+            return canObtainAccessToken;
         }
 
         public async Task Sync(Pex2AplosMappingModel mapping, ILogger log)

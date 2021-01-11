@@ -57,6 +57,8 @@ namespace AplosConnector.Common.Services
                     AplosPartnerVerified = model.AplosPartnerVerified,
                     AplosClientId = encryptedAplosClientId,
                     AplosPrivateKey = encryptedAplosPrivateKey,
+                    AplosAuthenticationMode = (int)model.AplosAuthenticationMode,
+
                     AplosAccessToken = encryptedAplosAccessToken,
                     AplosAccessTokenExpiresAt = model.AplosAccessTokenExpiresAt,
 
@@ -148,6 +150,8 @@ namespace AplosConnector.Common.Services
                     AplosPartnerVerified = model.AplosPartnerVerified,
                     AplosClientId = decryptedAplosClientId,
                     AplosPrivateKey = decryptedAplosPrivateKey,
+                    AplosAuthenticationMode = (AplosAuthenticationMode)model.AplosAuthenticationMode,
+
                     AplosAccessToken = decryptedAplosAccessToken,
                     AplosAccessTokenExpiresAt = model.AplosAccessTokenExpiresAt,
 
