@@ -9,6 +9,8 @@ namespace AplosConnector.Common.Models.Settings
         public string PexApiClientSecret { get; set; }
         public string AplosConnectorBaseURL { get; set; }
         public Uri AplosApiBaseURL { get; set; }
+        public string AplosApiClientId { get; set; }
+        public string AplosApiClientSecret { get; set; }
         public Uri PEXAPIBaseURL { get; set; }
         public string CorsAllowedOrigins { get; set; }
 
