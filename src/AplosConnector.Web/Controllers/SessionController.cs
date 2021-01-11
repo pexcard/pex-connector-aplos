@@ -75,21 +75,6 @@ namespace AplosConnector.Web.Controllers
             if (session == null) return Unauthorized();
 
             Pex2AplosMappingModel mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
-            if (mapping == null)
-            {
-                mapping = new Pex2AplosMappingModel
-                {
-                    CreatedUtc = DateTime.UtcNow,
-                    PEXBusinessAcctId = session.PEXBusinessAcctId,
-                    PEXExternalAPIToken = session.ExternalToken,
-                    LastRenewedUtc = DateTime.UtcNow,
-                    EarliestTransactionDateToSync = DateTime.UtcNow,
-                    //AplosClientId = model.AplosClientId,
-                    //AplosPrivateKey = model.AplosPrivateKey,
-                };
-
-                await _pex2AplosMappingStorage.CreateAsync(mapping);
-            }
 
             if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
             {
@@ -97,8 +82,15 @@ namespace AplosConnector.Web.Controllers
                 mapping.AplosAccountId = parterInfo.PartnerBusinessId;
             }
 
-            mapping.AplosClientId = model.AplosClientId;
-            mapping.AplosPrivateKey = model.AplosPrivateKey;
+            if (!string.IsNullOrWhiteSpace(model.AplosClientId))
+            {
+                mapping.AplosClientId = model.AplosClientId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.AplosPrivateKey))
+            {
+                mapping.AplosPrivateKey = model.AplosPrivateKey;
+            }
 
             AplosCredentialVerficiationResult result = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping);
             if (!result.CanObtainAccessToken) return BadRequest();
@@ -123,9 +115,11 @@ namespace AplosConnector.Web.Controllers
                 ExternalToken = externalToken,
                 CreatedUtc = DateTime.UtcNow,
                 LastRenewedUtc = DateTime.UtcNow,
-                PEXBusinessAcctId = business.BusinessAccountId
+                PEXBusinessAcctId = business.BusinessAccountId,
             };
             await _pexOAuthSessionStorage.CreateAsync(session);
+
+            await _aplosIntegrationService.InstallDefaultMappingIfNeeded(session);
 
             return new TokenModel { Token = sessionGuid.ToString() };
         }
@@ -143,6 +137,8 @@ namespace AplosConnector.Web.Controllers
                 PEXBusinessAcctId = business.BusinessAccountId
             };
             await _pexOAuthSessionStorage.CreateAsync(session);
+
+            await _aplosIntegrationService.InstallDefaultMappingIfNeeded(session);
         }
 
         [HttpDelete, Route("")]

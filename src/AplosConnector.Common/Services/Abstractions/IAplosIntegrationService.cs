@@ -26,5 +26,6 @@ namespace AplosConnector.Common.Services.Abstractions
         IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping);
         Task Sync(Pex2AplosMappingModel mapping, ILogger log);
         Task<TransactionSyncResult> SyncTransaction(IEnumerable<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)> allocationDetails, Pex2AplosMappingModel mapping, TransactionModel transaction, CardholderDetailsModel cardholderDetails);
+        Task<Pex2AplosMappingModel> InstallDefaultMappingIfNeeded(PexOAuthSessionModel session);
     }
 }

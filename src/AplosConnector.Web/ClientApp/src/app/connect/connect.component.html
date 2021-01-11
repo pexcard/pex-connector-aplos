@@ -51,40 +51,45 @@
       [allowRetry]="false"
     ></app-loading-placeholder>
 
-    <p>
-      To obtain a client id, you must have an Aplos account and a user with administrative permissions.
-
-      Assuming you have these, you can generate a client id and key pair from the <a href="https://www.aplos.com/aws/sm">settings</a> page.
-    </p>
-
     <form
       clrForm
       #aplosServiceAccountForm="ngForm"
       [class.hide]="!savingAplosCredentials"
     >
-      <clr-input-container>
-        <label>Client ID</label>
-        <input
-          clrInput
-          required
-          placeholder=""
-          name="aplosClientId"
-          [(ngModel)]="settingsModel.aplosClientId"
-          style="width: 500px" />
-        <clr-control-error>You must enter a Client ID</clr-control-error>
-      </clr-input-container>
+      <div *ngIf="aplosAuthenticationStatus.AplosAuthenticationMode === AplosAuthenticationMode.clientAuthentication">
+        <p>
+          To obtain a client id, you must have an Aplos account and a user with administrative permissions.
 
-      <clr-input-container>
-        <label>Private Key</label>
-        <input
-          clrInput
-          required
-          placeholder=""
-          name="aplosPrivateKey"
-          style="width: 500px"
-          [(ngModel)]="settingsModel.aplosPrivateKey" />
-        <clr-control-error>You must enter a Private Key</clr-control-error>
-      </clr-input-container>
+          Assuming you have these, you can generate a client id and key pair from the <a href="https://www.aplos.com/aws/sm">settings</a> page.
+        </p>
+        <clr-input-container>
+          <label>Client ID</label>
+          <input
+            clrInput
+            required
+            placeholder=""
+            name="aplosClientId"
+            [(ngModel)]="settingsModel.aplosClientId"
+            style="width: 500px" />
+          <clr-control-error>You must enter a Client ID</clr-control-error>
+        </clr-input-container>
+
+        <clr-input-container>
+          <label>Private Key</label>
+          <input
+            clrInput
+            required
+            placeholder=""
+            name="aplosPrivateKey"
+            style="width: 500px"
+            [(ngModel)]="settingsModel.aplosPrivateKey" />
+          <clr-control-error>You must enter a Private Key</clr-control-error>
+        </clr-input-container>
+      </div>
+
+      <div *ngIf="aplosAuthenticationStatus.partnerVerificationUrl">
+
+      </div>
     </form>
   </clr-wizard-page>
 

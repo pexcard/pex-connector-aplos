@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using AplosConnector.Common.Models.Response;
+using AplosConnector.Common.Services.Abstractions;
+using AplosConnector.Common.Services;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -16,17 +18,20 @@ namespace AplosConnector.Web.Controllers
         private readonly Pex2AplosMappingStorage _pex2AplosMappingStorage;
         private readonly SyncResultStorage _syncResultStorage;
         private readonly Pex2AplosMappingQueue _mappingQueue;
+        private readonly IAplosIntegrationService _aplosIntegrationService;
 
         public MappingController(
             PexOAuthSessionStorage pexOAuthSessionStorage,
             Pex2AplosMappingStorage pex2AplosMappingStorage,
             SyncResultStorage syncResultStorage,
-            Pex2AplosMappingQueue mappingQueue)
+            Pex2AplosMappingQueue mappingQueue,
+            IAplosIntegrationService aplosIntegrationService)
         {
             _pexOAuthSessionStorage = pexOAuthSessionStorage;
             _pex2AplosMappingStorage = pex2AplosMappingStorage;
             _syncResultStorage = syncResultStorage;
             _mappingQueue = mappingQueue;
+            _aplosIntegrationService = aplosIntegrationService;
         }
 
         [HttpDelete, Route("")]
@@ -109,7 +114,7 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetAplosAuthenticationStatus(string sessionId)
+        public async Task<ActionResult<AplosCredentialVerficiationResult>> GetAplosAuthenticationStatus(string sessionId)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
@@ -117,12 +122,20 @@ namespace AplosConnector.Web.Controllers
             if (session == null) return Unauthorized();
 
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
-            if (mapping == null) return NotFound();
+            if (mapping == null)
+            {
+                mapping = await _aplosIntegrationService.InstallDefaultMappingIfNeeded(session);
+            }
 
-            //TODO: TODO: Move validation logic out of controller
-            if (string.IsNullOrWhiteSpace(mapping.AplosClientId) || string.IsNullOrWhiteSpace(mapping.AplosPrivateKey)) return NotFound();
+            if (string.IsNullOrWhiteSpace(mapping.AplosAccountId)
+                && (string.IsNullOrWhiteSpace(mapping.AplosClientId) || string.IsNullOrWhiteSpace(mapping.AplosPrivateKey)))
+            {
+                return NotFound();
+            }
 
-            return Ok();
+            AplosCredentialVerficiationResult credentialResult = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping);
+
+            return Ok(credentialResult);
         }
 
         [HttpGet, Route("SyncResults")]

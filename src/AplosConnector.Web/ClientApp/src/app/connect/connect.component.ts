@@ -9,7 +9,8 @@ import {
   SettingsModel,
   ExpenseAccountMappingModel,
 
-  TagMappingModel
+  TagMappingModel,
+  AplosAuthenticationStatusModel
 } from "../services/mapping.service";
 import { AplosService, AplosPreferences, AplosAccount, AplosObject } from "../services/aplos.service";
 import { PexService, PexTagInfoModel, CustomFieldType } from '../services/pex.service';
@@ -73,6 +74,8 @@ export class ConnectComponent implements OnInit {
     connectedOn: new Date(),
     lastSync: new Date(),
     earliestTransactionDateToSync: '11/1/2019',
+    aplosAccountId: '',
+    aplosPartnerVerified: false,
     aplosClientId: '',
     aplosPrivateKey: '',
     syncTransactionsCreateContact: true,
@@ -157,6 +160,8 @@ export class ConnectComponent implements OnInit {
     }
   }
 
+  aplosAuthenticationStatus: AplosAuthenticationStatusModel;
+
   ngOnInit() {
     this.auth.sessionId.subscribe(token => {
       if (token) {
@@ -165,7 +170,10 @@ export class ConnectComponent implements OnInit {
 
         this.mapping.getAplosAuthenticationStatus(this.sessionId)
           .subscribe(
-            () => {
+            (result) => {
+              console.log('aplosAuthenticationStatus', result);
+              this.aplosAuthenticationStatus = { ...result };
+
               this.isAplosLinked = true;
               this.getSettings();
               this.validatePexSetup();
