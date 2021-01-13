@@ -28,11 +28,11 @@ export class MappingService {
     this.cache.clearCache(this.CACHE_KEY_GET_SYNC_RESULTS);
   }
 
-  getAplosAuthenticationStatus(sessionId: string){
+  getAplosAuthenticationStatus(sessionId: string): Observable<AplosAuthenticationStatusModel> {
     return this.cache.runAndCacheOrGetFromCache(
       this.CACHE_KEY_GET_AUTHENTICATION_STATUS,
       this.httpClient
-        .get<{ clientId: string; clientSecret: string }>(
+        .get<AplosAuthenticationStatusModel>(
           this.buildUrl(sessionId, 'AplosAuthenticationStatus')
         )
         .pipe(retryWithBackoff(50, 1, 500)),
@@ -66,6 +66,12 @@ export class MappingService {
     this.clearCache();
     return this.httpClient.delete(this.buildUrl(sessionId, ''));
   }
+}
+
+export interface AplosAuthenticationStatusModel {
+  aplosAuthenticationMode: AplosAuthenticationMode,
+  isAuthenticated: boolean,
+  partnerVerificationUrl: string,
 }
 
 export interface SyncResultModel {
@@ -102,15 +108,18 @@ export interface SettingsModel {
 
   syncFundsToPex: boolean;
   pexFundsTagId: string;
-  defaultAplosFundId: number
+  defaultAplosFundId: number;
 
   defaultAplosTransactionAccountNumber: number;
 
   connectedOn: Date;
   lastSync: Date;
 
+  aplosAccountId: string;
+  aplosPartnerVerified: boolean;
   aplosClientId: string;
   aplosPrivateKey: string;
+  aplosAuthenticationMode: AplosAuthenticationMode;
 
   expenseAccountMappings: ExpenseAccountMappingModel[];
   tagMappings: TagMappingModel[];
@@ -126,4 +135,9 @@ export interface TagMappingModel {
   aplosTagId: string;
   pexTagId: string;
   syncToPex: boolean;
+}
+
+export enum AplosAuthenticationMode {
+  clientAuthentication = 0,
+  partnerAuthentication = 1,
 }

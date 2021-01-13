@@ -37,10 +37,11 @@
   <clr-wizard-page
     clrWizardPagePreventDefault="true"
     (clrWizardPageOnCommit)="onAplosCredentialsCommit()"
-    *ngIf="isAuthenticated"
+    *ngIf="isAuthenticated && (settingsModel.aplosAuthenticationMode === 0 || (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl))"
     [clrWizardPagePreventDefault]="true"
     (clrWizardPageOnCancel)="onCloseWizard()"
-    [clrWizardPageNextDisabled]="!aplosServiceAccountForm.valid"
+    [clrWizardPageNextDisabled]="!aplosServiceAccountForm.valid
+                   || (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl)"
   >
     <ng-template clrPageTitle>Connect to Aplos</ng-template>
 
@@ -51,45 +52,72 @@
       [allowRetry]="false"
     ></app-loading-placeholder>
 
-    <p>
-      To obtain a client id, you must have an Aplos account and a user with administrative permissions.
-
-      Assuming you have these, you can generate a client id and key pair from the <a href="https://www.aplos.com/aws/sm">settings</a> page.
-    </p>
-
     <form
       clrForm
       #aplosServiceAccountForm="ngForm"
       [class.hide]="!savingAplosCredentials"
     >
-      <clr-input-container>
-        <label>Client ID</label>
-        <input
-          clrInput
-          required
-          placeholder=""
-          name="aplosClientId"
-          [(ngModel)]="settingsModel.aplosClientId"
-          style="width: 500px" />
-        <clr-control-error>You must enter a Client ID</clr-control-error>
-      </clr-input-container>
+      <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.aplosAuthenticationMode === 0">
+        <p>
+          To obtain a client id, you must have an Aplos account and a user with administrative permissions.
 
-      <clr-input-container>
-        <label>Private Key</label>
-        <input
-          clrInput
-          required
-          placeholder=""
-          name="aplosPrivateKey"
-          style="width: 500px"
-          [(ngModel)]="settingsModel.aplosPrivateKey" />
-        <clr-control-error>You must enter a Private Key</clr-control-error>
-      </clr-input-container>
+          Assuming you have these, you can generate a client id and key pair from the <a href="https://www.aplos.com/aws/sm">settings</a> page.
+        </p>
+        <clr-input-container>
+          <label>Client ID</label>
+          <input
+            clrInput
+            required
+            placeholder=""
+            name="aplosClientId"
+            [(ngModel)]="settingsModel.aplosClientId"
+            style="width: 500px" />
+          <clr-control-error>You must enter a Client ID</clr-control-error>
+        </clr-input-container>
+
+        <clr-input-container>
+          <label>Private Key</label>
+          <input
+            clrInput
+            required
+            placeholder=""
+            name="aplosPrivateKey"
+            style="width: 500px"
+            [(ngModel)]="settingsModel.aplosPrivateKey" />
+          <clr-control-error>You must enter a Private Key</clr-control-error>
+        </clr-input-container>
+      </div>
+
+      <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl">
+        <p>
+          Click the button below to connect PEX with your Aplos account.
+        </p>
+
+        <p></p>
+
+        <app-loading-placeholder
+        [loadingState]="verifyingAplosAuthentication"
+        [errorState]="false"
+        ></app-loading-placeholder>
+
+        <clr-spinner *ngIf="redirectingToAplosAuth">
+            Saving...
+        </clr-spinner>
+
+        <div class="clr-row clr-justify-content-around" *ngIf="!verifyingAplosAuthentication && !redirectingToAplosAuth">
+          <div class="clr-col-6">
+            <button type="button" class="btn btn-primary " aria-label="add" (click)="onAplosPartnerVerification()">
+              <clr-icon shape="link" size="36"></clr-icon>
+              <span>Connect to Aplos</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </form>
   </clr-wizard-page>
 
   <clr-wizard-page
-    *ngIf="isAuthenticated"
+    *ngIf="isAuthenticated && (aplosAuthenticationStatus && aplosAuthenticationStatus.isAuthenticated)"
     clrWizardPagePreventDefault="true"
     (clrWizardPageOnCommit)="onSettingsCommit()"
     (clrWizardPageOnCancel)="onCloseWizard()"
@@ -274,7 +302,7 @@
   </clr-wizard-page>
 
   <clr-wizard-page
-    *ngIf="isAuthenticated && ( settingsModel.syncTransactions || settingsModel.syncTags) && hasTagsAvailable"
+    *ngIf="isAuthenticated && (aplosAuthenticationStatus && aplosAuthenticationStatus.isAuthenticated) && (settingsModel.syncTransactions || settingsModel.syncTags) && hasTagsAvailable"
     (clrWizardPageOnCommit)="onTagMappingCommit()"
     (clrWizardPageOnCancel)="onCloseWizard()"
     clrWizardPagePreventDefault="true"
@@ -440,7 +468,7 @@
   </clr-wizard-page>
 
   <clr-wizard-page 
-    *ngIf="isAuthenticated && (settingsModel.syncTransfers || settingsModel.syncPexFees)"
+    *ngIf="isAuthenticated && (aplosAuthenticationStatus && aplosAuthenticationStatus.isAuthenticated) && (settingsModel.syncTransfers || settingsModel.syncPexFees)"
     (clrWizardPageOnCommit)="onDefaultCategoryCommit()"
     (clrWizardPageOnCancel)="onCloseWizard()"
     clrWizardPagePreventDefault="true"

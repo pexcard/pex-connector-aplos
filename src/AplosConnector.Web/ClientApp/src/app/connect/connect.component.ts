@@ -9,7 +9,9 @@ import {
   SettingsModel,
   ExpenseAccountMappingModel,
 
-  TagMappingModel
+  TagMappingModel,
+  AplosAuthenticationStatusModel,
+  AplosAuthenticationMode
 } from "../services/mapping.service";
 import { AplosService, AplosPreferences, AplosAccount, AplosObject } from "../services/aplos.service";
 import { PexService, PexTagInfoModel, CustomFieldType } from '../services/pex.service';
@@ -51,7 +53,6 @@ export class ConnectComponent implements OnInit {
   });
 
   isAuthenticated = false;
-  isAplosLinked = false;
   sessionId: string;
   savingSettings = false;
   projectForm: FormGroup;
@@ -73,8 +74,11 @@ export class ConnectComponent implements OnInit {
     connectedOn: new Date(),
     lastSync: new Date(),
     earliestTransactionDateToSync: '11/1/2019',
+    aplosAccountId: '',
+    aplosPartnerVerified: false,
     aplosClientId: '',
     aplosPrivateKey: '',
+    aplosAuthenticationMode: AplosAuthenticationMode.clientAuthentication,
     syncTransactionsCreateContact: true,
     defaultAplosContactId: 0,
     defaultAplosFundId: 0,
@@ -157,20 +161,27 @@ export class ConnectComponent implements OnInit {
     }
   }
 
+  verifyingAplosAuthentication = false;
+  aplosAuthenticationStatus: AplosAuthenticationStatusModel;
   ngOnInit() {
     this.auth.sessionId.subscribe(token => {
       if (token) {
         this.isAuthenticated = true;
         this.sessionId = token;
-
+        this.verifyingAplosAuthentication = true;
         this.mapping.getAplosAuthenticationStatus(this.sessionId)
           .subscribe(
-            () => {
-              this.isAplosLinked = true;
-              this.getSettings();
-              this.validatePexSetup();
-            },
-            () => this.isAplosLinked = false
+            (result) => {
+              console.log('aplosAuthenticationStatus', result);
+              this.aplosAuthenticationStatus = { ...result };
+
+              this.verifyingAplosAuthentication = false;
+
+              if (result.isAuthenticated) {
+                this.getSettings();
+                this.validatePexSetup();
+              }
+            }
           );
       }
     });
@@ -285,6 +296,12 @@ export class ConnectComponent implements OnInit {
     window.location.href = "https://apply.pexcard.com";
   }
 
+  redirectingToAplosAuth = false;
+  onAplosPartnerVerification() {
+    this.redirectingToAplosAuth = true;
+    window.location.href = this.aplosAuthenticationStatus.partnerVerificationUrl;
+}
+
   getSettings() {
     this.mapping.getSettings(this.sessionId).subscribe(data => {
       this.settingsModel = { ...data };
@@ -364,7 +381,7 @@ export class ConnectComponent implements OnInit {
     this.savingAplosCredentials = true;
     this.errorSavingAplosCredentials = false;
 
-    console.info("Saving Aplos credentials...")
+    console.info("Saving Aplos credentials...");
 
     this.auth.createAplosToken(this.sessionId, this.settingsModel.aplosClientId, this.settingsModel.aplosPrivateKey)
       .subscribe(result => {
@@ -375,22 +392,17 @@ export class ConnectComponent implements OnInit {
         this.saveSettings().subscribe(() => {
           this.savingSettings = false;
 
-          if (!result.isPartnerVerified && result.partnerVerificationUrl) {
-            console.log("Redirecting", result.partnerVerificationUrl);
-            window.location.href = result.partnerVerificationUrl;
-          } else {
-            this.getSettings();
-            this.handleStepCompleted();
-          }
+          this.getSettings();
+          this.handleStepCompleted();
         });
       },
-      () => {
-        console.warn("Error saving Aplos credentials.");
+        () => {
+          console.warn("Error saving Aplos credentials.");
 
-        this.savingAplosCredentials = false;
-        this.errorSavingAplosCredentials = true;
-      }
-    );
+          this.savingAplosCredentials = false;
+          this.errorSavingAplosCredentials = true;
+        }
+      );
   }
 
   saveSettings(closeWizard: boolean = false) {

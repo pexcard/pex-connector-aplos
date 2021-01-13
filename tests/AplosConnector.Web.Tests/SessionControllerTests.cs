@@ -35,7 +35,7 @@ namespace AplosConnector.Web.Tests
             var result = await controller.CreateAplosToken(sessionId, null);
 
             //Assert
-            Assert.Equal(typeof(BadRequestResult), result.Result.GetType());
+            Assert.Equal(typeof(BadRequestResult), result.GetType());
         }
 
         [Fact]

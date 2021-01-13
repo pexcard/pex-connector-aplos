@@ -21,6 +21,7 @@ using PexCard.Api.Client.Core.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -52,12 +53,75 @@ namespace AplosConnector.Common.Services
             _mappingStorage = mappingStorage;
         }
 
+        public async Task<Pex2AplosMappingModel> InstallDefaultMappingIfNeeded(PexOAuthSessionModel session)
+        {
+            var mapping = await _mappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
+            if (mapping == null)
+            {
+                mapping = new Pex2AplosMappingModel
+                {
+                    CreatedUtc = DateTime.UtcNow,
+                    PEXBusinessAcctId = session.PEXBusinessAcctId,
+                    PEXExternalAPIToken = session.ExternalToken,
+                    LastRenewedUtc = session.LastRenewedUtc,
+                    EarliestTransactionDateToSync = DateTime.UtcNow,
+                };
+
+                await _mappingStorage.CreateAsync(mapping);
+            }
+
+            if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+            {
+                PartnerModel parterInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken);
+                mapping.AplosAccountId = parterInfo.PartnerBusinessId;
+
+                if (!string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+                {
+                    mapping.AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication;
+
+                    try
+                    {
+                        IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
+                        AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification();
+                        mapping.AplosPartnerVerified = aplosResponse.Data.Authorized;
+                    }
+                    catch (AplosApiException ex) when (ex.AplosApiError.Status == StatusCodes.Status422UnprocessableEntity)
+                    {
+                        //Expected if they aren't verified yet
+                    }
+                }
+            }
+
+            await _mappingStorage.UpdateAsync(mapping);
+            return mapping;
+        }
+
         public IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping)
         {
+            string aplosAccountId;
+            string aplosClientId;
+            string aplosPrivateKey;
+
+            switch (mapping.AplosAuthenticationMode)
+            {
+                case AplosAuthenticationMode.ClientAuthentication:
+                    aplosAccountId = null;
+                    aplosClientId = mapping.AplosClientId;
+                    aplosPrivateKey = mapping.AplosPrivateKey;
+                    break;
+                case AplosAuthenticationMode.PartnerAuthentication:
+                    aplosAccountId = mapping.AplosAccountId;
+                    aplosClientId = _appSettings.AplosApiClientId;
+                    aplosPrivateKey = _appSettings.AplosApiClientSecret;
+                    break;
+                default:
+                    throw new InvalidEnumArgumentException(nameof(mapping.AplosAuthenticationMode), (int)mapping.AplosAuthenticationMode, typeof(AplosAuthenticationMode));
+            }
+
             return _aplosApiClientFactory.CreateClient(
-                mapping.AplosAccountId,
-                mapping.AplosClientId,
-                mapping.AplosPrivateKey,
+                aplosAccountId,
+                aplosClientId,
+                aplosPrivateKey,
                 _appSettings.AplosApiBaseURL,
                 (logger) =>
                 {
@@ -233,36 +297,30 @@ namespace AplosConnector.Common.Services
             return await aplosApiClient.GetAplosAccessToken();
         }
 
-        public async Task<AplosCredentialVerficiationResult> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping)
+        public async Task<bool> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping)
         {
-            IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
-
-            var result = new AplosCredentialVerficiationResult
+            switch (mapping.AplosAuthenticationMode)
             {
-                IsPartnerVerified = mapping.AplosPartnerVerified,
-            };
-
-            result.CanObtainAccessToken = await aplosApiClient.GetAndValidateAplosAccessToken();
-
-            if (result.CanObtainAccessToken && !result.IsPartnerVerified && (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) || _appSettings.EnforceAplosPartnerVerification))
-            {
-                try
-                {
-                    AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification();
-                    result.IsPartnerVerified = aplosResponse.Data.Authorized;
-                }
-                catch (AplosApiException ex) when (ex.AplosApiError.Status == StatusCodes.Status422UnprocessableEntity)
-                {
-                    //Expected if they aren't verified yet
-                }
-
-                if (!result.IsPartnerVerified && _appSettings.EnforceAplosPartnerVerification)
-                {
-                    result.PartnerVerificationUrl = _appSettings.AplosPartnerVerificationUrl;
-                }
+                case AplosAuthenticationMode.ClientAuthentication:
+                    if (string.IsNullOrWhiteSpace(mapping.AplosClientId) || string.IsNullOrWhiteSpace(mapping.AplosPrivateKey))
+                    {
+                        return false;
+                    }
+                    break;
+                case AplosAuthenticationMode.PartnerAuthentication:
+                    if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+                    {
+                        return false;
+                    }
+                    break;
+                default:
+                    throw new InvalidEnumArgumentException(nameof(mapping.AplosAuthenticationMode), (int)mapping.AplosAuthenticationMode, typeof(AplosAuthenticationMode));
             }
 
-            return result;
+            IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
+
+            var canObtainAccessToken = await aplosApiClient.GetAndValidateAplosAccessToken();
+            return canObtainAccessToken;
         }
 
         public async Task Sync(Pex2AplosMappingModel mapping, ILogger log)

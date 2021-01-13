@@ -20,8 +20,12 @@ namespace AplosConnector.Common.Models
             LastSyncUtc = mapping.LastSync;
             EarliestTransactionDateToSync = mapping.EarliestTransactionDateToSync;
 
+            AplosAccountId = mapping.AplosAccountId;
+            AplosPartnerVerified = mapping.AplosPartnerVerified;
             AplosClientId = mapping.AplosClientId;
             AplosPrivateKey = mapping.AplosPrivateKey;
+            AplosAuthenticationMode = mapping.AplosAuthenticationMode;
+
             AplosAccessToken = mapping.AplosAccessToken;
             AplosAccessTokenExpiresAt = mapping.AplosAccessTokenExpiresAt;
 
@@ -61,8 +65,12 @@ namespace AplosConnector.Common.Models
                 LastSync = LastSyncUtc,
                 EarliestTransactionDateToSync = EarliestTransactionDateToSync,
 
+                AplosAccountId = AplosAccountId,
+                AplosPartnerVerified = AplosPartnerVerified,
                 AplosClientId = AplosClientId,
                 AplosPrivateKey = AplosPrivateKey,
+                AplosAuthenticationMode = AplosAuthenticationMode,
+
                 AplosAccessToken = AplosAccessToken,
                 AplosAccessTokenExpiresAt = AplosAccessTokenExpiresAt,
 
@@ -106,6 +114,7 @@ namespace AplosConnector.Common.Models
         public bool AplosPartnerVerified { get; set; }
         public string AplosClientId { get; set; }
         public string AplosPrivateKey { get; set; }
+        public AplosAuthenticationMode AplosAuthenticationMode { get; set; } = AplosAuthenticationMode.ClientAuthentication;
 
         public decimal AplosRegisterAccountNumber { get; set; }
 
@@ -132,5 +141,11 @@ namespace AplosConnector.Common.Models
         {
             return LastRenewedUtc ?? CreatedUtc;
         }
+    }
+
+    public enum AplosAuthenticationMode
+    {
+        ClientAuthentication = 0,
+        PartnerAuthentication = 1,
     }
 }

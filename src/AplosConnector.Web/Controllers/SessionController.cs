@@ -67,7 +67,7 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<ActionResult<AplosCredentialVerficiationResult>> CreateAplosToken(string sessionId, [FromBody] AplosTokenRequestModel model)
+        public async Task<ActionResult> CreateAplosToken(string sessionId, [FromBody] AplosTokenRequestModel model)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
@@ -75,37 +75,23 @@ namespace AplosConnector.Web.Controllers
             if (session == null) return Unauthorized();
 
             Pex2AplosMappingModel mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
-            if (mapping == null)
-            {
-                mapping = new Pex2AplosMappingModel
-                {
-                    CreatedUtc = DateTime.UtcNow,
-                    PEXBusinessAcctId = session.PEXBusinessAcctId,
-                    PEXExternalAPIToken = session.ExternalToken,
-                    LastRenewedUtc = DateTime.UtcNow,
-                    EarliestTransactionDateToSync = DateTime.UtcNow,
-                    //AplosClientId = model.AplosClientId,
-                    //AplosPrivateKey = model.AplosPrivateKey,
-                };
 
-                await _pex2AplosMappingStorage.CreateAsync(mapping);
+            if (!string.IsNullOrWhiteSpace(model.AplosClientId))
+            {
+                mapping.AplosClientId = model.AplosClientId;
             }
 
-            if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+            if (!string.IsNullOrWhiteSpace(model.AplosPrivateKey))
             {
-                PartnerModel parterInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken);
-                mapping.AplosAccountId = parterInfo.PartnerBusinessId;
+                mapping.AplosPrivateKey = model.AplosPrivateKey;
             }
 
-            mapping.AplosClientId = model.AplosClientId;
-            mapping.AplosPrivateKey = model.AplosPrivateKey;
-
-            AplosCredentialVerficiationResult result = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping);
-            if (!result.CanObtainAccessToken) return BadRequest();
+            bool result = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping);
+            if (!result) return BadRequest();
 
             await _pex2AplosMappingStorage.UpdateAsync(mapping);
 
-            return Ok(result);
+            return Ok();
         }
 
         [HttpPost, Route("JWT")]
@@ -123,9 +109,11 @@ namespace AplosConnector.Web.Controllers
                 ExternalToken = externalToken,
                 CreatedUtc = DateTime.UtcNow,
                 LastRenewedUtc = DateTime.UtcNow,
-                PEXBusinessAcctId = business.BusinessAccountId
+                PEXBusinessAcctId = business.BusinessAccountId,
             };
             await _pexOAuthSessionStorage.CreateAsync(session);
+
+            await _aplosIntegrationService.InstallDefaultMappingIfNeeded(session);
 
             return new TokenModel { Token = sessionGuid.ToString() };
         }
@@ -143,6 +131,8 @@ namespace AplosConnector.Web.Controllers
                 PEXBusinessAcctId = business.BusinessAccountId
             };
             await _pexOAuthSessionStorage.CreateAsync(session);
+
+            await _aplosIntegrationService.InstallDefaultMappingIfNeeded(session);
         }
 
         [HttpDelete, Route("")]
