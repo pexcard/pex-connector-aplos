@@ -1,6 +1,6 @@
 import { Injectable, Inject } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
-import { Observable } from "rxjs";
+import { Observable, EMPTY } from "rxjs";
 
 import { retryWithBackoff } from "../operators/retryWithBackoff.operator";
 import { CacheRepositoryService } from './cache-repository.service';
@@ -29,12 +29,16 @@ export class AplosService {
   }
 
   getContact(sessionId: string, contactId: number): Observable<AplosObject> {
+    if (!contactId) return EMPTY;
+
     return this.cache.runAndCacheOrGetFromCache("Aplos.getContact"+contactId, this.httpClient
       .get<AplosObject>(`${this.buildUrl(sessionId, "Contact")}&aplosContactId=${contactId}`)
       .pipe(retryWithBackoff()), 60);
   }
 
   getFund(sessionId: string, fundId: number): Observable<AplosObject> {
+    if (!fundId) return EMPTY;
+
     return this.cache.runAndCacheOrGetFromCache("Aplos.getFund"+fundId, this.httpClient
       .get<AplosObject>(`${this.buildUrl(sessionId, "Fund")}&aplosFundId=${fundId}`)
       .pipe(retryWithBackoff()), 60);
@@ -54,6 +58,8 @@ export class AplosService {
   }
 
   getAccount(sessionId: string, bankAccountNumber: number): Observable<AplosAccount> {
+    if (!bankAccountNumber) return EMPTY;
+
     return this.cache.runAndCacheOrGetFromCache("Aplos.getBankAccount"+bankAccountNumber, this.httpClient
         .get<AplosAccount>(`${this.buildUrl(sessionId, "Account")}&accountNumber=${bankAccountNumber}`)
       .pipe(retryWithBackoff()), 60);
