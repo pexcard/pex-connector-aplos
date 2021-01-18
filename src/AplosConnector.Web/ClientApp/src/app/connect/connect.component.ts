@@ -392,8 +392,22 @@ export class ConnectComponent implements OnInit {
         this.saveSettings().subscribe(() => {
           this.savingSettings = false;
 
-          this.getSettings();
-          this.handleStepCompleted();
+          this.verifyingAplosAuthentication = true;
+          this.mapping.getAplosAuthenticationStatus(this.sessionId)
+            .subscribe(
+              (result) => {
+                console.log('aplosAuthenticationStatus', result);
+                this.aplosAuthenticationStatus = { ...result };
+
+                this.verifyingAplosAuthentication = false;
+
+                if (result.isAuthenticated) {
+                  this.getSettings();
+                  this.handleStepCompleted();
+                }
+              }
+            );
+
         });
       },
         () => {
