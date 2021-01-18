@@ -117,7 +117,7 @@
   </clr-wizard-page>
 
   <clr-wizard-page
-    *ngIf="isAuthenticated && (aplosAuthenticationStatus && aplosAuthenticationStatus.isAuthenticated)"
+    *ngIf="isAuthenticated"
     clrWizardPagePreventDefault="true"
     (clrWizardPageOnCommit)="onSettingsCommit()"
     (clrWizardPageOnCancel)="onCloseWizard()"
@@ -302,7 +302,7 @@
   </clr-wizard-page>
 
   <clr-wizard-page
-    *ngIf="isAuthenticated && (aplosAuthenticationStatus && aplosAuthenticationStatus.isAuthenticated) && (settingsModel.syncTransactions || settingsModel.syncTags) && hasTagsAvailable"
+    *ngIf="isAuthenticated && (settingsModel.syncTransactions || settingsModel.syncTags) && hasTagsAvailable"
     (clrWizardPageOnCommit)="onTagMappingCommit()"
     (clrWizardPageOnCancel)="onCloseWizard()"
     clrWizardPagePreventDefault="true"
@@ -468,7 +468,7 @@
   </clr-wizard-page>
 
   <clr-wizard-page 
-    *ngIf="isAuthenticated && (aplosAuthenticationStatus && aplosAuthenticationStatus.isAuthenticated) && (settingsModel.syncTransfers || settingsModel.syncPexFees)"
+    *ngIf="isAuthenticated && (settingsModel.syncTransfers || settingsModel.syncPexFees)"
     (clrWizardPageOnCommit)="onDefaultCategoryCommit()"
     (clrWizardPageOnCancel)="onCloseWizard()"
     clrWizardPagePreventDefault="true"
