@@ -113,7 +113,7 @@ namespace AplosConnector.Web.Controllers
             };
             await _pexOAuthSessionStorage.CreateAsync(session);
 
-            await _aplosIntegrationService.InstallDefaultMappingIfNeeded(session);
+            await _aplosIntegrationService.EnsureMappingInstalled(session);
 
             return new TokenModel { Token = sessionGuid.ToString() };
         }
@@ -132,7 +132,7 @@ namespace AplosConnector.Web.Controllers
             };
             await _pexOAuthSessionStorage.CreateAsync(session);
 
-            await _aplosIntegrationService.InstallDefaultMappingIfNeeded(session);
+            await _aplosIntegrationService.EnsureMappingInstalled(session);
         }
 
         [HttpDelete, Route("")]

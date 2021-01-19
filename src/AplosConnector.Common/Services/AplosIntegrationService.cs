@@ -53,7 +53,7 @@ namespace AplosConnector.Common.Services
             _mappingStorage = mappingStorage;
         }
 
-        public async Task<Pex2AplosMappingModel> InstallDefaultMappingIfNeeded(PexOAuthSessionModel session)
+        public async Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session)
         {
             var mapping = await _mappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
             if (mapping == null)
@@ -70,39 +70,58 @@ namespace AplosConnector.Common.Services
                 await _mappingStorage.CreateAsync(mapping);
             }
 
+            await EnsurePartnerInfoPopulated(mapping);
+
+            return mapping;
+        }
+
+        public async Task EnsurePartnerInfoPopulated(Pex2AplosMappingModel mapping)
+        {
+            bool isChanged = false;
+
             if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
             {
                 PartnerModel parterInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken);
                 mapping.AplosAccountId = parterInfo.PartnerBusinessId;
+                isChanged |= !string.IsNullOrWhiteSpace(mapping.AplosAccountId);
+            }
 
-                if (!string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+            if (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && !mapping.AplosPartnerVerified)
+            {
+                IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping, AplosAuthenticationMode.PartnerAuthentication);
+
+                try
                 {
-                    mapping.AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication;
-
-                    try
-                    {
-                        IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
-                        AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification();
-                        mapping.AplosPartnerVerified = aplosResponse.Data.Authorized;
-                    }
-                    catch (AplosApiException ex) when (ex.AplosApiError.Status == StatusCodes.Status422UnprocessableEntity)
-                    {
-                        //Expected if they aren't verified yet
-                    }
+                    AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification();
+                    mapping.AplosPartnerVerified = aplosResponse.Data.Authorized;
+                    isChanged |= mapping.AplosPartnerVerified;
+                }
+                catch (AplosApiException ex) when (ex.AplosApiError.Status == StatusCodes.Status422UnprocessableEntity)
+                {
+                    //Expected if they aren't verified yet
                 }
             }
 
-            await _mappingStorage.UpdateAsync(mapping);
-            return mapping;
+            if (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && mapping.AplosPartnerVerified && mapping.AplosAuthenticationMode == AplosAuthenticationMode.ClientAuthentication)
+            {
+                mapping.AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication;
+                isChanged |= true;
+            }
+
+            if (isChanged)
+            {
+                await _mappingStorage.UpdateAsync(mapping);
+            }
         }
 
-        public IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping)
+        public IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping, AplosAuthenticationMode? overrideAuthenticationMode = null)
         {
             string aplosAccountId;
             string aplosClientId;
             string aplosPrivateKey;
 
-            switch (mapping.AplosAuthenticationMode)
+            AplosAuthenticationMode authenticationMode = overrideAuthenticationMode ?? mapping.AplosAuthenticationMode;
+            switch (authenticationMode)
             {
                 case AplosAuthenticationMode.ClientAuthentication:
                     aplosAccountId = null;
@@ -342,8 +361,7 @@ namespace AplosConnector.Common.Services
                 return;
             }
 
-            //mapping.AplosAccessToken = aplosAccessToken;
-            //await _mappingStorage.UpdateAsync(mapping);
+            await EnsurePartnerInfoPopulated(mapping);
 
             var utcNow = DateTime.UtcNow;
 

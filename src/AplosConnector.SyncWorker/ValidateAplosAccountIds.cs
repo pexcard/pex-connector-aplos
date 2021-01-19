@@ -13,6 +13,7 @@ using Aplos.Api.Client.Abstractions;
 using Aplos.Api.Client.Models.Response;
 using Newtonsoft.Json;
 using AplosConnector.Common.Services.Abstractions;
+using Aplos.Api.Client.Exceptions;
 
 namespace AplosConnector.SyncWorker
 {
@@ -82,10 +83,18 @@ namespace AplosConnector.SyncWorker
 
                     try
                     {
-                        IAplosApiClient aplosClient = _aplosIntegrationService.MakeAplosApiClient(mapping);
+                        IAplosApiClient aplosClient = _aplosIntegrationService.MakeAplosApiClient(mapping, AplosAuthenticationMode.PartnerAuthentication);
 
-                        AplosApiPartnerVerificationResponse aplosResponse = await aplosClient.GetPartnerVerification();
-                        _logger.LogInformation($"Received partner verification response: {JsonConvert.SerializeObject(aplosResponse)}");
+                        AplosApiPartnerVerificationResponse aplosResponse = null;
+                        try
+                        {
+                            aplosResponse = await aplosClient.GetPartnerVerification();
+                            _logger.LogInformation($"Received partner verification response: {JsonConvert.SerializeObject(aplosResponse)}");
+                        }
+                        catch (AplosApiException ex) when (ex.AplosApiError.Status == StatusCodes.Status422UnprocessableEntity)
+                        {
+                            //Expected if they aren't verified yet
+                        }
 
                         if (aplosResponse?.Data == null)
                         {
