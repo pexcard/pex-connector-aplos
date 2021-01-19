@@ -126,11 +126,7 @@ namespace AplosConnector.Web.Controllers
             var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
             if (session == null) return Unauthorized();
 
-            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
-            if (mapping == null)
-            {
-                mapping = await _aplosIntegrationService.InstallDefaultMappingIfNeeded(session);
-            }
+            var mapping = await _aplosIntegrationService.EnsureMappingInstalled(session);
 
             var result = new AplosAuthenticationStatusModel
             {

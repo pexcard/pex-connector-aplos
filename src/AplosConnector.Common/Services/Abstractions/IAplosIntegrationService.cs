@@ -23,9 +23,9 @@ namespace AplosConnector.Common.Services.Abstractions
         Task<IEnumerable<PexAplosApiObject>> GetAplosFunds(Pex2AplosMappingModel mapping);
         Task<IEnumerable<PexAplosApiObject>> GetAplosTagCategories(Pex2AplosMappingModel mapping);
         Task<List<AplosApiTransactionDetail>> GetTransactions(Pex2AplosMappingModel mapping, DateTime startDate);
-        IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping);
+        IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping, AplosAuthenticationMode? overrideAuthenticationMode = null);
         Task Sync(Pex2AplosMappingModel mapping, ILogger log);
         Task<TransactionSyncResult> SyncTransaction(IEnumerable<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)> allocationDetails, Pex2AplosMappingModel mapping, TransactionModel transaction, CardholderDetailsModel cardholderDetails);
-        Task<Pex2AplosMappingModel> InstallDefaultMappingIfNeeded(PexOAuthSessionModel session);
+        Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session);
     }
 }
