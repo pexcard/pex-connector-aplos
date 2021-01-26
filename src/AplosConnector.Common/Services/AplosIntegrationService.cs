@@ -65,6 +65,7 @@ namespace AplosConnector.Common.Services
                     PEXExternalAPIToken = session.ExternalToken,
                     LastRenewedUtc = session.LastRenewedUtc,
                     EarliestTransactionDateToSync = DateTime.UtcNow,
+                    AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication,
                 };
 
                 await _mappingStorage.CreateAsync(mapping);
