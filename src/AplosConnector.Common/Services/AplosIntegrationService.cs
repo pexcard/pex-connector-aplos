@@ -65,6 +65,7 @@ namespace AplosConnector.Common.Services
                     PEXExternalAPIToken = session.ExternalToken,
                     LastRenewedUtc = session.LastRenewedUtc,
                     EarliestTransactionDateToSync = DateTime.UtcNow,
+                    AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication,
                 };
 
                 await _mappingStorage.CreateAsync(mapping);
@@ -84,6 +85,12 @@ namespace AplosConnector.Common.Services
                 PartnerModel parterInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken);
                 mapping.AplosAccountId = parterInfo.PartnerBusinessId;
                 isChanged |= !string.IsNullOrWhiteSpace(mapping.AplosAccountId);
+            }
+
+            if (_appSettings.EnforceAplosPartnerVerification && mapping.AplosAuthenticationMode == AplosAuthenticationMode.ClientAuthentication)
+            {
+                mapping.AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication;
+                isChanged |= true;
             }
 
             if (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && !mapping.AplosPartnerVerified)
