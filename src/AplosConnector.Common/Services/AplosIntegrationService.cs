@@ -86,6 +86,12 @@ namespace AplosConnector.Common.Services
                 isChanged |= !string.IsNullOrWhiteSpace(mapping.AplosAccountId);
             }
 
+            if (_appSettings.EnforceAplosPartnerVerification && !string.IsNullOrWhiteSpace(mapping.AplosAccountId) && mapping.AplosAuthenticationMode == AplosAuthenticationMode.ClientAuthentication)
+            {
+                mapping.AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication;
+                isChanged |= true;
+            }
+
             if (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && !mapping.AplosPartnerVerified)
             {
                 IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping, AplosAuthenticationMode.PartnerAuthentication);
