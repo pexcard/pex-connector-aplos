@@ -65,6 +65,7 @@ namespace AplosConnector.Common.Services
                     PEXExternalAPIToken = session.ExternalToken,
                     LastRenewedUtc = session.LastRenewedUtc,
                     EarliestTransactionDateToSync = DateTime.UtcNow,
+                    AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication,
                 };
 
                 await _mappingStorage.CreateAsync(mapping);
@@ -84,6 +85,12 @@ namespace AplosConnector.Common.Services
                 PartnerModel parterInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken);
                 mapping.AplosAccountId = parterInfo.PartnerBusinessId;
                 isChanged |= !string.IsNullOrWhiteSpace(mapping.AplosAccountId);
+            }
+
+            if (_appSettings.EnforceAplosPartnerVerification && mapping.AplosAuthenticationMode == AplosAuthenticationMode.ClientAuthentication)
+            {
+                mapping.AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication;
+                isChanged |= true;
             }
 
             if (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && !mapping.AplosPartnerVerified)
@@ -124,11 +131,26 @@ namespace AplosConnector.Common.Services
             switch (authenticationMode)
             {
                 case AplosAuthenticationMode.ClientAuthentication:
+                    if (string.IsNullOrWhiteSpace(mapping.AplosClientId))
+                    {
+                        throw new InvalidOperationException($"{nameof(mapping.AplosClientId)} is required.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(mapping.AplosPrivateKey))
+                    {
+                        throw new InvalidOperationException($"{nameof(mapping.AplosPrivateKey)} is required.");
+                    }
+
                     aplosAccountId = null;
                     aplosClientId = mapping.AplosClientId;
                     aplosPrivateKey = mapping.AplosPrivateKey;
                     break;
                 case AplosAuthenticationMode.PartnerAuthentication:
+                    if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+                    {
+                        throw new InvalidOperationException($"{nameof(mapping.AplosAccountId)} is required.");
+                    }
+
                     aplosAccountId = mapping.AplosAccountId;
                     aplosClientId = _appSettings.AplosApiClientId;
                     aplosPrivateKey = _appSettings.AplosApiClientSecret;
@@ -418,7 +440,7 @@ namespace AplosConnector.Common.Services
 
         private async Task SyncAplosTagsToPex(ILogger log, Pex2AplosMappingModel mapping)
         {
-            if (mapping.TagMappings == null)  return;
+            if (mapping.TagMappings == null) return;
 
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
             List<AplosApiTagCategoryDetail> aplosTagCategories = await aplosApiClient.GetTags();
@@ -437,8 +459,8 @@ namespace AplosConnector.Common.Services
                 if (aplosTagCategory == null)
                 {
                     log.LogWarning($"Unable to find a single tag for {nameof(tagMapping.AplosTagId)} '{tagMapping.AplosTagId}'. Searched categories: {aplosTagCategories.Count}");
-                        continue;
-                    }
+                    continue;
+                }
 
                 if (string.IsNullOrEmpty(tagMapping.PexTagId))
                 {
@@ -604,9 +626,9 @@ namespace AplosConnector.Common.Services
         }
 
         private async Task SyncExpenseAccount(
-            ILogger log, 
+            ILogger log,
             Pex2AplosMappingModel model,
-            ExpenseAccountMappingModel expenseAccountMapping, 
+            ExpenseAccountMappingModel expenseAccountMapping,
             IEnumerable<PexAplosApiObject> accounts)
         {
             if (!expenseAccountMapping.SyncExpenseAccounts)
@@ -1121,7 +1143,7 @@ namespace AplosConnector.Common.Services
         {
             return aplosTransactions.Any(aplosTransaction =>
                     (!string.IsNullOrEmpty(aplosTransaction.Note) && aplosTransaction.Note.Contains(pexTransactionId))
-                ||  (!string.IsNullOrEmpty(aplosTransaction.Memo) && aplosTransaction.Memo.Contains(pexTransactionId)));
+                || (!string.IsNullOrEmpty(aplosTransaction.Memo) && aplosTransaction.Memo.Contains(pexTransactionId)));
         }
 
         private readonly ConcurrentDictionary<int, CardholderDetailsModel> _cardholderDetailsCache =
