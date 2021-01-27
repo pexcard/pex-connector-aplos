@@ -55,7 +55,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosAccount = await service.GetAplosAccount(new Pex2AplosMappingModel(), aplosAccount.AccountNumber);
+            PexAplosApiObject actualMappedAplosAccount = await service.GetAplosAccount(GetMapping(), aplosAccount.AccountNumber);
 
             //Assert
             Assert.Equal(mappedAplosAccount, actualMappedAplosAccount);
@@ -78,7 +78,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosAccount = await service.GetAplosAccount(new Pex2AplosMappingModel(), It.IsAny<decimal>());
+            PexAplosApiObject actualMappedAplosAccount = await service.GetAplosAccount(GetMapping(), It.IsAny<decimal>());
 
             //Assert
             Assert.Null(actualMappedAplosAccount);
@@ -104,7 +104,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            var actualMappedAplosAccount = await service.GetAplosAccounts(new Pex2AplosMappingModel());
+            var actualMappedAplosAccount = await service.GetAplosAccounts(GetMapping());
 
             //Assert
             Assert.Equal(mappedAplosAccount, actualMappedAplosAccount);
@@ -125,7 +125,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            IEnumerable<PexAplosApiObject> actualMappedAplosAccount = await service.GetAplosAccounts(new Pex2AplosMappingModel());
+            IEnumerable<PexAplosApiObject> actualMappedAplosAccount = await service.GetAplosAccounts(GetMapping());
 
             //Assert
             Assert.Null(actualMappedAplosAccount);
@@ -151,7 +151,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosContact = await service.GetAplosContact(new Pex2AplosMappingModel(), aplosContact.Id);
+            PexAplosApiObject actualMappedAplosContact = await service.GetAplosContact(GetMapping(), aplosContact.Id);
 
             //Assert
             Assert.Equal(mappedAplosContact, actualMappedAplosContact);
@@ -174,7 +174,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosContact = await service.GetAplosContact(new Pex2AplosMappingModel(), It.IsAny<int>());
+            PexAplosApiObject actualMappedAplosContact = await service.GetAplosContact(GetMapping(), It.IsAny<int>());
 
             //Assert
             Assert.Null(actualMappedAplosContact);
@@ -200,7 +200,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            IEnumerable<PexAplosApiObject> actualMappedAplosContats = await service.GetAplosContacts(new Pex2AplosMappingModel());
+            IEnumerable<PexAplosApiObject> actualMappedAplosContats = await service.GetAplosContacts(GetMapping());
 
             //Assert
             Assert.Equal(mappedAplosContacts, actualMappedAplosContats);
@@ -221,7 +221,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            IEnumerable<PexAplosApiObject> mappedAplosContactList = await service.GetAplosContacts(new Pex2AplosMappingModel());
+            IEnumerable<PexAplosApiObject> mappedAplosContactList = await service.GetAplosContacts(GetMapping());
 
             //Assert
             Assert.Null(mappedAplosContactList);
@@ -247,7 +247,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosFund = await service.GetAplosFund(new Pex2AplosMappingModel(), aplosFund.Id);
+            PexAplosApiObject actualMappedAplosFund = await service.GetAplosFund(GetMapping(), aplosFund.Id);
 
             //Assert
             Assert.Equal(mappedAplosFund, actualMappedAplosFund);
@@ -270,7 +270,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosFund = await service.GetAplosFund(new Pex2AplosMappingModel(), It.IsAny<int>());
+            PexAplosApiObject actualMappedAplosFund = await service.GetAplosFund(GetMapping(), It.IsAny<int>());
 
             //Assert
             Assert.Null(actualMappedAplosFund);
@@ -296,7 +296,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            IEnumerable<PexAplosApiObject> actualMappedAplosFunds = await service.GetAplosFunds(new Pex2AplosMappingModel());
+            IEnumerable<PexAplosApiObject> actualMappedAplosFunds = await service.GetAplosFunds(GetMapping());
 
             //Assert
             Assert.Equal(mappedAplosFunds, actualMappedAplosFunds);
@@ -317,7 +317,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            IEnumerable<PexAplosApiObject> actualMappedAplosFunds = await service.GetAplosFunds(new Pex2AplosMappingModel());
+            IEnumerable<PexAplosApiObject> actualMappedAplosFunds = await service.GetAplosFunds(GetMapping());
 
             //Assert
             Assert.Null(actualMappedAplosFunds);
@@ -524,6 +524,21 @@ namespace AplosConnector.Common.Tests
                 _mockPexApiClient.Object,
                 null,
                 null);
+        }
+
+        private Pex2AplosMappingModel GetMapping(
+            AplosAuthenticationMode authenticationMode = AplosAuthenticationMode.PartnerAuthentication,
+            string clientId = "clientId",
+            string privateKey = "privateKey",
+            string accountId = "accountId")
+        {
+            return new Pex2AplosMappingModel
+            {
+                AplosAuthenticationMode = authenticationMode,
+                AplosAccountId = accountId,
+                AplosClientId = clientId,
+                AplosPrivateKey = privateKey,
+            };
         }
     }
 }
