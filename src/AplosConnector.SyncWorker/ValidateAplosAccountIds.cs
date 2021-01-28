@@ -102,17 +102,17 @@ namespace AplosConnector.SyncWorker
                             continue;
                         }
 
-                        if (mapping.AplosPartnerVerified != aplosResponse.Data.Authorized)
+                        if (mapping.AplosPartnerVerified != aplosResponse.Data.PartnerVerification.Authorized)
                         {
-                            if (mapping.AplosPartnerVerified && !aplosResponse.Data.Authorized && !overwriteEnabled)
+                            if (mapping.AplosPartnerVerified && !aplosResponse.Data.PartnerVerification.Authorized && !overwriteEnabled)
                             {
-                                _logger.LogInformation($"Skipping because changing {nameof(mapping.AplosPartnerVerified)} from {mapping.AplosPartnerVerified} to {aplosResponse.Data.Authorized} is not enabled");
+                                _logger.LogInformation($"Skipping because changing {nameof(mapping.AplosPartnerVerified)} from {mapping.AplosPartnerVerified} to {aplosResponse.Data.PartnerVerification.Authorized} is not enabled");
                                 continue;
                             }
 
-                            _logger.LogInformation($"Updating {nameof(mapping.AplosPartnerVerified)} from '{mapping.AplosPartnerVerified}' to '{aplosResponse.Data.Authorized}'");
+                            _logger.LogInformation($"Updating {nameof(mapping.AplosPartnerVerified)} from '{mapping.AplosPartnerVerified}' to '{aplosResponse.Data.PartnerVerification.Authorized}'");
 
-                            mapping.AplosPartnerVerified = aplosResponse.Data.Authorized;
+                            mapping.AplosPartnerVerified = aplosResponse.Data.PartnerVerification.Authorized;
                             await _mappingStorage.UpdateAsync(mapping);
 
                             response.BusinessesUpdated++;

@@ -100,7 +100,7 @@ namespace AplosConnector.Common.Services
                 try
                 {
                     AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification();
-                    mapping.AplosPartnerVerified = aplosResponse.Data.Authorized;
+                    mapping.AplosPartnerVerified = aplosResponse.Data.PartnerVerification.Authorized;
                     isChanged |= mapping.AplosPartnerVerified;
                 }
                 catch (AplosApiException ex) when (ex.AplosApiError.Status == StatusCodes.Status422UnprocessableEntity)
