@@ -78,7 +78,7 @@ namespace Aplos.Api.Client
             //Aplos uses a nonstandard Authorization header; we have to purposely add it without validation or we'll get an exception.
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer: {aplosAccessToken}");
 
-            if (includeAplosAccountId)
+            if (includeAplosAccountId && !string.IsNullOrWhiteSpace(_aplosAccountId))
             {
                 httpClient.DefaultRequestHeaders.Add("aplos-account-id", _aplosAccountId);
             }
