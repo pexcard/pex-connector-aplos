@@ -134,7 +134,7 @@ namespace AplosConnector.Web.Controllers
                 HasAplosAccountId = !string.IsNullOrWhiteSpace(mapping.AplosAccountId),
             };
 
-            if (mapping.AplosAuthenticationMode == AplosAuthenticationMode.PartnerAuthentication && !mapping.AplosPartnerVerified)
+            if (result.AplosAuthenticationMode == AplosAuthenticationMode.PartnerAuthentication && result.HasAplosAccountId && !mapping.AplosPartnerVerified)
             {
                 result.PartnerVerificationUrl = _appSettings.AplosPartnerVerificationUrl.ToString();
             }
