@@ -69,7 +69,7 @@ namespace Aplos.Api.Client
             return httpClient;
         }
 
-        private async Task<HttpClient> MakeAuthenticatedAplosHttpClient()
+        private async Task<HttpClient> MakeAuthenticatedAplosHttpClient(bool includeAplosAccountId)
         {
             var httpClient = MakeAplosHttpClient();
 
@@ -78,7 +78,7 @@ namespace Aplos.Api.Client
             //Aplos uses a nonstandard Authorization header; we have to purposely add it without validation or we'll get an exception.
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer: {aplosAccessToken}");
 
-            if (!string.IsNullOrWhiteSpace(_aplosAccountId))
+            if (includeAplosAccountId && !string.IsNullOrWhiteSpace(_aplosAccountId))
             {
                 httpClient.DefaultRequestHeaders.Add("aplos-account-id", _aplosAccountId);
             }
@@ -130,7 +130,8 @@ namespace Aplos.Api.Client
         private async Task<TResponseContent> InvokeAplosApiWithAccessToken<TRequestContent, TResponseContent>(
             HttpMethod httpMethod,
             string endpoint,
-            TRequestContent requestContent)
+            TRequestContent requestContent,
+            bool includeAplosAccountId = true)
         {
             string content = JsonConvert.SerializeObject(requestContent);
 
@@ -140,7 +141,7 @@ namespace Aplos.Api.Client
                 "application/json");
 
             return await InvokeAplosApi<TResponseContent>(
-                await MakeAuthenticatedAplosHttpClient(),
+                await MakeAuthenticatedAplosHttpClient(includeAplosAccountId),
                 httpRequestContent,
                 httpMethod,
                 endpoint);
@@ -148,10 +149,11 @@ namespace Aplos.Api.Client
 
         private async Task<TResponseContent> InvokeAplosApiWithAccessToken<TResponseContent>(
             HttpMethod httpMethod,
-            string endpoint)
+            string endpoint,
+            bool includeAplosAccountId = true)
         {
             return await InvokeAplosApi<TResponseContent>(
-                await MakeAuthenticatedAplosHttpClient(),
+                await MakeAuthenticatedAplosHttpClient(includeAplosAccountId),
                 null,
                 httpMethod,
                 endpoint);
@@ -371,7 +373,8 @@ namespace Aplos.Api.Client
         {
             return await InvokeAplosApiWithAccessToken<AplosApiPartnerVerificationResponse>(
                 HttpMethod.Get,
-                $"{APLOS_ENDPOINT_PARTNERS_VERIFY}?aplos-account-id={_aplosAccountId}");
+                $"{APLOS_ENDPOINT_PARTNERS_VERIFY}?aplos-account-id={_aplosAccountId}",
+                false);
         }
 
         public Task<bool> IsHealthy()
