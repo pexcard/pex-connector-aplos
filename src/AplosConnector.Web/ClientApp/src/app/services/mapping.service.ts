@@ -70,6 +70,7 @@ export class MappingService {
 
 export interface AplosAuthenticationStatusModel {
   aplosAuthenticationMode: AplosAuthenticationMode,
+  hasAplosAccountId: boolean,
   isAuthenticated: boolean,
   partnerVerificationUrl: string,
 }

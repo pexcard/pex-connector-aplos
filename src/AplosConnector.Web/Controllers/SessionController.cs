@@ -12,7 +12,6 @@ using AplosConnector.Common.Models.Response;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Models;
 using AplosConnector.Common.Services.Abstractions;
-using AplosConnector.Common.Services;
 
 namespace AplosConnector.Web.Controllers
 {

@@ -88,6 +88,22 @@
         </clr-input-container>
       </div>
 
+      <div *ngIf="aplosAuthenticationStatus && !aplosAuthenticationStatus.hasAplosAccountId" class="alert alert-warning" role="alert">
+        <div class="alert-items">
+          <div class="alert-item static">
+            <div class="alert-icon-wrapper">
+              <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
+            </div>
+            <span class="alert-text">
+              Sorry, we don't seem to have your Aplos customer ID on file so can't connect your PEX account to Aplos.
+              <br />
+              <br />
+              Please contact <a href="https://www.aplos.com/support/">Aplos Support</a> and ask that your customer ID be sent to PEX.  Once we have it, we'll contact you so that you know when you're able to complete the account linking process.
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl">
         <p>
           Click the button below to connect PEX with your Aplos account.
