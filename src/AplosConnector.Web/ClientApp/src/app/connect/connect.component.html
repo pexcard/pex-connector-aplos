@@ -324,7 +324,7 @@
     clrWizardPagePreventDefault="true"
     [clrWizardPageNextDisabled]="! aplosFieldMappingForm.valid
                    || !expenseAccountForm.valid
-                   || !tagMappingForm.valid">
+                   || (this.aplosTagCategories.length > 0 && !tagMappingForm.valid)">
     <ng-template clrPageTitle>Configure tag mapping</ng-template>
 
     <clr-spinner *ngIf="savingSettings">
