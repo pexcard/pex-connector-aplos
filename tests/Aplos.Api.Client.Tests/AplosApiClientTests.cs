@@ -607,7 +607,7 @@ namespace Aplos.Api.Client.Tests
             Assert.Equal("Departments", tagCategory2.Name);
             Assert.Equal("advanced", tagCategory2.Type);
             Assert.NotNull(tagCategory2.TagGroups);
-            Assert.Equal(1, tagCategory2.TagGroups.Count);
+            Assert.Equal(2, tagCategory2.TagGroups.Count);
             {
                 var tagCategory2Group1 = tagCategory2.TagGroups[0];
                 Assert.Equal("89295", tagCategory2Group1.Id);
@@ -624,6 +624,18 @@ namespace Aplos.Api.Client.Tests
                     Assert.Equal("120737", tagCategory1Group1Tag2.Id);
                     Assert.Equal("Operations", tagCategory1Group1Tag2.Name);
                     Assert.Null(tagCategory1Group1Tag2.SubTags);
+                }
+
+                var tagCategory2Group2 = tagCategory2.TagGroups[1];
+                Assert.Equal("892952", tagCategory2Group2.Id);
+                Assert.Equal("PEX Department2", tagCategory2Group2.Name);
+                Assert.NotNull(tagCategory2Group2.Tags);
+                Assert.Equal(1, tagCategory2Group2.Tags.Count);
+                {
+                    var tagCategory2Group2Tag1 = tagCategory2Group2.Tags[0];
+                    Assert.Equal("91299", tagCategory2Group2Tag1.Id);
+                    Assert.Equal("Sales", tagCategory2Group2Tag1.Name);
+                    Assert.Null(tagCategory2Group2Tag1.SubTags);
                 }
             }
         }

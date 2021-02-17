@@ -306,7 +306,7 @@ namespace Aplos.Api.Client
                 HttpMethod.Get,
                 APLOS_ENDPOINT_TAGS);
 
-            var result = new List<AplosApiTagCategoryDetail>(response.Data.TagCategories);
+            var rawTagCategories = new List<AplosApiTagCategoryDetail>(response.Data.TagCategories);
 
             while (!string.IsNullOrEmpty(response.Links?.Next))
             {
@@ -314,8 +314,25 @@ namespace Aplos.Api.Client
                     HttpMethod.Get,
                     response.Links.Next.Replace("/api/v1/", ""));
 
-                result.AddRange(response.Data.TagCategories);
+                rawTagCategories.AddRange(response.Data.TagCategories);
             }
+
+            //Handle when Aplos sends the same tag category more than once.
+            //This happens when there are enough tags to spill over into a new page. The tag category is repeated from a previous page, but the tag groups and tags within those groups are unique per page.
+            var result = new List<AplosApiTagCategoryDetail>();
+            foreach (var tagCategory in rawTagCategories)
+            {
+                var existingCategory = result.Find(r => r.Id == tagCategory.Id);
+                if (existingCategory == null)
+                {
+                    result.Add(tagCategory);
+                }
+                else
+                {
+                    existingCategory.TagGroups.AddRange(tagCategory.TagGroups);
+                }
+            }
+
             return result;
         }
 

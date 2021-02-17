@@ -90,6 +90,23 @@
                         ]
                     }
                 ]
+            },
+            {
+                "id": 87404,
+                "name": "Departments",
+                "type": "advanced",
+                "tag_groups": [
+                    {
+                        "id": 892952,
+                        "name": "PEX Department2",
+                        "tags": [
+                            {
+                                "id": 91299,
+                                "name": "Sales"
+                            }
+                        ]
+                    }
+                ]
             }
         ]
     }
