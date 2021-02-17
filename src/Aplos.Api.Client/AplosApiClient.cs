@@ -317,6 +317,8 @@ namespace Aplos.Api.Client
                 rawTagCategories.AddRange(response.Data.TagCategories);
             }
 
+            //Handle when Aplos sends the same tag category more than once.
+            //This happens when there are enough tags to spill over into a new page. The tag category is repeated from a previous page, but the tag groups and tags within those groups are unique per page.
             var result = new List<AplosApiTagCategoryDetail>();
             foreach (var tagCategory in rawTagCategories)
             {
