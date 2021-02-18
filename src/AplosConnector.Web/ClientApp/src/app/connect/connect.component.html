@@ -435,7 +435,11 @@
               <th class="left">Aplos Tag</th>
               <th class="left">PEX Tag</th>
               <th class="left">Sync tag options from Aplos</th>
-              <th></th>
+              <th>
+                <button type="button" class="btn btn-primary btn-sm btn-icon" aria-label="add" (click)="addTagMappingElement()">
+                  <clr-icon shape="plus" size="12"></clr-icon>
+                </button>
+              </th>
             </tr>
           </thead>
           <tbody formArrayName="tagMappings">
@@ -466,11 +470,8 @@
                 </clr-toggle-wrapper>
               </td>
               <td>
-                <button type="button" class="btn btn-danger btn-sm btn-icon" aria-label="add" (click)="deleteTagMappingElement(i)" *ngIf="this.getTagMappingFormElements().length > 1">
+                <button type="button" class="btn btn-danger btn-sm btn-icon" aria-label="add" (click)="deleteTagMappingElement(i)">
                   <clr-icon shape="trash" size="12"></clr-icon>
-                </button>
-                <button type="button" class="btn btn-primary btn-sm btn-icon" aria-label="add" (click)="addTagMappingElement()">
-                  <clr-icon shape="plus" size="12"></clr-icon>
                 </button>
               </td>
             </tr>
