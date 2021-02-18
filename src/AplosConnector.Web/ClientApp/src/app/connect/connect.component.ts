@@ -349,9 +349,6 @@ export class ConnectComponent implements OnInit {
         }
       );
     }
-    else {
-      this.addTagMappingElement();
-    }
   }
 
   private validatePexSetup() {
