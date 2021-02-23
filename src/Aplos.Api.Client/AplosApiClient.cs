@@ -25,8 +25,8 @@ namespace Aplos.Api.Client
         private const string APLOS_ENDPOINT_PARTNERS_VERIFY = APLOS_ENDPOINT_PARTNERS + "verify";
         private const string APLOS_ENDPOINT_TAGS = "tags/";
 
-        private const string APLOS_ACCOUNT_CATEGORY_ASSET = "asset";
-        private const string APLOS_ACCOUNT_CATEGORY_EXPENSE = "expense";
+        public const string APLOS_ACCOUNT_CATEGORY_ASSET = "asset";
+        public const string APLOS_ACCOUNT_CATEGORY_EXPENSE = "expense";
         private static readonly ImmutableHashSet<string> _validAplosAccountCategories = new HashSet<string> { APLOS_ACCOUNT_CATEGORY_ASSET, APLOS_ACCOUNT_CATEGORY_EXPENSE }.ToImmutableHashSet();
 
         private readonly string _aplosAccountId;
