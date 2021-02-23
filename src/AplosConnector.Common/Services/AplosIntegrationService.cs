@@ -1,4 +1,5 @@
-﻿using Aplos.Api.Client.Abstractions;
+﻿using Aplos.Api.Client;
+using Aplos.Api.Client.Abstractions;
 using Aplos.Api.Client.Exceptions;
 using Aplos.Api.Client.Models;
 using Aplos.Api.Client.Models.Detail;
@@ -228,6 +229,11 @@ namespace AplosConnector.Common.Services
             return _aplosIntegrationMappingService.Map(aplosApiResponse?.Data?.Account);
         }
 
+        public async Task<IEnumerable<PexAplosApiObject>> GetAplosExpenseAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null)
+        {
+            return await GetAplosAccounts(mapping, AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE);
+        }
+
         public async Task<IEnumerable<PexAplosApiObject>> GetAplosAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null)
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
@@ -416,11 +422,11 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                await SyncTransactionAccountsToPex(log, mapping);
+                await SyncExpenseAccountsToPex(log, mapping);
             }
             catch (Exception ex)
             {
-                log.LogWarning(ex, $"Exception during {nameof(SyncTransactionAccountsToPex)} for business: {mapping.PEXBusinessAcctId}.");
+                log.LogWarning(ex, $"Exception during {nameof(SyncExpenseAccountsToPex)} for business: {mapping.PEXBusinessAcctId}.");
             }
 
             try
@@ -598,7 +604,7 @@ namespace AplosConnector.Common.Services
             await _resultStorage.CreateAsync(result);
         }
 
-        private async Task SyncTransactionAccountsToPex(
+        private async Task SyncExpenseAccountsToPex(
             ILogger log,
             Pex2AplosMappingModel mapping)
         {
@@ -612,8 +618,7 @@ namespace AplosConnector.Common.Services
 
             log.LogInformation($"Syncing accounts for business: {mapping.PEXBusinessAcctId}");
 
-            //TODO: How should we filter accounts?
-            var aplosAccounts = await GetAplosAccounts(mapping);
+            var aplosAccounts = await GetAplosExpenseAccounts(mapping);
 
             foreach (ExpenseAccountMappingModel expenseAccountMapping in mapping.ExpenseAccountMappings)
             {
@@ -690,7 +695,6 @@ namespace AplosConnector.Common.Services
 
             var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown);
 
-            var aplosContacts = (await GetAplosContacts(mapping)).ToList();
             var aplosFunds = (await GetAplosFunds(mapping)).ToList();
             var aplosAccounts = (await GetAplosAccounts(mapping)).ToList();
             var aplosTags = (await GetFlattenedAplosTagValues(mapping)).ToList();
