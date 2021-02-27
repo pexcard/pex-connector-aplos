@@ -231,7 +231,27 @@ namespace AplosConnector.Common.Services
 
         public async Task<IEnumerable<PexAplosApiObject>> GetAplosExpenseAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null)
         {
-            return await GetAplosAccounts(mapping, AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE);
+            var accounts = await GetAplosAccounts(mapping, AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE);
+
+            var uniqueAccounts = new Dictionary<string, PexAplosApiObject>(accounts.Count());
+            foreach (var account in accounts)
+            {
+                string accountName = account.Name;
+                if (uniqueAccounts.TryGetValue(accountName, out PexAplosApiObject existingAccount))
+                {
+                    existingAccount.Name = DedupeAccountName(existingAccount);
+                    accountName = DedupeAccountName(account);
+                }
+
+                uniqueAccounts.Add(accountName, account);
+            }
+
+            return uniqueAccounts.Values;
+
+            string DedupeAccountName(PexAplosApiObject account)
+            {
+                return $"{account.Name} ({account.Id})";
+            }
         }
 
         public async Task<IEnumerable<PexAplosApiObject>> GetAplosAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null)
