@@ -231,27 +231,7 @@ namespace AplosConnector.Common.Services
 
         public async Task<IEnumerable<PexAplosApiObject>> GetAplosExpenseAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null)
         {
-            var accounts = await GetAplosAccounts(mapping, AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE);
-
-            var uniqueAccounts = new Dictionary<string, PexAplosApiObject>(accounts.Count());
-            foreach (var account in accounts)
-            {
-                string accountName = account.Name;
-                if (uniqueAccounts.TryGetValue(accountName, out PexAplosApiObject existingAccount))
-                {
-                    existingAccount.Name = DedupeAccountName(existingAccount);
-                    accountName = DedupeAccountName(account);
-                }
-
-                uniqueAccounts.Add(accountName, account);
-            }
-
-            return uniqueAccounts.Values;
-
-            string DedupeAccountName(PexAplosApiObject account)
-            {
-                return $"{account.Name} ({account.Id})";
-            }
+            return await GetAplosAccounts(mapping, AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE);
         }
 
         public async Task<IEnumerable<PexAplosApiObject>> GetAplosAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null)
@@ -259,7 +239,31 @@ namespace AplosConnector.Common.Services
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
             var aplosApiResponse = await aplosApiClient.GetAccounts(aplosAccountCategory);
 
-            return _aplosIntegrationMappingService.Map(aplosApiResponse);
+            var mappedAccounts = _aplosIntegrationMappingService.Map(aplosApiResponse);
+            return DedupeAplosAccounts(mappedAccounts);
+        }
+
+        public IEnumerable<PexAplosApiObject> DedupeAplosAccounts(IEnumerable<PexAplosApiObject> aplosAccounts)
+        {
+            var uniqueAccounts = new Dictionary<string, PexAplosApiObject>(aplosAccounts.Count());
+            foreach (var account in aplosAccounts)
+            {
+                string accountName = account.Name;
+                if (uniqueAccounts.TryGetValue(accountName, out PexAplosApiObject existingAccount))
+                {
+                    existingAccount.Name = DedupeAplosAccountName(existingAccount);
+                    accountName = DedupeAplosAccountName(account);
+                }
+
+                uniqueAccounts.Add(accountName, account);
+            }
+
+            return uniqueAccounts.Values;
+
+            string DedupeAplosAccountName(PexAplosApiObject account)
+            {
+                return $"{account.Name} ({account.Id})";
+            }
         }
 
         public async Task<List<AplosApiTransactionDetail>> GetTransactions(Pex2AplosMappingModel mapping, DateTime startDate)
