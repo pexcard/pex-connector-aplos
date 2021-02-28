@@ -245,6 +245,11 @@ namespace AplosConnector.Common.Services
 
         public IEnumerable<PexAplosApiObject> DedupeAplosAccounts(IEnumerable<PexAplosApiObject> aplosAccounts)
         {
+            if (aplosAccounts == null)
+            {
+                return Enumerable.Empty<PexAplosApiObject>();
+            }
+
             var uniqueAccounts = new Dictionary<string, PexAplosApiObject>(aplosAccounts.Count());
             foreach (var account in aplosAccounts)
             {
