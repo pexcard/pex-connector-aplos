@@ -239,7 +239,36 @@ namespace AplosConnector.Common.Services
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
             var aplosApiResponse = await aplosApiClient.GetAccounts(aplosAccountCategory);
 
-            return _aplosIntegrationMappingService.Map(aplosApiResponse);
+            var mappedAccounts = _aplosIntegrationMappingService.Map(aplosApiResponse);
+            return DedupeAplosAccounts(mappedAccounts);
+        }
+
+        public IEnumerable<PexAplosApiObject> DedupeAplosAccounts(IEnumerable<PexAplosApiObject> aplosAccounts)
+        {
+            if (aplosAccounts == null)
+            {
+                return Enumerable.Empty<PexAplosApiObject>();
+            }
+
+            var uniqueAccounts = new Dictionary<string, PexAplosApiObject>(aplosAccounts.Count());
+            foreach (var account in aplosAccounts)
+            {
+                string accountName = account.Name;
+                if (uniqueAccounts.TryGetValue(accountName, out PexAplosApiObject existingAccount))
+                {
+                    existingAccount.Name = DedupeAplosAccountName(existingAccount);
+                    accountName = DedupeAplosAccountName(account);
+                }
+
+                uniqueAccounts.Add(accountName, account);
+            }
+
+            return uniqueAccounts.Values;
+
+            string DedupeAplosAccountName(PexAplosApiObject account)
+            {
+                return $"{account.Name} ({account.Id})";
+            }
         }
 
         public async Task<List<AplosApiTransactionDetail>> GetTransactions(Pex2AplosMappingModel mapping, DateTime startDate)

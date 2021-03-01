@@ -111,7 +111,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task GetAplosAccounts_ReturnsNull_WhenAplosAccountsNotFound()
+        public async Task GetAplosAccounts_ReturnsEmptyCollection_WhenAplosAccountsNotFound()
         {
             //Arrange
             _mockAplosApiClient
@@ -128,7 +128,7 @@ namespace AplosConnector.Common.Tests
             IEnumerable<PexAplosApiObject> actualMappedAplosAccount = await service.GetAplosAccounts(GetMapping());
 
             //Assert
-            Assert.Null(actualMappedAplosAccount);
+            Assert.NotNull(actualMappedAplosAccount);
         }
 
         [Fact]
