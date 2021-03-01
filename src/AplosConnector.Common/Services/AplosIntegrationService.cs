@@ -516,14 +516,25 @@ namespace AplosConnector.Common.Services
                 IEnumerable<PexAplosApiObject> aplosTagsToSync = _aplosIntegrationMappingService.Map(flattenedAplosTags);
 
                 pexTag.InitTagOptions(aplosTagsToSync, out var syncCount, out var removalCount);
-                await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTag.Id, pexTag);
+
+                SyncStatus syncStatus;
+                try
+                {
+                    await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTag.Id, pexTag);
+                    syncStatus = SyncStatus.Success;
+                }
+                catch (Exception ex)
+                {
+                    syncStatus = SyncStatus.Failed;
+                    log.LogError(ex, $"Error updating TagId {pexTag.Id}");
+                }
 
                 var removalNote = removalCount == 0 ? string.Empty : $"Disabled {removalCount} tag options from PEX.";
                 var result = new SyncResultModel
                 {
                     PEXBusinessAcctId = mapping.PEXBusinessAcctId,
                     SyncType = $"Tag Values ({aplosTagCategory.Name})",
-                    SyncStatus = SyncStatus.Success.ToString(),
+                    SyncStatus = syncStatus.ToString(),
                     SyncedRecords = syncCount,
                     SyncNotes = removalNote,
                 };
@@ -619,14 +630,25 @@ namespace AplosConnector.Common.Services
 
             var aplosFunds = await GetAplosFunds(mapping);
             fundsTag.InitTagOptions(aplosFunds, out var syncCount, out var removalCount);
-            await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, fundsTag.Id, fundsTag);
+
+            SyncStatus syncStatus;
+            try
+            {
+                await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, fundsTag.Id, fundsTag);
+                syncStatus = SyncStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                syncStatus = SyncStatus.Failed;
+                log.LogError(ex, $"Error updating TagId {fundsTag.Id}");
+            }
 
             var removalNote = removalCount == 0 ? string.Empty : $"Disabled {removalCount} tag options from PEX.";
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = mapping.PEXBusinessAcctId,
                 SyncType = "Tag Values (Funds)",
-                SyncStatus = SyncStatus.Success.ToString(),
+                SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
                 SyncNotes = removalNote,
             };
@@ -679,14 +701,25 @@ namespace AplosConnector.Common.Services
             }
 
             accountsTag.InitTagOptions(accounts, out var syncCount, out var removalCount);
-            await _pexApiClient.UpdateDropdownTag(model.PEXExternalAPIToken, accountsTag.Id, accountsTag);
+
+            SyncStatus syncStatus;
+            try
+            {
+                await _pexApiClient.UpdateDropdownTag(model.PEXExternalAPIToken, accountsTag.Id, accountsTag);
+                syncStatus = SyncStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                syncStatus = SyncStatus.Failed;
+                log.LogError(ex, $"Error updating TagId {accountsTag.Id}");
+            }
 
             var removalNote = removalCount == 0 ? string.Empty : $"Disabled {removalCount} tag options from PEX.";
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = model.PEXBusinessAcctId,
                 SyncType = "Tag Values (Accounts)",
-                SyncStatus = SyncStatus.Success.ToString(),
+                SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
                 SyncNotes = removalNote
             };
