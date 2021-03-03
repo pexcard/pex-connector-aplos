@@ -11,6 +11,6 @@ namespace Aplos.Api.Client.Models.Detail
         [JsonProperty("balance_account_name")]
         public string BalanceAccountName { get; set; }
         [JsonProperty("balance_account_number")]
-        public int BalanceAccountNumber { get; set; }
+        public decimal BalanceAccountNumber { get; set; }
     }
 }
