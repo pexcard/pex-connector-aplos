@@ -158,7 +158,7 @@ namespace Aplos.Api.Client.Tests
             Assert.Equal(225756, fund2.Id);
             Assert.Equal("Building Fund", fund2.Name);
             Assert.Equal("Building Fund - Fund Balance", fund2.BalanceAccountName);
-            Assert.Equal(3100, fund2.BalanceAccountNumber);
+            Assert.Equal(3100.1m, fund2.BalanceAccountNumber);
 
             var fund3 = apiResponse[2];
             Assert.Equal(225793, fund3.Id);
