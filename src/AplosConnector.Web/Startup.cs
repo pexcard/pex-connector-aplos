@@ -162,10 +162,10 @@ namespace AplosConnector.Web
 
             app.Use(async (ctx, next) =>
             {
-                ctx.Response.Headers.Add("Content-Security-Policy", "script-src 'self' 'unsafe-eval'; frame-ancestors 'self' http://localhost:44300 https://*.ngrok.io https://*.pexcard.com;");
+                ctx.Response.Headers.Add("Content-Security-Policy", "script-src 'self' 'unsafe-eval'; http://localhost:44300 https://*.ngrok.io https://*.pexcard.com; frame-ancestors 'none';");
+                ctx.Response.Headers.Add("X-Frame-Options", "DENY");
                 ctx.Response.Headers.Add("X-Content-Type-Options", "nosniff");
                 ctx.Response.Headers.Add("Referrer-Policy", "no-referrer");
-                ctx.Response.Headers.Remove("x-frame-options");
                 ctx.Response.Headers.Add("Feature-Policy", "camera 'none'; microphone 'none'; speaker 'self'; vibrate 'none'; geolocation 'none'; accelerometer 'none'; ambient-light-sensor 'none'; autoplay 'none'; encrypted-media 'none'; gyroscope 'none'; magnetometer 'none'; midi 'none'; payment 'none'; picture-in-picture 'none'; usb 'none'; vr 'none'; fullscreen *");
                 await next();
             });
