@@ -14,6 +14,7 @@ using Moq;
 using PexCard.Api.Client.Core;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -502,6 +503,46 @@ namespace AplosConnector.Common.Tests
 
             //Assert
             Assert.False(wasSynced);
+        }
+
+        [Fact]
+        public void DedupeAplosAccounts_ReturnsUniqueAccounts_WhenDupesExist()
+        {
+            //Arrange
+            var account1 = new PexAplosApiObject
+            {
+                Id = "1001",
+                Name = "Resources",
+            };
+
+            var account2 = new PexAplosApiObject
+            {
+                Id = "1002",
+                Name = "Resources",
+            };
+
+            var account3 = new PexAplosApiObject
+            {
+                Id = "1003",
+                Name = "Resources",
+            };
+
+            var accounts = new[]
+            {
+                account1,
+                account2,
+                account3,
+            };
+
+            //Act
+            PexAplosApiObject[] dedupedAccounts = AplosIntegrationService.DedupeAplosAccounts(accounts).ToArray();
+
+            //Assert
+            Assert.NotNull(dedupedAccounts);
+            Assert.Equal(accounts.Length, dedupedAccounts.Length);
+            Assert.Equal("Resources (1001)", accounts[0].Name);
+            Assert.Equal("Resources (1002)", accounts[1].Name);
+            Assert.Equal("Resources (1003)", accounts[2].Name);
         }
 
         private AplosIntegrationService GetAplosIntegrationService()

@@ -243,24 +243,41 @@ namespace AplosConnector.Common.Services
             return DedupeAplosAccounts(mappedAccounts);
         }
 
-        public IEnumerable<PexAplosApiObject> DedupeAplosAccounts(IEnumerable<PexAplosApiObject> aplosAccounts)
+        public static IEnumerable<PexAplosApiObject> DedupeAplosAccounts(IEnumerable<PexAplosApiObject> aplosAccounts)
         {
             if (aplosAccounts == null)
             {
                 return Enumerable.Empty<PexAplosApiObject>();
             }
 
+            //       var groups = aplosAccounts
+            //.GroupBy(account => account.Name)
+            //.Where(group => group.Count() > 1);
+
+            //       foreach (var group in groups)
+            //       {
+            //           foreach (var account in group)
+            //           {
+
+            //           }
+            //       }
+
+            var dedupedAccountNames = new HashSet<string>();
             var uniqueAccounts = new Dictionary<string, PexAplosApiObject>(aplosAccounts.Count());
             foreach (var account in aplosAccounts)
             {
-                string accountName = account.Name;
-                if (uniqueAccounts.TryGetValue(accountName, out PexAplosApiObject existingAccount))
+                string originalAccountName = account.Name;
+                if (uniqueAccounts.TryGetValue(originalAccountName, out PexAplosApiObject existingAccount))
                 {
-                    existingAccount.Name = DedupeAplosAccountName(existingAccount);
-                    accountName = DedupeAplosAccountName(account);
+                    account.Name = DedupeAplosAccountName(account);
+
+                    if (dedupedAccountNames.Add(originalAccountName))
+                    {
+                        existingAccount.Name = DedupeAplosAccountName(existingAccount);
+                    }
                 }
 
-                uniqueAccounts.Add(accountName, account);
+                uniqueAccounts.Add(account.Name, account);
             }
 
             return uniqueAccounts.Values;
