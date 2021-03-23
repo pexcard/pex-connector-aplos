@@ -506,7 +506,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public void DedupeAplosAccounts_ReturnsUniqueAccounts_WhenDupesExist()
+        public void DedupeAplosAccounts_ReturnsUniqueAccounts_WhenThreeDupesExist()
         {
             //Arrange
             var account1 = new PexAplosApiObject
@@ -524,6 +524,12 @@ namespace AplosConnector.Common.Tests
             var account3 = new PexAplosApiObject
             {
                 Id = "1003",
+                Name = "Travel",
+            };
+
+            var account4 = new PexAplosApiObject
+            {
+                Id = "1004",
                 Name = "Resources",
             };
 
@@ -532,6 +538,7 @@ namespace AplosConnector.Common.Tests
                 account1,
                 account2,
                 account3,
+                account4,
             };
 
             //Act
@@ -542,7 +549,8 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(accounts.Length, dedupedAccounts.Length);
             Assert.Equal("Resources (1001)", accounts[0].Name);
             Assert.Equal("Resources (1002)", accounts[1].Name);
-            Assert.Equal("Resources (1003)", accounts[2].Name);
+            Assert.Equal("Travel", accounts[2].Name);
+            Assert.Equal("Resources (1004)", accounts[3].Name);
         }
 
         private AplosIntegrationService GetAplosIntegrationService()
