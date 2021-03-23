@@ -250,18 +250,6 @@ namespace AplosConnector.Common.Services
                 return Enumerable.Empty<PexAplosApiObject>();
             }
 
-            //       var groups = aplosAccounts
-            //.GroupBy(account => account.Name)
-            //.Where(group => group.Count() > 1);
-
-            //       foreach (var group in groups)
-            //       {
-            //           foreach (var account in group)
-            //           {
-
-            //           }
-            //       }
-
             var dedupedAccountNames = new HashSet<string>();
             var uniqueAccounts = new Dictionary<string, PexAplosApiObject>(aplosAccounts.Count());
             foreach (var account in aplosAccounts)
