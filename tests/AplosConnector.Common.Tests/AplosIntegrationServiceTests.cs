@@ -547,10 +547,10 @@ namespace AplosConnector.Common.Tests
             //Assert
             Assert.NotNull(dedupedAccounts);
             Assert.Equal(accounts.Length, dedupedAccounts.Length);
-            Assert.Equal("Resources (1001)", accounts[0].Name);
-            Assert.Equal("Resources (1002)", accounts[1].Name);
-            Assert.Equal("Travel", accounts[2].Name);
-            Assert.Equal("Resources (1004)", accounts[3].Name);
+            Assert.Equal("Resources (1001)", dedupedAccounts[0].Name);
+            Assert.Equal("Resources (1002)", dedupedAccounts[1].Name);
+            Assert.Equal("Travel", dedupedAccounts[2].Name);
+            Assert.Equal("Resources (1004)", dedupedAccounts[3].Name);
         }
 
         private AplosIntegrationService GetAplosIntegrationService()
