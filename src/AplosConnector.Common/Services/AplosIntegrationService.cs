@@ -12,7 +12,6 @@ using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Core.Storages;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PexCard.Api.Client.Core;
@@ -104,7 +103,7 @@ namespace AplosConnector.Common.Services
                     mapping.AplosPartnerVerified = aplosResponse.Data.PartnerVerification.Authorized;
                     isChanged |= mapping.AplosPartnerVerified;
                 }
-                catch (AplosApiException ex) when (ex.AplosApiError.Status == StatusCodes.Status422UnprocessableEntity)
+                catch (AplosApiException ex) when (ex.AplosApiError.Status == 422)
                 {
                     //Expected if they aren't verified yet
                 }

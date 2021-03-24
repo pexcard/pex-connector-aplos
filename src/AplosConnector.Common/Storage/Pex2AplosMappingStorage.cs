@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage.Table;
 using AplosConnector.Common.Models;
 using AplosConnector.Common.Entities;
 using AplosConnector.Common.Services.Abstractions;
+using Microsoft.Azure.Cosmos.Table;
 
 namespace AplosConnector.Core.Storages
 {

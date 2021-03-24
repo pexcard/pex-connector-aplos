@@ -17,22 +17,14 @@ variables:
   solution: '**/*.sln'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
-  dotnetVersion: '2.1'
+  dotnetVersion: '3.1'
+  DOTNET_ROLL_FORWARD: 'Major' #Needed for SonarCloud scanner to work on .NET Core 3+
 
 steps:
 - task: UseDotNet@2
   inputs:
     packageType: 'sdk'
     version: '$(dotnetVersion).x'
-
-- task: NuGetToolInstaller@1
-
-- task: NuGetCommand@2
-  inputs:
-    command: 'restore'
-    restoreSolution: '$(solution)'
-    feedsToUse: 'config'
-    nugetConfigPath: 'nuget.config'
 
 - task: SonarCloudPrepare@1
   inputs:

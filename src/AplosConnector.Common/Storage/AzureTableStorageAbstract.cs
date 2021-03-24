@@ -1,8 +1,6 @@
-﻿using System;
+﻿using Microsoft.Azure.Cosmos.Table;
+using System;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.RetryPolicies;
-using Microsoft.WindowsAzure.Storage.Table;
 
 namespace AplosConnector.Core.Storages
 {

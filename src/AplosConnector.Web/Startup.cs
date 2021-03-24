@@ -21,8 +21,8 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
 
 namespace AplosConnector.Web
 {
@@ -38,11 +38,12 @@ namespace AplosConnector.Web
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            // In production, the Angular files will be served from this directory
-            services.AddSpaStaticFiles(configuration =>
-            {
-                configuration.RootPath = "ClientApp/dist";
-            });
+            services
+                .AddControllers()
+                .AddNewtonsoftJson();
+
+            var applicationInsightsKey = _configuration.GetValue<string>("ApplicationInsightsKey");
+            services.AddApplicationInsightsTelemetry(applicationInsightsKey);
 
             services.AddOptions();
 
@@ -129,18 +130,16 @@ namespace AplosConnector.Web
                     keyVaultClient,
                     appSettings.DataProtectionKeyIdentifier);
 
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
-            //services
-            //    .AddControllersWithViews()
-            //    .AddNewtonsoftJson();
-
-            var applicationInsightsKey = _configuration.GetValue<string>("ApplicationInsightsKey");
-            services.AddApplicationInsightsTelemetry(applicationInsightsKey);
+            // In production, the Angular files will be served from this directory
+            services.AddSpaStaticFiles(configuration =>
+            {
+                configuration.RootPath = "ClientApp/dist";
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, Microsoft.AspNetCore.Hosting.IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
@@ -155,10 +154,7 @@ namespace AplosConnector.Web
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-            if (!env.IsDevelopment())
-            {
-                app.UseSpaStaticFiles();
-            }
+
 
             app.Use(async (ctx, next) =>
             {
@@ -172,12 +168,19 @@ namespace AplosConnector.Web
 
             app.UseCors("AllowedOrigins");
 
-            app.UseMvc(routes =>
+            app.UseRouting();
+
+            app.UseEndpoints(endpoints =>
             {
-                routes.MapRoute(
+                endpoints.MapControllerRoute(
                     name: "default",
-                    template: "{controller}/{action=Index}/{id?}");
+                    pattern: "{controller}/{action=Index}/{id?}");
             });
+
+            if (!env.IsDevelopment())
+            {
+                app.UseSpaStaticFiles();
+            }
 
             app.UseSpa(spa =>
             {

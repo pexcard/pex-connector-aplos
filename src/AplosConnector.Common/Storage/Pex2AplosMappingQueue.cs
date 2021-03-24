@@ -1,7 +1,7 @@
-﻿using Microsoft.WindowsAzure.Storage.Queue;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using AplosConnector.Common.Models;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage.Queue;
 
 namespace AplosConnector.Core.Storages
 {
