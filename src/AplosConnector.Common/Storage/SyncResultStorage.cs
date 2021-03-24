@@ -1,11 +1,11 @@
-﻿using Microsoft.WindowsAzure.Storage.Table;
-using AplosConnector.Common.Extensions;
+﻿using AplosConnector.Common.Extensions;
 using AplosConnector.Common.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AplosConnector.Common.Entities;
+using Microsoft.Azure.Cosmos.Table;
 
 namespace AplosConnector.Core.Storages
 {

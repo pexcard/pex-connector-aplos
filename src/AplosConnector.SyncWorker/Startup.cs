@@ -18,10 +18,10 @@ using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Common.Services;
 using Aplos.Api.Client.Abstractions;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.KeyVault;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 namespace AplosConnector.SyncWorker

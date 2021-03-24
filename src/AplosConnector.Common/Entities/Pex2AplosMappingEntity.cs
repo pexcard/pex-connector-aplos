@@ -1,6 +1,5 @@
 ﻿using System;
-using AplosConnector.Common.Models;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.Cosmos.Table;
 
 namespace AplosConnector.Common.Entities
 {
