@@ -63,7 +63,7 @@ steps:
   displayName: 'Copy artifacts'
   inputs:
     SourceFolder: '$(system.defaultworkingdirectory)'
-    Contents: 'src/AplosConnector.SyncWorker/bin/Release/netcoreapp$(dotnetVersion)/publish**'
+    Contents: 'src/AplosConnector.SyncWorker/bin/Release/netcoreapp$(dotnetVersion)/publish/**'
     TargetFolder: '$(build.artifactstagingdirectory)'
     CleanTargetFolder: false
     OverWrite: true
