@@ -25,9 +25,9 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have as title 'aplos-pex-connector'`, () => {
+  it(`should have as title 'PEX Connector for Aplos'`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.debugElement.componentInstance;
-    expect(app.title).toEqual('aplos-pex-connector');
+    expect(app.title).toEqual('PEX Connector for Aplos');
   });
 });

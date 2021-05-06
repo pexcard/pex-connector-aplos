@@ -1,4 +1,6 @@
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { RouterTestingModule } from '@angular/router/testing';
 
 import { HeadlessComponent } from './headless.component';
 
@@ -8,9 +10,13 @@ describe('HeadlessComponent', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ HeadlessComponent ]
+      declarations: [HeadlessComponent],
+      imports: [HttpClientTestingModule, RouterTestingModule],
+      providers: [
+        { provide: 'BASE_URL', useValue: 'http://localhost:5001' }
+      ]
     })
-    .compileComponents();
+      .compileComponents();
   }));
 
   beforeEach(() => {
