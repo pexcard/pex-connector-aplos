@@ -26,6 +26,11 @@ steps:
     packageType: 'sdk'
     version: '$(dotnetVersion).x'
 
+- task: NodeTool@0
+  inputs:
+    versionSpec: '14.x'
+  displayName: 'Install node.js'
+
 - task: SonarCloudPrepare@1
   inputs:
     SonarCloud: 'SonarCloud - tbaker'
