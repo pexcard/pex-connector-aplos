@@ -11,6 +11,7 @@ using Aplos.Api.Client.Exceptions;
 using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
 using Aplos.Api.Client.Models;
+using System.Threading;
 
 namespace Aplos.Api.Client
 {
@@ -37,7 +38,7 @@ namespace Aplos.Api.Client
         private readonly IAccessTokenDecryptor _accessTokenDecryptor;
         private readonly ILogger _logger;
         private readonly Func<ILogger, AplosAuthModel> _onAuthInitializing;
-        private readonly Func<AplosAuthModel, ILogger, Task> _onAuthRefreshed;
+        private readonly Func<AplosAuthModel, ILogger, CancellationToken, Task> _onAuthRefreshed;
 
         public AplosApiClient(
             string aplosAccountId,
@@ -48,7 +49,7 @@ namespace Aplos.Api.Client
             IAccessTokenDecryptor accessTokenDecryptor,
             ILogger logger,
             Func<ILogger, AplosAuthModel> onAuthInitializing = null,
-            Func<AplosAuthModel, ILogger, Task> onAuthRefreshed = null)
+            Func<AplosAuthModel, ILogger, CancellationToken, Task> onAuthRefreshed = null)
         {
             _aplosAccountId = aplosAccountId;
             _aplosClientId = aplosClientId;
@@ -90,7 +91,8 @@ namespace Aplos.Api.Client
             HttpClient httpClient,
             HttpContent httpRequestContent,
             HttpMethod httpMethod,
-            string endpoint)
+            string endpoint,
+            CancellationToken cancellationToken)
         {
             var httpRequest = new HttpRequestMessage(httpMethod, endpoint);
 
@@ -99,7 +101,7 @@ namespace Aplos.Api.Client
                 httpRequest.Content = httpRequestContent;
             }
 
-            HttpResponseMessage response = await httpClient.SendAsync(httpRequest);
+            HttpResponseMessage response = await httpClient.SendAsync(httpRequest, cancellationToken);
             string responseBody = await response.Content.ReadAsStringAsync();
 
             _logger.LogDebug(responseBody);
@@ -118,20 +120,23 @@ namespace Aplos.Api.Client
 
         private async Task<TResponseContent> InvokeAplosApi<TResponseContent>(
             HttpMethod httpMethod,
-            string endpoint)
+            string endpoint,
+            CancellationToken cancellationToken)
         {
             return await InvokeAplosApi<TResponseContent>(
                 MakeAplosHttpClient(),
                 null,
                 httpMethod,
-                endpoint);
+                endpoint,
+                cancellationToken);
         }
 
         private async Task<TResponseContent> InvokeAplosApiWithAccessToken<TRequestContent, TResponseContent>(
             HttpMethod httpMethod,
             string endpoint,
             TRequestContent requestContent,
-            bool includeAplosAccountId = true)
+            bool includeAplosAccountId = true,
+            CancellationToken cancellationToken = default)
         {
             string content = JsonConvert.SerializeObject(requestContent);
 
@@ -144,19 +149,22 @@ namespace Aplos.Api.Client
                 await MakeAuthenticatedAplosHttpClient(includeAplosAccountId),
                 httpRequestContent,
                 httpMethod,
-                endpoint);
+                endpoint,
+                cancellationToken);
         }
 
         private async Task<TResponseContent> InvokeAplosApiWithAccessToken<TResponseContent>(
             HttpMethod httpMethod,
             string endpoint,
-            bool includeAplosAccountId = true)
+            bool includeAplosAccountId = true,
+            CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApi<TResponseContent>(
                 await MakeAuthenticatedAplosHttpClient(includeAplosAccountId),
                 null,
                 httpMethod,
-                endpoint);
+                endpoint,
+                cancellationToken);
         }
 
         private async Task<string> DecryptEncryptedAplosAccessToken(
@@ -166,15 +174,15 @@ namespace Aplos.Api.Client
             return await Task.Run(() => _accessTokenDecryptor.Decrypt(aplosPrivateKey, encryptedAplosAccessToken));
         }
 
-        public async Task<bool> GetAndValidateAplosAccessToken()
+        public async Task<bool> GetAndValidateAplosAccessToken(CancellationToken cancellationToken = default)
         {
             bool isValid = true;
             try
             {
                 //Aplos doesn't have a clean way to verify that they will actually accept an access token that you have.
                 //To get around this, we are validating by calling /accounts, but this could be replaced with calling any safe endpoint.
-                await GetAplosAccessToken();
-                await GetAccounts();
+                await GetAplosAccessToken(cancellationToken);
+                await GetAccounts(cancellationToken: cancellationToken);
             }
             catch (AplosApiException ex)
             {
@@ -185,15 +193,17 @@ namespace Aplos.Api.Client
             return isValid;
         }
 
-        public async Task<AplosApiAuthResponse> GetAuth(string aplosClientId)
+        public async Task<AplosApiAuthResponse> GetAuth(string aplosClientId, CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApi<AplosApiAuthResponse>(
                 HttpMethod.Get,
-                APLOS_ENDPOINT_AUTH + aplosClientId);
+                APLOS_ENDPOINT_AUTH + aplosClientId,
+                cancellationToken);
         }
 
         public async Task<List<AplosApiAccountDetail>> GetAccounts(
-            string aplosExpenseCategory = null)
+            string aplosExpenseCategory = null,
+            CancellationToken cancellationToken = default)
         {
             //We only want enabled accounts.
             var endpoint = APLOS_ENDPOINT_ACCOUNTS + "?f_enabled=y";
@@ -204,19 +214,27 @@ namespace Aplos.Api.Client
 
             var response = await InvokeAplosApiWithAccessToken<AplosApiAccountListResponse>(
                 HttpMethod.Get,
-                endpoint);
+                endpoint,
+                cancellationToken: cancellationToken);
+
             var result = new List<AplosApiAccountDetail>(response.Data.Accounts);
             while (!string.IsNullOrEmpty(response.Links?.Next))
             {
                 response = await InvokeAplosApiWithAccessToken<AplosApiAccountListResponse>(
-                    HttpMethod.Get, response.Links.Next.Replace("/api/v1/", ""));
+                    HttpMethod.Get,
+                    response.Links.Next.Replace("/api/v1/", ""),
+                    cancellationToken: cancellationToken);
+
                 result.AddRange(response.Data.Accounts);
             }
             return result;
         }
 
         public async Task<AplosApiAccountListResponse> GetAccounts(
-            int pageSize, int pageNum, string aplosExpenseCategory = null)
+            int pageSize,
+            int pageNum,
+            string aplosExpenseCategory = null,
+            CancellationToken cancellationToken = default)
         {
             //We only want enabled accounts.
             var endpoint = $"{APLOS_ENDPOINT_ACCOUNTS}?f_enabled=y&page_size={pageSize}&page_num={pageNum}";
@@ -227,84 +245,109 @@ namespace Aplos.Api.Client
 
             return await InvokeAplosApiWithAccessToken<AplosApiAccountListResponse>(
                 HttpMethod.Get,
-                endpoint);
+                endpoint,
+                cancellationToken: cancellationToken);
         }
 
         public async Task<AplosApiAccountResponse> GetAccount(
-            decimal aplosAccountNumber)
+            decimal aplosAccountNumber,
+            CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApiWithAccessToken<AplosApiAccountResponse>(
                 HttpMethod.Get,
-                APLOS_ENDPOINT_ACCOUNTS + aplosAccountNumber);
+                APLOS_ENDPOINT_ACCOUNTS + aplosAccountNumber,
+                cancellationToken: cancellationToken);
         }
 
-        public async Task<List<AplosApiFundDetail>> GetFunds()
+        public async Task<List<AplosApiFundDetail>> GetFunds(CancellationToken cancellationToken = default)
         {
             var response = await InvokeAplosApiWithAccessToken<AplosApiFundListResponse>(
                 HttpMethod.Get,
-                APLOS_ENDPOINT_FUNDS);
+                APLOS_ENDPOINT_FUNDS,
+                cancellationToken: cancellationToken);
+
             var result = new List<AplosApiFundDetail>(response.Data.Funds);
             while (!string.IsNullOrEmpty(response.Links?.Next))
             {
                 response = await InvokeAplosApiWithAccessToken<AplosApiFundListResponse>(
-                    HttpMethod.Get, response.Links.Next.Replace("/api/v1/", ""));
+                    HttpMethod.Get,
+                    response.Links.Next.Replace("/api/v1/", ""),
+                    cancellationToken: cancellationToken);
+
                 result.AddRange(response.Data.Funds);
             }
             return result;
         }
 
-        public async Task<AplosApiFundListResponse> GetFunds(int pageSize, int pageNum)
+        public async Task<AplosApiFundListResponse> GetFunds(
+            int pageSize,
+            int pageNum,
+            CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApiWithAccessToken<AplosApiFundListResponse>(
                 HttpMethod.Get,
-                $"{APLOS_ENDPOINT_FUNDS}?page_size={pageSize}&page_num={pageNum}");
+                $"{APLOS_ENDPOINT_FUNDS}?page_size={pageSize}&page_num={pageNum}",
+                cancellationToken: cancellationToken);
         }
 
         public async Task<AplosApiFundResponse> GetFund(
-            int aplosFundId)
+            int aplosFundId,
+            CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApiWithAccessToken<AplosApiFundResponse>(
                 HttpMethod.Get,
-                APLOS_ENDPOINT_FUNDS + aplosFundId);
+                APLOS_ENDPOINT_FUNDS + aplosFundId,
+                cancellationToken: cancellationToken);
         }
 
-        public async Task<List<AplosApiContactDetail>> GetContacts()
+        public async Task<List<AplosApiContactDetail>> GetContacts(CancellationToken cancellationToken = default)
         {
             //We will only need to sync transactions with businesses, not individuals. Assuming our client has their Aplos contacts set up correctly.
             var response = await InvokeAplosApiWithAccessToken<AplosApiContactListResponse>(
                 HttpMethod.Get,
-                APLOS_ENDPOINT_CONTACTS + "?f_type=company");
+                APLOS_ENDPOINT_CONTACTS + "?f_type=company",
+                cancellationToken: cancellationToken);
+
             var result = new List<AplosApiContactDetail>(response.Data.Contacts);
             while (!string.IsNullOrEmpty(response.Links?.Next))
             {
                 response = await InvokeAplosApiWithAccessToken<AplosApiContactListResponse>(
-                    HttpMethod.Get, response.Links.Next.Replace("/api/v1/", ""));
+                    HttpMethod.Get,
+                    response.Links.Next.Replace("/api/v1/", ""),
+                    cancellationToken: cancellationToken);
+
                 result.AddRange(response.Data.Contacts);
             }
             return result;
         }
 
-        public async Task<AplosApiContactListResponse> GetContacts(int pageSize, int pageNum)
+        public async Task<AplosApiContactListResponse> GetContacts(int pageSize,
+            int pageNum,
+            CancellationToken cancellationToken = default)
         {
             //We will only need to sync transactions with businesses, not individuals. Assuming our client has their Aplos contacts set up correctly.
             return await InvokeAplosApiWithAccessToken<AplosApiContactListResponse>(
                 HttpMethod.Get,
-                $"{APLOS_ENDPOINT_CONTACTS}?f_type=company&page_size={pageSize}&page_num={pageNum}");
+                $"{APLOS_ENDPOINT_CONTACTS}?f_type=company&page_size={pageSize}&page_num={pageNum}",
+                cancellationToken: cancellationToken);
         }
 
         public async Task<AplosApiContactResponse> GetContact(
-            int aplosContactId)
+            int aplosContactId,
+            CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApiWithAccessToken<AplosApiContactResponse>(
                 HttpMethod.Get,
-                APLOS_ENDPOINT_CONTACTS + aplosContactId);
+                APLOS_ENDPOINT_CONTACTS + aplosContactId,
+                cancellationToken: cancellationToken);
         }
 
-        public async Task<List<AplosApiTagCategoryDetail>> GetTags()
+        public async Task<List<AplosApiTagCategoryDetail>> GetTags(CancellationToken cancellationToken = default)
         {
             var response = await InvokeAplosApiWithAccessToken<AplosApiTagListResponse>(
                 HttpMethod.Get,
-                APLOS_ENDPOINT_TAGS);
+                APLOS_ENDPOINT_TAGS,
+                cancellationToken: cancellationToken);
 
             var rawTagCategories = new List<AplosApiTagCategoryDetail>(response.Data.TagCategories);
 
@@ -312,7 +355,8 @@ namespace Aplos.Api.Client
             {
                 response = await InvokeAplosApiWithAccessToken<AplosApiTagListResponse>(
                     HttpMethod.Get,
-                    response.Links.Next.Replace("/api/v1/", ""));
+                    response.Links.Next.Replace("/api/v1/", ""),
+                    cancellationToken: cancellationToken);
 
                 rawTagCategories.AddRange(response.Data.TagCategories);
             }
@@ -337,70 +381,85 @@ namespace Aplos.Api.Client
         }
 
         public async Task<AplosApiTagListResponse> GetTags(
-            int pageSize, 
-            int pageNum)
+            int pageSize,
+            int pageNum,
+            CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApiWithAccessToken<AplosApiTagListResponse>(
                 HttpMethod.Get,
-                $"{APLOS_ENDPOINT_TAGS}?page_size={pageSize}&page_num={pageNum}");
+                $"{APLOS_ENDPOINT_TAGS}?page_size={pageSize}&page_num={pageNum}",
+                cancellationToken: cancellationToken);
         }
 
         public async Task<List<AplosApiTransactionDetail>> GetTransactions(
-            DateTime startDate)
+            DateTime startDate,
+            CancellationToken cancellationToken = default)
         {
             var response = await InvokeAplosApiWithAccessToken<AplosApiTransactionListResponse>(
                 HttpMethod.Get,
-                $"{APLOS_ENDPOINT_TRANSACTIONS}?f_rangestart={startDate:yyyy-MM-dd}");
+                $"{APLOS_ENDPOINT_TRANSACTIONS}?f_rangestart={startDate:yyyy-MM-dd}",
+                cancellationToken: cancellationToken);
+
             var result = new List<AplosApiTransactionDetail>(response.Data.Transactions);
             while (!string.IsNullOrEmpty(response.Links?.Next))
             {
                 response = await InvokeAplosApiWithAccessToken<AplosApiTransactionListResponse>(
-                    HttpMethod.Get, response.Links.Next.Replace("/api/v1/", ""));
+                    HttpMethod.Get,
+                    response.Links.Next.Replace("/api/v1/", ""),
+                    cancellationToken: cancellationToken);
+
                 result.AddRange(response.Data.Transactions);
             }
             return result;
         }
 
         public async Task<AplosApiTransactionListResponse> GetTransactions(
-            DateTime startDate, int pageSize, int pageNum)
+            DateTime startDate,
+            int pageSize,
+            int pageNum,
+            CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApiWithAccessToken<AplosApiTransactionListResponse>(
                 HttpMethod.Get,
-                $"{APLOS_ENDPOINT_TRANSACTIONS}?page_size={pageSize}&page_num={pageNum}&f_rangestart={startDate:yyyy-MM-dd}");
+                $"{APLOS_ENDPOINT_TRANSACTIONS}?page_size={pageSize}&page_num={pageNum}&f_rangestart={startDate:yyyy-MM-dd}",
+                cancellationToken: cancellationToken);
         }
 
         public async Task<AplosApiTransactionResponse> GetTransaction(
-            int aplosTransactionId)
+            int aplosTransactionId, CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApiWithAccessToken<AplosApiTransactionResponse>(
                 HttpMethod.Get,
-                APLOS_ENDPOINT_TRANSACTIONS + aplosTransactionId);
+                APLOS_ENDPOINT_TRANSACTIONS + aplosTransactionId,
+                cancellationToken: cancellationToken);
         }
 
         public async Task<AplosApiTransactionResponse> CreateTransaction(
-            AplosApiTransactionDetail aplosTransaction)
+            AplosApiTransactionDetail aplosTransaction,
+            CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApiWithAccessToken<AplosApiTransactionDetail, AplosApiTransactionResponse>(
                 HttpMethod.Post,
                 APLOS_ENDPOINT_TRANSACTIONS,
-                aplosTransaction);
+                aplosTransaction,
+                cancellationToken: cancellationToken);
         }
 
-        public async Task<AplosApiPartnerVerificationResponse> GetPartnerVerification()
+        public async Task<AplosApiPartnerVerificationResponse> GetPartnerVerification(CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApiWithAccessToken<AplosApiPartnerVerificationResponse>(
                 HttpMethod.Get,
                 $"{APLOS_ENDPOINT_PARTNERS_VERIFY}?aplos-account-id={_aplosAccountId}",
-                false);
+                cancellationToken: cancellationToken);
         }
 
-        public Task<bool> IsHealthy()
+        public Task<bool> IsHealthy(CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
         private AplosAuthModel _auth;
-        public async Task<string> GetAplosAccessToken()
+        public async Task<string> GetAplosAccessToken(CancellationToken cancellationToken = default)
         {
             if (_auth == null && _onAuthInitializing != null)
             {
@@ -410,12 +469,12 @@ namespace Aplos.Api.Client
             if (_auth?.AplosAccessTokenExpiresAt <= DateTime.UtcNow)
             {
                 _auth = null;
-                //TODO Log
+                _logger.LogInformation($"{nameof(_auth.AplosAccessToken)} expired");
             }
 
             if (_auth == null)
             {
-                AplosApiAuthResponse authResponse = await GetAuth(_aplosClientId);
+                AplosApiAuthResponse authResponse = await GetAuth(_aplosClientId, cancellationToken);
                 var decryptedAplosAccessToken = await DecryptEncryptedAplosAccessToken(_aplosPrivateKey, authResponse.Data.Token);
 
                 _auth = new AplosAuthModel
@@ -426,7 +485,7 @@ namespace Aplos.Api.Client
 
                 if (_onAuthRefreshed != null)
                 {
-                    await _onAuthRefreshed(_auth, _logger);
+                    await _onAuthRefreshed(_auth, _logger, cancellationToken);
                 }
             }
 

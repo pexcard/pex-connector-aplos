@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Aplos.Api.Client.Abstractions;
 using Aplos.Api.Client.Models;
+using System.Threading;
 
 namespace Aplos.Api.Client
 {
@@ -29,7 +30,7 @@ namespace Aplos.Api.Client
             string aplosPrivateKey,
             Uri aplosEndpointUri,
             Func<ILogger, AplosAuthModel> onAuthInitializing,
-            Func<AplosAuthModel, ILogger, Task> onTokenRefreshed)
+            Func<AplosAuthModel, ILogger, CancellationToken, Task> onTokenRefreshed)
         {
             return new AplosApiClient(
                 aplosAccountId,

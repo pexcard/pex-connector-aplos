@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using AplosConnector.Common.Models;
 using AplosConnector.Common.Entities;
 using Microsoft.Azure.Cosmos.Table;
+using System.Threading;
 
 namespace AplosConnector.Core.Storages
 {
@@ -12,23 +13,22 @@ namespace AplosConnector.Core.Storages
         public PexOAuthSessionStorage(string connectionString)
             : base(connectionString, "PexOAuthSession", "PexOauth") { }
 
-        public async Task CreateAsync(PexOAuthSessionModel model)
+        public async Task CreateAsync(PexOAuthSessionModel model, CancellationToken cancellationToken)
         {
-            await InitTableAsync();
+            await InitTableAsync(cancellationToken);
             var entity = new PexOAuthSessionEntity(model, PartitionKey);
             var operation = TableOperation.Insert(entity);
             await Table.ExecuteAsync(operation);
         }
 
-        public async Task UpdateAsync(PexOAuthSessionModel model)
+        public async Task UpdateAsync(PexOAuthSessionModel model, CancellationToken cancellationToken)
         {
             if (model.SessionGuid == Guid.Empty)
             {
                 throw new ArgumentException("session.SessionGuid is not specified");
             }
-            await InitTableAsync();
-            var entity = await GetEntityBySessionGuidAsync(model.SessionGuid)
-                ;
+            await InitTableAsync(cancellationToken);
+            var entity = await GetEntityBySessionGuidAsync(model.SessionGuid, cancellationToken);
             entity.ExternalToken = model.ExternalToken;
             entity.RevokedUtc = model.RevokedUtc;
             entity.LastRenewedUtc = model.LastRenewedUtc;
@@ -36,10 +36,10 @@ namespace AplosConnector.Core.Storages
             await Table.ExecuteAsync(operation);
         }
 
-        public async Task DeleteBySessionGuidAsync(Guid sessionGuid)
+        public async Task DeleteBySessionGuidAsync(Guid sessionGuid, CancellationToken cancellationToken)
         {
-            await InitTableAsync();
-            var entity = await GetEntityBySessionGuidAsync(sessionGuid);
+            await InitTableAsync(cancellationToken);
+            var entity = await GetEntityBySessionGuidAsync(sessionGuid, cancellationToken);
             if (entity != null)
             {
                 var operation = TableOperation.Delete(entity);
@@ -47,30 +47,30 @@ namespace AplosConnector.Core.Storages
             }
         }
 
-        public async Task<PexOAuthSessionModel> GetBySessionGuidAsync(Guid sessionGuid)
+        public async Task<PexOAuthSessionModel> GetBySessionGuidAsync(Guid sessionGuid, CancellationToken cancellationToken)
         {
-            await InitTableAsync();
-            var entity = await GetEntityBySessionGuidAsync(sessionGuid);
+            await InitTableAsync(cancellationToken);
+            var entity = await GetEntityBySessionGuidAsync(sessionGuid, cancellationToken);
 
             return entity?.ToModel();
         }
 
-        private async Task<PexOAuthSessionEntity> GetEntityBySessionGuidAsync(Guid sessionGuid)
+        private async Task<PexOAuthSessionEntity> GetEntityBySessionGuidAsync(Guid sessionGuid, CancellationToken cancellationToken)
         {
             var operation = TableOperation.Retrieve<PexOAuthSessionEntity>(PartitionKey, sessionGuid.ToString());
-            var result = await Table.ExecuteAsync(operation);
+            var result = await Table.ExecuteAsync(operation, cancellationToken);
             return (PexOAuthSessionEntity) result.Result;
         }
 
-        public async Task<List<PexOAuthSessionModel>> GetAllSessions()
+        public async Task<List<PexOAuthSessionModel>> GetAllSessions(CancellationToken cancellationToken)
         {
-            await InitTableAsync();
+            await InitTableAsync(cancellationToken);
 
             TableContinuationToken token = null;
             var entities = new List<PexOAuthSessionEntity>();
             do
             {
-                var queryResult = await Table.ExecuteQuerySegmentedAsync(new TableQuery<PexOAuthSessionEntity>(), token);
+                var queryResult = await Table.ExecuteQuerySegmentedAsync(new TableQuery<PexOAuthSessionEntity>(), token, cancellationToken);
                 entities.AddRange(queryResult.Results);
                 token = queryResult.ContinuationToken;
             } while (token != null);
