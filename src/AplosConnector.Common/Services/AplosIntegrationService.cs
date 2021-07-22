@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AplosConnector.Common.Services
@@ -53,9 +54,9 @@ namespace AplosConnector.Common.Services
             _mappingStorage = mappingStorage;
         }
 
-        public async Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session)
+        public async Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session, CancellationToken cancellationToken)
         {
-            var mapping = await _mappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
+            var mapping = await _mappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
             if (mapping == null)
             {
                 mapping = new Pex2AplosMappingModel
@@ -68,21 +69,21 @@ namespace AplosConnector.Common.Services
                     AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication,
                 };
 
-                await _mappingStorage.CreateAsync(mapping);
+                await _mappingStorage.CreateAsync(mapping, cancellationToken);
             }
 
-            await EnsurePartnerInfoPopulated(mapping);
+            await EnsurePartnerInfoPopulated(mapping, cancellationToken);
 
             return mapping;
         }
 
-        public async Task EnsurePartnerInfoPopulated(Pex2AplosMappingModel mapping)
+        public async Task EnsurePartnerInfoPopulated(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             bool isChanged = false;
 
             if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
             {
-                PartnerModel parterInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken);
+                PartnerModel parterInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken, cancellationToken);
                 mapping.AplosAccountId = parterInfo.PartnerBusinessId;
                 isChanged |= !string.IsNullOrWhiteSpace(mapping.AplosAccountId);
             }
@@ -99,7 +100,7 @@ namespace AplosConnector.Common.Services
 
                 try
                 {
-                    AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification();
+                    AplosApiPartnerVerificationResponse aplosResponse = await aplosApiClient.GetPartnerVerification(cancellationToken);
                     mapping.AplosPartnerVerified = aplosResponse.Data.PartnerVerification.Authorized;
                     isChanged |= mapping.AplosPartnerVerified;
                 }
@@ -117,7 +118,7 @@ namespace AplosConnector.Common.Services
 
             if (isChanged)
             {
-                await _mappingStorage.UpdateAsync(mapping);
+                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
             }
         }
 
@@ -172,13 +173,13 @@ namespace AplosConnector.Common.Services
                     }
                     return null;
                 },
-                async (auth, logger) =>
+                async (auth, logger, cancellationToken) =>
                 {
                     try
                     {
                         mapping.AplosAccessToken = auth.AplosAccessToken;
                         mapping.AplosAccessTokenExpiresAt = auth.AplosAccessTokenExpiresAt;
-                        await _mappingStorage.UpdateAsync(mapping);
+                        await _mappingStorage.UpdateAsync(mapping, cancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -188,7 +189,7 @@ namespace AplosConnector.Common.Services
                 });
         }
 
-        public async Task<PexAplosApiObject> GetAplosContact(Pex2AplosMappingModel mapping, int aplosContactId)
+        public async Task<PexAplosApiObject> GetAplosContact(Pex2AplosMappingModel mapping, int aplosContactId, CancellationToken cancellationToken)
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
             AplosApiContactResponse aplosApiResponse = await aplosApiClient.GetContact(aplosContactId);
@@ -196,7 +197,7 @@ namespace AplosConnector.Common.Services
             return _aplosIntegrationMappingService.Map(aplosApiResponse?.Data?.Contact);
         }
 
-        public async Task<IEnumerable<PexAplosApiObject>> GetAplosContacts(Pex2AplosMappingModel mapping)
+        public async Task<IEnumerable<PexAplosApiObject>> GetAplosContacts(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
             var aplosApiResponse = await aplosApiClient.GetContacts();
@@ -204,15 +205,15 @@ namespace AplosConnector.Common.Services
             return _aplosIntegrationMappingService.Map(aplosApiResponse);
         }
 
-        public async Task<PexAplosApiObject> GetAplosFund(Pex2AplosMappingModel mapping, int aplosFundId)
+        public async Task<PexAplosApiObject> GetAplosFund(Pex2AplosMappingModel mapping, int aplosFundId, CancellationToken cancellationToken)
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
-            AplosApiFundResponse aplosApiResponse = await aplosApiClient.GetFund(aplosFundId);
+            AplosApiFundResponse aplosApiResponse = await aplosApiClient.GetFund(aplosFundId, cancellationToken);
 
             return _aplosIntegrationMappingService.Map(aplosApiResponse?.Data?.Fund);
         }
 
-        public async Task<IEnumerable<PexAplosApiObject>> GetAplosFunds(Pex2AplosMappingModel mapping)
+        public async Task<IEnumerable<PexAplosApiObject>> GetAplosFunds(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
             var aplosApiResponse = await aplosApiClient.GetFunds();
@@ -220,7 +221,7 @@ namespace AplosConnector.Common.Services
             return _aplosIntegrationMappingService.Map(aplosApiResponse);
         }
 
-        public async Task<PexAplosApiObject> GetAplosAccount(Pex2AplosMappingModel mapping, decimal aplosAccountNumber)
+        public async Task<PexAplosApiObject> GetAplosAccount(Pex2AplosMappingModel mapping, decimal aplosAccountNumber, CancellationToken cancellationToken)
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
             AplosApiAccountResponse aplosApiResponse = await aplosApiClient.GetAccount(aplosAccountNumber);
@@ -228,12 +229,12 @@ namespace AplosConnector.Common.Services
             return _aplosIntegrationMappingService.Map(aplosApiResponse?.Data?.Account);
         }
 
-        public async Task<IEnumerable<PexAplosApiObject>> GetAplosExpenseAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null)
+        public async Task<IEnumerable<PexAplosApiObject>> GetAplosExpenseAccounts(Pex2AplosMappingModel mapping, CancellationToken cancellationToken, string aplosAccountCategory = null)
         {
-            return await GetAplosAccounts(mapping, AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE);
+            return await GetAplosAccounts(mapping, AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE, cancellationToken);
         }
 
-        public async Task<IEnumerable<PexAplosApiObject>> GetAplosAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null)
+        public async Task<IEnumerable<PexAplosApiObject>> GetAplosAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null, CancellationToken cancellationToken = default)
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
             var aplosApiResponse = await aplosApiClient.GetAccounts(aplosAccountCategory);
@@ -275,7 +276,7 @@ namespace AplosConnector.Common.Services
             }
         }
 
-        public async Task<List<AplosApiTransactionDetail>> GetTransactions(Pex2AplosMappingModel mapping, DateTime startDate)
+        public async Task<List<AplosApiTransactionDetail>> GetTransactions(Pex2AplosMappingModel mapping, DateTime startDate, CancellationToken cancellationToken)
         {
             var aplosApiClient = MakeAplosApiClient(mapping);
             var response = await aplosApiClient.GetTransactions(startDate);
@@ -287,7 +288,8 @@ namespace AplosConnector.Common.Services
             IEnumerable<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)> allocationDetails,
             Pex2AplosMappingModel mapping,
             TransactionModel transaction,
-            CardholderDetailsModel cardholderDetails)
+            CardholderDetailsModel cardholderDetails,
+            CancellationToken cancellationToken)
         {
             var lines = new List<AplosApiTransactionLineDetail>();
 
@@ -371,13 +373,13 @@ namespace AplosConnector.Common.Services
             return TransactionSyncResult.Success;
         }
 
-        public async Task<string> GetAplosAccessToken(Pex2AplosMappingModel mapping)
+        public async Task<string> GetAplosAccessToken(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
             return await aplosApiClient.GetAplosAccessToken();
         }
 
-        public async Task<bool> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping)
+        public async Task<bool> ValidateAplosApiCredentials(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             switch (mapping.AplosAuthenticationMode)
             {
@@ -403,7 +405,7 @@ namespace AplosConnector.Common.Services
             return canObtainAccessToken;
         }
 
-        public async Task Sync(Pex2AplosMappingModel mapping, ILogger log)
+        public async Task Sync(Pex2AplosMappingModel mapping, ILogger log, CancellationToken cancellationToken)
         {
             log.LogInformation("C# Queue trigger function processing.");
 
@@ -414,7 +416,7 @@ namespace AplosConnector.Common.Services
             }
 
             //Let's refresh Aplos API tokens before sync start and interrupt sync processor in case of invalidity
-            string aplosAccessToken = await GetAplosAccessToken(mapping);
+            string aplosAccessToken = await GetAplosAccessToken(mapping, cancellationToken);
             if (string.IsNullOrEmpty(aplosAccessToken))
             {
                 log.LogCritical(
@@ -422,13 +424,13 @@ namespace AplosConnector.Common.Services
                 return;
             }
 
-            await EnsurePartnerInfoPopulated(mapping);
+            await EnsurePartnerInfoPopulated(mapping, cancellationToken);
 
             var utcNow = DateTime.UtcNow;
 
             try
             {
-                await SyncTransactions(log, mapping, utcNow);
+                await SyncTransactions(log, mapping, utcNow, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -437,7 +439,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                await SyncBusinessAccountTransactions(log, mapping, utcNow);
+                await SyncBusinessAccountTransactions(log, mapping, utcNow, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -446,7 +448,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                await SyncFundsToPex(log, mapping);
+                await SyncFundsToPex(log, mapping, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -455,7 +457,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                await SyncExpenseAccountsToPex(log, mapping);
+                await SyncExpenseAccountsToPex(log, mapping, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -464,7 +466,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                await SyncAplosTagsToPex(log, mapping);
+                await SyncAplosTagsToPex(log, mapping, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -472,17 +474,17 @@ namespace AplosConnector.Common.Services
             }
 
             mapping.LastSyncUtc = utcNow;
-            await _mappingStorage.UpdateAsync(mapping);
+            await _mappingStorage.UpdateAsync(mapping, cancellationToken);
 
             log.LogInformation("C# Queue trigger function completed.");
         }
 
-        private async Task SyncAplosTagsToPex(ILogger log, Pex2AplosMappingModel mapping)
+        private async Task SyncAplosTagsToPex(ILogger log, Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             if (mapping.TagMappings == null) return;
 
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
-            List<AplosApiTagCategoryDetail> aplosTagCategories = await aplosApiClient.GetTags();
+            List<AplosApiTagCategoryDetail> aplosTagCategories = await aplosApiClient.GetTags(cancellationToken);
 
             foreach (TagMappingModel tagMapping in mapping.TagMappings)
             {
@@ -516,7 +518,7 @@ namespace AplosConnector.Common.Services
 
                 log.LogInformation($"Syncing tags from {nameof(tagMapping.AplosTagId)} '{tagMapping.AplosTagId} / {aplosTagCategory.Name}' to {nameof(tagMapping.PexTagId)} '{tagMapping.PexTagId} / {pexTag.Name}' for business: {mapping.PEXBusinessAcctId}");
 
-                IEnumerable<AplosApiTagDetail> flattenedAplosTags = GetFlattenedAplosTagValues(aplosTagCategory);
+                IEnumerable<AplosApiTagDetail> flattenedAplosTags = GetFlattenedAplosTagValues(aplosTagCategory, cancellationToken);
                 IEnumerable<PexAplosApiObject> aplosTagsToSync = _aplosIntegrationMappingService.Map(flattenedAplosTags);
 
                 pexTag.InitTagOptions(aplosTagsToSync, out var syncCount, out var removalCount);
@@ -524,7 +526,7 @@ namespace AplosConnector.Common.Services
                 SyncStatus syncStatus;
                 try
                 {
-                    await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTag.Id, pexTag);
+                    await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTag.Id, pexTag, cancellationToken);
                     syncStatus = SyncStatus.Success;
                 }
                 catch (Exception ex)
@@ -542,25 +544,25 @@ namespace AplosConnector.Common.Services
                     SyncedRecords = syncCount,
                     SyncNotes = removalNote,
                 };
-                await _resultStorage.CreateAsync(result);
+                await _resultStorage.CreateAsync(result, cancellationToken);
             }
         }
 
-        private async Task<IEnumerable<PexAplosApiObject>> GetFlattenedAplosTagValues(Pex2AplosMappingModel mapping)
+        private async Task<IEnumerable<PexAplosApiObject>> GetFlattenedAplosTagValues(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             var tagValues = new List<AplosApiTagDetail>();
 
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
-            foreach (var tagCategory in await aplosApiClient.GetTags())
+            foreach (var tagCategory in await aplosApiClient.GetTags(cancellationToken))
             {
-                var categoryTagValues = GetFlattenedAplosTagValues(tagCategory);
+                var categoryTagValues = GetFlattenedAplosTagValues(tagCategory, cancellationToken);
                 tagValues.AddRange(categoryTagValues);
             }
 
             return _aplosIntegrationMappingService.Map(tagValues);
         }
 
-        public IEnumerable<AplosApiTagDetail> GetFlattenedAplosTagValues(AplosApiTagCategoryDetail aplosTagCategory)
+        public IEnumerable<AplosApiTagDetail> GetFlattenedAplosTagValues(AplosApiTagCategoryDetail aplosTagCategory, CancellationToken cancellationToken)
         {
             var tagValues = new List<AplosApiTagDetail>();
 
@@ -568,7 +570,7 @@ namespace AplosConnector.Common.Services
             {
                 foreach (var tagGroup in aplosTagCategory.TagGroups)
                 {
-                    var groupTagValues = GetFlattenedAplosTagValues(tagGroup);
+                    var groupTagValues = GetFlattenedAplosTagValues(tagGroup, cancellationToken);
                     tagValues.AddRange(groupTagValues);
                 }
             }
@@ -576,7 +578,7 @@ namespace AplosConnector.Common.Services
             return tagValues;
         }
 
-        private IEnumerable<AplosApiTagDetail> GetFlattenedAplosTagValues(AplosApiTagGroupDetail aplosTagGroup)
+        private IEnumerable<AplosApiTagDetail> GetFlattenedAplosTagValues(AplosApiTagGroupDetail aplosTagGroup, CancellationToken cancellationToken)
         {
             var tagValues = new List<AplosApiTagDetail>();
 
@@ -584,7 +586,7 @@ namespace AplosConnector.Common.Services
             {
                 foreach (var tagValue in aplosTagGroup.Tags)
                 {
-                    var groupTagValues = GetFlattenedAplosTagValues(tagValue);
+                    var groupTagValues = GetFlattenedAplosTagValues(tagValue, cancellationToken);
                     tagValues.AddRange(groupTagValues);
                 }
             }
@@ -592,7 +594,7 @@ namespace AplosConnector.Common.Services
             return tagValues;
         }
 
-        private IEnumerable<AplosApiTagDetail> GetFlattenedAplosTagValues(AplosApiTagDetail aplosTagValue)
+        private IEnumerable<AplosApiTagDetail> GetFlattenedAplosTagValues(AplosApiTagDetail aplosTagValue, CancellationToken cancellationToken)
         {
             var tagValues = new List<AplosApiTagDetail>();
             tagValues.Add(aplosTagValue);
@@ -601,7 +603,7 @@ namespace AplosConnector.Common.Services
             {
                 foreach (var subTag in aplosTagValue.SubTags)
                 {
-                    var subTagValues = GetFlattenedAplosTagValues(subTag);
+                    var subTagValues = GetFlattenedAplosTagValues(subTag, cancellationToken);
                     tagValues.AddRange(subTagValues);
                 }
             }
@@ -613,7 +615,8 @@ namespace AplosConnector.Common.Services
 
         private async Task SyncFundsToPex(
             ILogger log,
-            Pex2AplosMappingModel mapping)
+            Pex2AplosMappingModel mapping,
+            CancellationToken cancellationToken)
         {
             if (!(mapping.SyncTags && mapping.SyncFundsToPex)) return;
 
@@ -625,20 +628,20 @@ namespace AplosConnector.Common.Services
 
             log.LogInformation($"Syncing funds for business: {mapping.PEXBusinessAcctId}");
 
-            var fundsTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId);
+            var fundsTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId, cancellationToken);
             if (fundsTag == null)
             {
                 log.LogWarning($"{nameof(mapping.PexFundsTagId)} is unavailable in business: {mapping.PEXBusinessAcctId}");
                 return;
             }
 
-            var aplosFunds = await GetAplosFunds(mapping);
+            var aplosFunds = await GetAplosFunds(mapping, cancellationToken);
             fundsTag.InitTagOptions(aplosFunds, out var syncCount, out var removalCount);
 
             SyncStatus syncStatus;
             try
             {
-                await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, fundsTag.Id, fundsTag);
+                await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, fundsTag.Id, fundsTag, cancellationToken);
                 syncStatus = SyncStatus.Success;
             }
             catch (Exception ex)
@@ -656,12 +659,13 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = removalNote,
             };
-            await _resultStorage.CreateAsync(result);
+            await _resultStorage.CreateAsync(result, cancellationToken);
         }
 
         private async Task SyncExpenseAccountsToPex(
             ILogger log,
-            Pex2AplosMappingModel mapping)
+            Pex2AplosMappingModel mapping,
+            CancellationToken cancellationToken)
         {
             if (!(mapping.SyncTags && mapping.ExpenseAccountMappings != null && mapping.ExpenseAccountMappings.Any())) return;
 
@@ -673,7 +677,7 @@ namespace AplosConnector.Common.Services
 
             log.LogInformation($"Syncing accounts for business: {mapping.PEXBusinessAcctId}");
 
-            var aplosAccounts = await GetAplosExpenseAccounts(mapping);
+            var aplosAccounts = await GetAplosExpenseAccounts(mapping, cancellationToken);
 
             foreach (ExpenseAccountMappingModel expenseAccountMapping in mapping.ExpenseAccountMappings)
             {
@@ -681,7 +685,8 @@ namespace AplosConnector.Common.Services
                     log,
                     mapping,
                     expenseAccountMapping,
-                    aplosAccounts);
+                    aplosAccounts,
+                    cancellationToken);
             }
         }
 
@@ -689,7 +694,8 @@ namespace AplosConnector.Common.Services
             ILogger log,
             Pex2AplosMappingModel model,
             ExpenseAccountMappingModel expenseAccountMapping,
-            IEnumerable<PexAplosApiObject> accounts)
+            IEnumerable<PexAplosApiObject> accounts,
+            CancellationToken cancellationToken)
         {
             if (!expenseAccountMapping.SyncExpenseAccounts)
             {
@@ -727,21 +733,16 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = removalNote
             };
-            await _resultStorage.CreateAsync(result);
+            await _resultStorage.CreateAsync(result, cancellationToken);
         }
 
         private async Task SyncTransactions(
             ILogger log,
             Pex2AplosMappingModel mapping,
-            DateTime utcNow)
+            DateTime utcNow,
+            CancellationToken cancellationToken)
         {
             if (!mapping.SyncTransactions) return;
-
-            //var startDateUtc = utcNow.AddDays(-_syncSettings.SyncTransactionsIntervalDays);
-            //var startDate = (startDateUtc < mapping.EarliestTransactionDateToSync
-            //        ? mapping.EarliestTransactionDateToSync
-            //        : startDateUtc)
-            //    .ToEst();
 
             var startDate = mapping.EarliestTransactionDateToSync.ToEst();
 
@@ -761,9 +762,9 @@ namespace AplosConnector.Common.Services
 
             var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown);
 
-            var aplosFunds = (await GetAplosFunds(mapping)).ToList();
-            var aplosAccounts = (await GetAplosAccounts(mapping)).ToList();
-            var aplosTags = (await GetFlattenedAplosTagValues(mapping)).ToList();
+            var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
+            var aplosAccounts = (await GetAplosAccounts(mapping, cancellationToken: cancellationToken)).ToList();
+            var aplosTags = (await GetFlattenedAplosTagValues(mapping, cancellationToken)).ToList();
 
             List<TagDropdownDetailsModel> dropdownTags = default;
             if (useTags)
@@ -946,12 +947,13 @@ namespace AplosConnector.Common.Services
                 var transactionSyncResult = TransactionSyncResult.Failed;
                 try
                 {
-                    CardholderDetailsModel cardholderDetails = await GetCardholderDetails(mapping, transaction.AcctId, log);
+                    CardholderDetailsModel cardholderDetails = await GetCardholderDetails(mapping, transaction.AcctId, log, cancellationToken);
                     transactionSyncResult = await SyncTransaction(
                         allocationDetails,
                         mapping,
                         transaction,
-                        cardholderDetails);
+                        cardholderDetails,
+                        cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -996,21 +998,17 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
             };
-            await _resultStorage.CreateAsync(result);
+            await _resultStorage.CreateAsync(result, cancellationToken);
         }
 
         private async Task SyncBusinessAccountTransactions(
             ILogger log,
             Pex2AplosMappingModel mapping,
-            DateTime utcNow)
+            DateTime utcNow,
+            CancellationToken cancellationToken)
         {
             if (!mapping.SyncTransfers && !mapping.SyncPexFees) return;
 
-            //var startDateUtc = utcNow.AddDays(-_syncSettings.SyncTransactionsIntervalDays);
-            //var startDate = (startDateUtc < mapping.EarliestTransactionDateToSync
-            //        ? mapping.EarliestTransactionDateToSync
-            //        : startDateUtc)
-            //    .ToEst();
             var endDate = utcNow.AddDays(1).ToEst();
 
             var startDate = mapping.EarliestTransactionDateToSync.ToEst();
@@ -1023,17 +1021,19 @@ namespace AplosConnector.Common.Services
 
             var aplosTransactions = await GetTransactions(
                 mapping,
-                startDate);
+                startDate,
+                cancellationToken);
 
-            await SyncTransfers(log, mapping, businessAccountTransactions, aplosTransactions);
-            await SyncPexFees(log, mapping, businessAccountTransactions, aplosTransactions);
+            await SyncTransfers(log, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
+            await SyncPexFees(log, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
         }
 
         private async Task SyncTransfers(
             ILogger log,
             Pex2AplosMappingModel model,
             BusinessAccountTransactions businessAccountTransactions,
-            List<AplosApiTransactionDetail> aplosTransactions)
+            List<AplosApiTransactionDetail> aplosTransactions,
+            CancellationToken cancellationToken)
         {
             if (!model.SyncTransfers) return;
 
@@ -1044,7 +1044,7 @@ namespace AplosConnector.Common.Services
                 .Where(t => !WasPexTransactionSyncedToAplos(aplosTransactions, t.TransactionId.ToString()))
                 .ToList();
 
-            Dictionary<long, List<AllocationTagValue>> allocationMapping = await _pexApiClient.GetTagAllocations(model.PEXExternalAPIToken, transactionsToSync);
+            Dictionary<long, List<AllocationTagValue>> allocationMapping = await _pexApiClient.GetTagAllocations(model.PEXExternalAPIToken, transactionsToSync, cancellationToken);
 
             var syncCount = 0;
             var failureCount = 0;
@@ -1080,7 +1080,8 @@ namespace AplosConnector.Common.Services
                         allocationDetails,
                         model,
                         transaction,
-                        null);
+                        null,
+                        cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -1116,14 +1117,15 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
             };
-            await _resultStorage.CreateAsync(result);
+            await _resultStorage.CreateAsync(result, cancellationToken);
         }
 
         private async Task SyncPexFees(
             ILogger log,
             Pex2AplosMappingModel model,
             BusinessAccountTransactions businessAccountTransactions,
-            List<AplosApiTransactionDetail> aplosTransactions)
+            List<AplosApiTransactionDetail> aplosTransactions,
+            CancellationToken cancellationToken)
         {
             if (!model.SyncPexFees) return;
 
@@ -1134,7 +1136,7 @@ namespace AplosConnector.Common.Services
                 .Where(t => !WasPexTransactionSyncedToAplos(aplosTransactions, t.TransactionId.ToString()))
                 .ToList();
 
-            Dictionary<long, List<AllocationTagValue>> allocationMapping = await _pexApiClient.GetTagAllocations(model.PEXExternalAPIToken, transactionsToSync);
+            Dictionary<long, List<AllocationTagValue>> allocationMapping = await _pexApiClient.GetTagAllocations(model.PEXExternalAPIToken, transactionsToSync, cancellationToken);
 
             var syncCount = 0;
             var failureCount = 0;
@@ -1170,7 +1172,8 @@ namespace AplosConnector.Common.Services
                         allocationDetails,
                         model,
                         transaction,
-                        null);
+                        null,
+                        cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -1206,7 +1209,7 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
             };
-            await _resultStorage.CreateAsync(result);
+            await _resultStorage.CreateAsync(result, cancellationToken);
         }
 
         public bool WasPexTransactionSyncedToAplos(IEnumerable<AplosApiTransactionDetail> aplosTransactions, string pexTransactionId)
@@ -1222,7 +1225,8 @@ namespace AplosConnector.Common.Services
         private async Task<CardholderDetailsModel> GetCardholderDetails(
             Pex2AplosMappingModel mapping,
             int cardholderAccountId,
-            ILogger log)
+            ILogger log,
+            CancellationToken cancellationToken)
         {
             if (_cardholderDetailsCache.ContainsKey(cardholderAccountId) &&
                 _cardholderDetailsCache.TryGetValue(cardholderAccountId, out var cardholderDetails))
@@ -1233,7 +1237,7 @@ namespace AplosConnector.Common.Services
             CardholderDetailsModel result = null;
             try
             {
-                result = await _pexApiClient.GetCardholderDetails(mapping.PEXExternalAPIToken, cardholderAccountId);
+                result = await _pexApiClient.GetCardholderDetails(mapping.PEXExternalAPIToken, cardholderAccountId, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -1245,10 +1249,10 @@ namespace AplosConnector.Common.Services
             return result;
         }
 
-        public async Task<IEnumerable<PexAplosApiObject>> GetAplosTagCategories(Pex2AplosMappingModel mapping)
+        public async Task<IEnumerable<PexAplosApiObject>> GetAplosTagCategories(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
-            var aplosApiResponse = await aplosApiClient.GetTags();
+            var aplosApiResponse = await aplosApiClient.GetTags(cancellationToken);
 
             return _aplosIntegrationMappingService.Map(aplosApiResponse);
         }

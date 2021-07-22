@@ -3,6 +3,7 @@ using AplosConnector.Core.Storages;
 using System;
 using System.Threading.Tasks;
 using PexCard.Api.Client.Core;
+using System.Threading;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -21,7 +22,7 @@ namespace AplosConnector.Web.Controllers
         }
 
         [HttpGet, Route("Check")]
-        public async Task<HealthCheckResultModel> GetCheck()
+        public async Task<HealthCheckResultModel> GetCheck(CancellationToken cancellationToken)
         {
             bool aplosResult; string aplosBaseUri = string.Empty;
             try
@@ -39,7 +40,7 @@ namespace AplosConnector.Web.Controllers
             bool pexResult; string pexBaseUri = string.Empty;
             try
             {
-                pexResult = await _pexApiClient.Ping();
+                pexResult = await _pexApiClient.Ping(cancellationToken);
                 pexBaseUri = _pexApiClient.BaseUri.ToString();
             }
             catch
@@ -50,7 +51,7 @@ namespace AplosConnector.Web.Controllers
             var storageResult = true;
             try
             {
-                await _pex2AplosMappingStorage.GetAllMappings();
+                await _pex2AplosMappingStorage.GetAllMappings(cancellationToken);
             }
             catch
             {

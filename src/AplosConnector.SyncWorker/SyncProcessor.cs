@@ -4,6 +4,7 @@ using AplosConnector.Common.Models;
 using System.Threading.Tasks;
 using AplosConnector.Common.Services.Abstractions;
 using System;
+using System.Threading;
 
 namespace AplosConnector.SyncWorker
 {
@@ -20,13 +21,14 @@ namespace AplosConnector.SyncWorker
         [FunctionName(nameof(SyncProcessor))]
         public async Task Run(
             [QueueTrigger("pex-aplos-mapping", Connection = "StorageConnectionString")]Pex2AplosMappingModel mapping,
-            ILogger log)
+            ILogger log,
+            CancellationToken cancellationToken)
         {
             log.LogInformation($"Beginning Azure Function {nameof(SyncProcessor)} for {nameof(mapping.PEXBusinessAcctId)} {mapping.PEXBusinessAcctId}.");
 
             try
             {
-                await _aplosIntegrationService.Sync(mapping, log);
+                await _aplosIntegrationService.Sync(mapping, log, cancellationToken);
             }
             catch (Exception ex)
             {
