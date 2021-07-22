@@ -15,6 +15,7 @@ using PexCard.Api.Client.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -47,7 +48,7 @@ namespace AplosConnector.Common.Tests
             var aplosAccountResponse = new AplosApiAccountResponse { Data = new AplosApiAccountData { Account = aplosAccount, } };
 
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetAccount(aplosAccount.AccountNumber))
+                .Setup(mockAplosClient => mockAplosClient.GetAccount(aplosAccount.AccountNumber, default))
                 .Returns(Task.FromResult(aplosAccountResponse));
 
             var mappedAplosAccount = new PexAplosApiObject { Id = aplosAccount.AccountNumber.ToString(), Name = aplosAccount.Name, };
@@ -56,7 +57,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosAccount = await service.GetAplosAccount(GetMapping(), aplosAccount.AccountNumber);
+            PexAplosApiObject actualMappedAplosAccount = await service.GetAplosAccount(GetMapping(), aplosAccount.AccountNumber, default);
 
             //Assert
             Assert.Equal(mappedAplosAccount, actualMappedAplosAccount);
@@ -69,7 +70,7 @@ namespace AplosConnector.Common.Tests
             var aplosAccountResponse = new AplosApiAccountResponse { Data = new AplosApiAccountData { Account = default, } };
 
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetAccount(It.IsAny<decimal>()))
+                .Setup(mockAplosClient => mockAplosClient.GetAccount(It.IsAny<decimal>(), default))
                 .Returns(Task.FromResult(aplosAccountResponse));
 
             _mockAplosIntegrationMappingService
@@ -79,7 +80,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosAccount = await service.GetAplosAccount(GetMapping(), It.IsAny<decimal>());
+            PexAplosApiObject actualMappedAplosAccount = await service.GetAplosAccount(GetMapping(), It.IsAny<decimal>(), default);
 
             //Assert
             Assert.Null(actualMappedAplosAccount);
@@ -93,7 +94,7 @@ namespace AplosConnector.Common.Tests
             var aplosAccounts = new List<AplosApiAccountDetail> {aplosAccount};
 
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetAccounts(It.IsAny<string>()))
+                .Setup(mockAplosClient => mockAplosClient.GetAccounts(It.IsAny<string>(), default))
                 .Returns(Task.FromResult(aplosAccounts));
 
             IEnumerable<PexAplosApiObject> mappedAplosAccount = new[] { new PexAplosApiObject { Id = aplosAccount.AccountNumber.ToString(), Name = aplosAccount.Name, } };
@@ -116,7 +117,7 @@ namespace AplosConnector.Common.Tests
         {
             //Arrange
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetAccounts(It.IsAny<string>()))
+                .Setup(mockAplosClient => mockAplosClient.GetAccounts(It.IsAny<string>(), default))
                 .Returns(Task.FromResult(default(List<AplosApiAccountDetail>)));
 
             _mockAplosIntegrationMappingService
@@ -140,7 +141,7 @@ namespace AplosConnector.Common.Tests
             var aplosContactResponse = new AplosApiContactResponse { Data = new AplosApiContactData { Contact = aplosContact, } };
 
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetContact(aplosContact.Id))
+                .Setup(mockAplosClient => mockAplosClient.GetContact(aplosContact.Id, default))
                 .Returns(Task.FromResult(aplosContactResponse));
 
             var mappedAplosContact = new PexAplosApiObject { Id = aplosContact.Id.ToString(), Name = aplosContact.CompanyName, };
@@ -152,7 +153,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosContact = await service.GetAplosContact(GetMapping(), aplosContact.Id);
+            PexAplosApiObject actualMappedAplosContact = await service.GetAplosContact(GetMapping(), aplosContact.Id, default);
 
             //Assert
             Assert.Equal(mappedAplosContact, actualMappedAplosContact);
@@ -165,7 +166,7 @@ namespace AplosConnector.Common.Tests
             var aplosContactResponse = new AplosApiContactResponse { Data = new AplosApiContactData { Contact = default, } };
 
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetContact(It.IsAny<int>()))
+                .Setup(mockAplosClient => mockAplosClient.GetContact(It.IsAny<int>(), default))
                 .Returns(Task.FromResult(aplosContactResponse));
 
             _mockAplosIntegrationMappingService
@@ -175,7 +176,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosContact = await service.GetAplosContact(GetMapping(), It.IsAny<int>());
+            PexAplosApiObject actualMappedAplosContact = await service.GetAplosContact(GetMapping(), It.IsAny<int>(), default);
 
             //Assert
             Assert.Null(actualMappedAplosContact);
@@ -189,7 +190,7 @@ namespace AplosConnector.Common.Tests
             var aplosContacts = new List<AplosApiContactDetail> {aplosContact};
 
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetContacts())
+                .Setup(mockAplosClient => mockAplosClient.GetContacts(default))
                 .Returns(Task.FromResult(aplosContacts));
 
             IEnumerable<PexAplosApiObject> mappedAplosContacts = new[] { new PexAplosApiObject { Id = aplosContact.Id.ToString(), Name = aplosContact.CompanyName, } };
@@ -201,7 +202,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            IEnumerable<PexAplosApiObject> actualMappedAplosContats = await service.GetAplosContacts(GetMapping());
+            IEnumerable<PexAplosApiObject> actualMappedAplosContats = await service.GetAplosContacts(GetMapping(), default);
 
             //Assert
             Assert.Equal(mappedAplosContacts, actualMappedAplosContats);
@@ -212,7 +213,7 @@ namespace AplosConnector.Common.Tests
         {
             //Arrange
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetContacts())
+                .Setup(mockAplosClient => mockAplosClient.GetContacts(default))
                 .Returns(Task.FromResult(default(List<AplosApiContactDetail>)));
 
             _mockAplosIntegrationMappingService
@@ -222,7 +223,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            IEnumerable<PexAplosApiObject> mappedAplosContactList = await service.GetAplosContacts(GetMapping());
+            IEnumerable<PexAplosApiObject> mappedAplosContactList = await service.GetAplosContacts(GetMapping(), default);
 
             //Assert
             Assert.Null(mappedAplosContactList);
@@ -236,7 +237,7 @@ namespace AplosConnector.Common.Tests
             var aplosFundResponse = new AplosApiFundResponse { Data = new AplosApiFundData { Fund = aplosFund, } };
 
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetFund(aplosFund.Id))
+                .Setup(mockAplosClient => mockAplosClient.GetFund(aplosFund.Id, default))
                 .Returns(Task.FromResult(aplosFundResponse));
 
             var mappedAplosFund = new PexAplosApiObject { Id = aplosFund.Id.ToString(), Name = aplosFund.Name, };
@@ -248,7 +249,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosFund = await service.GetAplosFund(GetMapping(), aplosFund.Id);
+            PexAplosApiObject actualMappedAplosFund = await service.GetAplosFund(GetMapping(), aplosFund.Id, default);
 
             //Assert
             Assert.Equal(mappedAplosFund, actualMappedAplosFund);
@@ -261,7 +262,7 @@ namespace AplosConnector.Common.Tests
             var aplosFundResponse = new AplosApiFundResponse { Data = new AplosApiFundData { Fund = default, } };
 
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetFund(It.IsAny<int>()))
+                .Setup(mockAplosClient => mockAplosClient.GetFund(It.IsAny<int>(), default))
                 .Returns(Task.FromResult(aplosFundResponse));
 
             _mockAplosIntegrationMappingService
@@ -271,7 +272,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            PexAplosApiObject actualMappedAplosFund = await service.GetAplosFund(GetMapping(), It.IsAny<int>());
+            PexAplosApiObject actualMappedAplosFund = await service.GetAplosFund(GetMapping(), It.IsAny<int>(), default);
 
             //Assert
             Assert.Null(actualMappedAplosFund);
@@ -285,7 +286,7 @@ namespace AplosConnector.Common.Tests
             var aplosFunds = new List<AplosApiFundDetail> {aplosFund};
 
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetFunds())
+                .Setup(mockAplosClient => mockAplosClient.GetFunds(default))
                 .Returns(Task.FromResult(aplosFunds));
 
             IEnumerable<PexAplosApiObject> mappedAplosFunds = new[] { new PexAplosApiObject { Id = aplosFund.Id.ToString(), Name = aplosFund.Name, } };
@@ -297,7 +298,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            IEnumerable<PexAplosApiObject> actualMappedAplosFunds = await service.GetAplosFunds(GetMapping());
+            IEnumerable<PexAplosApiObject> actualMappedAplosFunds = await service.GetAplosFunds(GetMapping(), default);
 
             //Assert
             Assert.Equal(mappedAplosFunds, actualMappedAplosFunds);
@@ -308,7 +309,7 @@ namespace AplosConnector.Common.Tests
         {
             //Arrange
             _mockAplosApiClient
-                .Setup(mockAplosClient => mockAplosClient.GetFunds())
+                .Setup(mockAplosClient => mockAplosClient.GetFunds(default))
                 .Returns(Task.FromResult(default(List<AplosApiFundDetail>)));
 
             _mockAplosIntegrationMappingService
@@ -318,7 +319,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            IEnumerable<PexAplosApiObject> actualMappedAplosFunds = await service.GetAplosFunds(GetMapping());
+            IEnumerable<PexAplosApiObject> actualMappedAplosFunds = await service.GetAplosFunds(GetMapping(), default);
 
             //Assert
             Assert.Null(actualMappedAplosFunds);
@@ -397,7 +398,7 @@ namespace AplosConnector.Common.Tests
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            IEnumerable<AplosApiTagDetail> actualAplosTagValues = service.GetFlattenedAplosTagValues(aplosTagCategory);
+            IEnumerable<AplosApiTagDetail> actualAplosTagValues = service.GetFlattenedAplosTagValues(aplosTagCategory, default);
 
             //Assert
             Assert.NotNull(actualAplosTagValues);
@@ -410,11 +411,11 @@ namespace AplosConnector.Common.Tests
         public async Task ValidateAplosApiCredentials_ReturnsTrue_WhenApiCredentialsAreValid(bool expectedResult)
         {
             //Arrange
-            _mockAplosApiClient.Setup(mockAplosClient => mockAplosClient.GetAndValidateAplosAccessToken()).Returns(Task.FromResult(expectedResult));
+            _mockAplosApiClient.Setup(mockAplosClient => mockAplosClient.GetAndValidateAplosAccessToken(default)).Returns(Task.FromResult(expectedResult));
             AplosIntegrationService service = GetAplosIntegrationService();
 
             //Act
-            var result = await service.ValidateAplosApiCredentials(new Pex2AplosMappingModel { AplosClientId = "abc", AplosPrivateKey = "123", });
+            var result = await service.ValidateAplosApiCredentials(new Pex2AplosMappingModel { AplosClientId = "abc", AplosPrivateKey = "123", }, default);
 
             //Assert
             Assert.Equal(expectedResult, result);
@@ -563,7 +564,7 @@ namespace AplosConnector.Common.Tests
                     It.IsAny<string>(),
                     It.IsAny<Uri>(),
                     It.IsAny<Func<ILogger, AplosAuthModel>>(),
-                    It.IsAny<Func<AplosAuthModel, ILogger, Task>>()))
+                    It.IsAny<Func<AplosAuthModel, ILogger, CancellationToken, Task>>()))
                 .Returns(_mockAplosApiClient.Object);
 
             return new AplosIntegrationService(

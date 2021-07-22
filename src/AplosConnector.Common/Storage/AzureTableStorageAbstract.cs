@@ -1,5 +1,6 @@
 ﻿using Microsoft.Azure.Cosmos.Table;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AplosConnector.Core.Storages
@@ -18,7 +19,7 @@ namespace AplosConnector.Core.Storages
             PartitionKey = partitionKey;
         }
 
-        protected async Task InitTableAsync()
+        protected async Task InitTableAsync(CancellationToken cancellationToken)
         {
             var storageAccount = CloudStorageAccount.Parse(ConnectionString);
             var tableClient = storageAccount.CreateCloudTableClient();
@@ -27,7 +28,7 @@ namespace AplosConnector.Core.Storages
                 RetryPolicy = new LinearRetry(TimeSpan.FromMilliseconds(500), 3)
             };
             Table = tableClient.GetTableReference(StorageTableName);
-            await Table.CreateIfNotExistsAsync();
+            await Table.CreateIfNotExistsAsync(cancellationToken);
         }
     }
 }

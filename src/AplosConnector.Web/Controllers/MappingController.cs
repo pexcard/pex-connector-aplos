@@ -5,11 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using AplosConnector.Common.Models.Response;
 using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Common.Models.Settings;
 using Microsoft.Extensions.Options;
 using AplosConnector.Web.Models;
+using System.Threading;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -43,14 +43,14 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> DeleteMapping(string sessionId)
+        public async Task<IActionResult> DeleteMapping(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (session == null) return Unauthorized();
 
-            await _pex2AplosMappingStorage.DeleteAsync(session.PEXBusinessAcctId);
+            await _pex2AplosMappingStorage.DeleteAsync(session.PEXBusinessAcctId, cancellationToken);
 
             return Ok();
         }
@@ -59,19 +59,19 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> SaveSettings(string sessionId, [FromBody]MappingSettingsModel settings)
+        public async Task<IActionResult> SaveSettings(string sessionId, [FromBody]MappingSettingsModel settings, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (session == null) return Unauthorized();
 
             var pexAcctId = session.PEXBusinessAcctId;
 
-            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(pexAcctId);
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(pexAcctId, cancellationToken);
             mapping.UpdateFromSettings(settings);
 
-            await _pex2AplosMappingStorage.UpdateAsync(mapping);
+            await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
 
             return Ok();
         }
@@ -80,38 +80,16 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<MappingSettingsModel>> GetSettings(string sessionId)
+        public async Task<ActionResult<MappingSettingsModel>> GetSettings(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (session == null) return Unauthorized();
 
-            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
 
             return mapping?.ToStorageModel();
-        }
-
-        [HttpGet, Route("AplosServiceAccount")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<AplosServiceAccountModel>> GetAplosServiceAccountData(string sessionId)
-        {
-            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
-
-            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
-            if (session == null) return Unauthorized();
-
-            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
-            var result = new AplosServiceAccountModel
-            {
-                //TODO: What is the purpose of /AplosServiceAccount?
-                //ClientId = mapping?.AplosAccessToken,
-                //ClientSecret = mapping?.AplosRefreshToken
-            };
-
-            return result;
         }
 
         [HttpGet, Route("AplosAuthenticationStatus")]
@@ -119,14 +97,14 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<AplosAuthenticationStatusModel>> GetAplosAuthenticationStatus(string sessionId)
+        public async Task<ActionResult<AplosAuthenticationStatusModel>> GetAplosAuthenticationStatus(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (session == null) return Unauthorized();
 
-            var mapping = await _aplosIntegrationService.EnsureMappingInstalled(session);
+            var mapping = await _aplosIntegrationService.EnsureMappingInstalled(session, cancellationToken);
 
             var result = new AplosAuthenticationStatusModel
             {
@@ -139,7 +117,7 @@ namespace AplosConnector.Web.Controllers
                 result.PartnerVerificationUrl = _appSettings.AplosPartnerVerificationUrl.ToString();
             }
 
-            var isAuthenticated = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping);
+            var isAuthenticated = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping, cancellationToken);
             result.IsAuthenticated = isAuthenticated;
 
             return Ok(result);
@@ -150,17 +128,17 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<List<SyncResultModel>>> GetSyncResults(string sessionId)
+        public async Task<ActionResult<List<SyncResultModel>>> GetSyncResults(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (session == null) return Unauthorized();
 
-            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
             if (mapping == null) return NotFound();
 
-            var result = await _syncResultStorage.GetByBusiness(mapping.PEXBusinessAcctId);
+            var result = await _syncResultStorage.GetByBusiness(mapping.PEXBusinessAcctId, cancellationToken);
             return result;
         }
 
@@ -169,17 +147,17 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Sync(string sessionId)
+        public async Task<IActionResult> Sync(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (session == null) return Unauthorized();
 
-            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
             if (mapping == null) return NotFound();
 
-            await _mappingQueue.EnqueueMapping(mapping);
+            await _mappingQueue.EnqueueMapping(mapping, cancellationToken);
             return Ok();
         }
     }

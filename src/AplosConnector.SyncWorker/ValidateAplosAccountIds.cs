@@ -14,6 +14,7 @@ using Aplos.Api.Client.Models.Response;
 using Newtonsoft.Json;
 using AplosConnector.Common.Services.Abstractions;
 using Aplos.Api.Client.Exceptions;
+using System.Threading;
 
 namespace AplosConnector.SyncWorker
 {
@@ -37,7 +38,7 @@ namespace AplosConnector.SyncWorker
 
         [FunctionName(FUNCTION_NAME)]
         public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req)
+            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req, CancellationToken cancellationToken)
         {
             _logger.LogInformation($"Starting function {FUNCTION_NAME}");
 
@@ -52,7 +53,7 @@ namespace AplosConnector.SyncWorker
             IEnumerable<Pex2AplosMappingModel> mappings;
             if (overridePexBusinessAcctId != default)
             {
-                var mapping = await _mappingStorage.GetByBusinessAcctIdAsync(overridePexBusinessAcctId);
+                var mapping = await _mappingStorage.GetByBusinessAcctIdAsync(overridePexBusinessAcctId, cancellationToken);
                 if (mapping == null)
                 {
                     return new NotFoundObjectResult(response);
@@ -62,7 +63,7 @@ namespace AplosConnector.SyncWorker
             }
             else
             {
-                mappings = await _mappingStorage.GetAllMappings();
+                mappings = await _mappingStorage.GetAllMappings(cancellationToken);
             }
 
             _logger.LogInformation($"Found {mappings.Count()} business(es) to process");
@@ -113,7 +114,7 @@ namespace AplosConnector.SyncWorker
                             _logger.LogInformation($"Updating {nameof(mapping.AplosPartnerVerified)} from '{mapping.AplosPartnerVerified}' to '{aplosResponse.Data.PartnerVerification.Authorized}'");
 
                             mapping.AplosPartnerVerified = aplosResponse.Data.PartnerVerification.Authorized;
-                            await _mappingStorage.UpdateAsync(mapping);
+                            await _mappingStorage.UpdateAsync(mapping, cancellationToken);
 
                             response.BusinessesUpdated++;
                         }
