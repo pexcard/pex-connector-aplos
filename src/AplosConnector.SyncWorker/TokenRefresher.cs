@@ -32,7 +32,9 @@ namespace AplosConnector.SyncWorker
         }
 
         [FunctionName("TokenRefresher")]
-        public async Task Run([TimerTrigger("0 */55 * * * *")]TimerInfo myTimer, ILogger log)
+        public async Task Run(
+            [TimerTrigger("0 0 2,14 * * *", RunOnStartup = false)] TimerInfo myTimer,
+            ILogger log)
         {
             log.LogInformation($"Running function to refresh tokens and clean up sessions executed at: {DateTime.UtcNow}");
             await RefreshTokens();
