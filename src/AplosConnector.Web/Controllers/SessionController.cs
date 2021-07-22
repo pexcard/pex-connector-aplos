@@ -12,6 +12,7 @@ using AplosConnector.Common.Models.Response;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Models;
 using AplosConnector.Common.Services.Abstractions;
+using System.Threading;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -66,14 +67,14 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<ActionResult> CreateAplosToken(string sessionId, [FromBody] AplosTokenRequestModel model)
+        public async Task<ActionResult> CreateAplosToken(string sessionId, [FromBody] AplosTokenRequestModel model, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            PexOAuthSessionModel session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
+            PexOAuthSessionModel session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (session == null) return Unauthorized();
 
-            Pex2AplosMappingModel mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId);
+            Pex2AplosMappingModel mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(model.AplosClientId))
             {
@@ -85,21 +86,21 @@ namespace AplosConnector.Web.Controllers
                 mapping.AplosPrivateKey = model.AplosPrivateKey;
             }
 
-            bool result = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping);
+            bool result = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping, cancellationToken);
             if (!result) return BadRequest();
 
-            await _pex2AplosMappingStorage.UpdateAsync(mapping);
+            await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
 
             return Ok();
         }
 
         [HttpPost, Route("JWT")]
-        public async Task<TokenModel> CreateSessionFromJwt([FromBody] TokenModel model)
+        public async Task<TokenModel> CreateSessionFromJwt([FromBody] TokenModel model, CancellationToken cancellationToken)
         {
             var externalToken = await _pexApiClient.ExchangeJwtForApiToken(model.Token,
                 new ExchangeTokenRequestModel { AppId = _appSettings.PexApiClientId, AppSecret = _appSettings.PexApiClientSecret });
 
-            var business = await _pexApiClient.GetBusinessDetails(externalToken);
+            var business = await _pexApiClient.GetBusinessDetails(externalToken, cancellationToken);
 
             var sessionGuid = Guid.NewGuid();
             var session = new PexOAuthSessionModel
@@ -110,15 +111,15 @@ namespace AplosConnector.Web.Controllers
                 LastRenewedUtc = DateTime.UtcNow,
                 PEXBusinessAcctId = business.BusinessAccountId,
             };
-            await _pexOAuthSessionStorage.CreateAsync(session);
+            await _pexOAuthSessionStorage.CreateAsync(session, cancellationToken);
 
-            await _aplosIntegrationService.EnsureMappingInstalled(session);
+            await _aplosIntegrationService.EnsureMappingInstalled(session, cancellationToken);
 
             return new TokenModel { Token = sessionGuid.ToString() };
         }
 
         [HttpPost, Route("")]
-        public async Task CreateSession(string sessionId, [FromBody] TokenModel model)
+        public async Task CreateSession(string sessionId, [FromBody] TokenModel model, CancellationToken cancellationToken)
         {
             var business = await _pexApiClient.GetBusinessDetails(model.Token);
             var session = new PexOAuthSessionModel
@@ -129,27 +130,27 @@ namespace AplosConnector.Web.Controllers
                 LastRenewedUtc = DateTime.UtcNow,
                 PEXBusinessAcctId = business.BusinessAccountId
             };
-            await _pexOAuthSessionStorage.CreateAsync(session);
+            await _pexOAuthSessionStorage.CreateAsync(session, cancellationToken);
 
-            await _aplosIntegrationService.EnsureMappingInstalled(session);
+            await _aplosIntegrationService.EnsureMappingInstalled(session, cancellationToken);
         }
 
         [HttpDelete, Route("")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult> DeleteSession(string sessionId)
+        public async Task<ActionResult> DeleteSession(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
-            var modelResult = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
+            var modelResult = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
 
             if (modelResult != null)
             {
-                var mappingResult = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(modelResult.PEXBusinessAcctId);
+                var mappingResult = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(modelResult.PEXBusinessAcctId, cancellationToken);
                 if (mappingResult == null)
                 {
                     await _pexApiClient.DeleteExternalToken(modelResult.ExternalToken);
                 }
-                await _pexOAuthSessionStorage.DeleteBySessionGuidAsync(sessionGuid);
+                await _pexOAuthSessionStorage.DeleteBySessionGuidAsync(sessionGuid, cancellationToken);
             }
 
             return Ok();
@@ -159,25 +160,25 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<BusinessNameModel>> PEXBusinessName(string sessionId)
+        public async Task<ActionResult<BusinessNameModel>> PEXBusinessName(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            var modelResult = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
+            var modelResult = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (modelResult == null) return Unauthorized();
 
-            var businessDetails = await _pexApiClient.GetBusinessDetails(modelResult.ExternalToken);
+            var businessDetails = await _pexApiClient.GetBusinessDetails(modelResult.ExternalToken, cancellationToken);
             return new BusinessNameModel { BusinessName = businessDetails.BusinessName };
         }
 
         [HttpGet, Route("Validity")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<SessionValidityModel>> Validity(string sessionId)
+        public async Task<ActionResult<SessionValidityModel>> Validity(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid);
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             return new SessionValidityModel
             {
                 IsValid = session != null

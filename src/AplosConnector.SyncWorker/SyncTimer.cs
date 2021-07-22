@@ -4,6 +4,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using AplosConnector.Core.Storages;
 using System.Linq;
+using System.Threading;
 
 namespace AplosConnector.SyncWorker
 {
@@ -19,15 +20,20 @@ namespace AplosConnector.SyncWorker
         }
 
         [FunctionName("SyncTimer")]
-        public async Task Run([TimerTrigger("0 16 3 * * *")]TimerInfo myTimer, ILogger log)
+        public async Task Run([TimerTrigger("0 16 3 * * *")]TimerInfo myTimer, CancellationToken cancellationToken, ILogger log)
         {
-            var mappings = await _mappingStorage.GetAllMappings();
+            log.LogInformation($"C# Timer trigger function executed at: {DateTime.UtcNow}");
+
+            var mappings = await _mappingStorage.GetAllMappings(cancellationToken);
+            log.LogInformation($"Found {mappings.Count()} mappings.");
+
             foreach (var mapping in mappings)
             {
-                await _mappingQueue.EnqueueMapping(mapping);
-                await Task.Delay(5000);
+                log.LogInformation($"Enqueuing {nameof(mapping.PEXBusinessAcctId)} '{mapping.PEXBusinessAcctId}'");
+                await _mappingQueue.EnqueueMapping(mapping, cancellationToken);
             }
-            log.LogInformation($"C# Timer trigger function executed at: {DateTime.UtcNow}; Found {mappings.Count()} mappings.");
+
+            log.LogInformation($"C# Timer trigger function finished at: {DateTime.UtcNow}");
         }
     }
 }
