@@ -521,7 +521,7 @@ namespace AplosConnector.Common.Services
                 IEnumerable<AplosApiTagDetail> flattenedAplosTags = GetFlattenedAplosTagValues(aplosTagCategory, cancellationToken);
                 IEnumerable<PexAplosApiObject> aplosTagsToSync = _aplosIntegrationMappingService.Map(flattenedAplosTags);
 
-                pexTag.InitTagOptions(aplosTagsToSync, out var syncCount, out var removalCount);
+                pexTag.UpsertTagOptions(aplosTagsToSync, out var syncCount);
 
                 SyncStatus syncStatus;
                 try
@@ -535,14 +535,12 @@ namespace AplosConnector.Common.Services
                     log.LogError(ex, $"Error updating TagId {pexTag.Id}");
                 }
 
-                var removalNote = removalCount == 0 ? string.Empty : $"Disabled {removalCount} tag options from PEX.";
                 var result = new SyncResultModel
                 {
                     PEXBusinessAcctId = mapping.PEXBusinessAcctId,
                     SyncType = $"Tag Values ({aplosTagCategory.Name})",
                     SyncStatus = syncStatus.ToString(),
-                    SyncedRecords = syncCount,
-                    SyncNotes = removalNote,
+                    SyncedRecords = syncCount
                 };
                 await _resultStorage.CreateAsync(result, cancellationToken);
             }
@@ -636,7 +634,7 @@ namespace AplosConnector.Common.Services
             }
 
             var aplosFunds = await GetAplosFunds(mapping, cancellationToken);
-            fundsTag.InitTagOptions(aplosFunds, out var syncCount, out var removalCount);
+            fundsTag.UpsertTagOptions(aplosFunds, out var syncCount);
 
             SyncStatus syncStatus;
             try
@@ -650,14 +648,12 @@ namespace AplosConnector.Common.Services
                 log.LogError(ex, $"Error updating TagId {fundsTag.Id}");
             }
 
-            var removalNote = removalCount == 0 ? string.Empty : $"Disabled {removalCount} tag options from PEX.";
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = mapping.PEXBusinessAcctId,
                 SyncType = "Tag Values (Funds)",
                 SyncStatus = syncStatus.ToString(),
-                SyncedRecords = syncCount,
-                SyncNotes = removalNote,
+                SyncedRecords = syncCount
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
         }
@@ -710,7 +706,7 @@ namespace AplosConnector.Common.Services
                 return;
             }
 
-            accountsTag.InitTagOptions(accounts, out var syncCount, out var removalCount);
+            accountsTag.UpsertTagOptions(accounts, out var syncCount);
 
             SyncStatus syncStatus;
             try
@@ -724,14 +720,12 @@ namespace AplosConnector.Common.Services
                 log.LogError(ex, $"Error updating TagId {accountsTag.Id}");
             }
 
-            var removalNote = removalCount == 0 ? string.Empty : $"Disabled {removalCount} tag options from PEX.";
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = model.PEXBusinessAcctId,
                 SyncType = "Tag Values (Accounts)",
                 SyncStatus = syncStatus.ToString(),
-                SyncedRecords = syncCount,
-                SyncNotes = removalNote
+                SyncedRecords = syncCount
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
         }
