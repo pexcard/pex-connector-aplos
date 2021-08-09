@@ -23,7 +23,7 @@
     <PackageReference Include="Microsoft.Azure.Storage.Blob" Version="11.2.2" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.13" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="PexCard.Api.Client.Core" Version="1.9.0" />
+    <PackageReference Include="PexCard.Api.Client.Core" Version="1.11.0" />
     <PackageReference Include="System.Threading.Tasks" Version="4.3.0" />
     <PackageReference Include="Microsoft.Azure.Storage.Common" Version="11.2.2" />
     <PackageReference Include="Polly" Version="7.2.1" />
