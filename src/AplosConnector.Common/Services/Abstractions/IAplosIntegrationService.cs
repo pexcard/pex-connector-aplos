@@ -28,5 +28,6 @@ namespace AplosConnector.Common.Services.Abstractions
         Task Sync(Pex2AplosMappingModel mapping, ILogger log, CancellationToken cancellationToken);
         Task<TransactionSyncResult> SyncTransaction(IEnumerable<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)> allocationDetails, Pex2AplosMappingModel mapping, TransactionModel transaction, CardholderDetailsModel cardholderDetails, CancellationToken cancellationToken);
         Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session, CancellationToken cancellationToken);
+        Task<IEnumerable<PexAplosApiObject>> GetFlattenedAplosTaxTagValues(Pex2AplosMappingModel mapping, CancellationToken cancellationToken);
     }
 }
