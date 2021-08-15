@@ -632,6 +632,20 @@ namespace AplosConnector.Common.Services
             return _aplosIntegrationMappingService.Map(tagValues);
         }
 
+        public async Task<IEnumerable<PexAplosApiObject>> GetFlattenedAplosTaxTagValues(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        {
+            var tagValues = new List<AplosApiTaxTagDetail>();
+
+            IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
+            foreach (var tagCategory in await aplosApiClient.GetTaxTags(cancellationToken))
+            {
+                var categoryTagValues = GetFlattenedAplosTagValues(tagCategory, cancellationToken);
+                tagValues.AddRange(categoryTagValues);
+            }
+
+            return _aplosIntegrationMappingService.Map(tagValues);
+        }
+
         public IEnumerable<AplosApiTagDetail> GetFlattenedAplosTagValues(AplosApiTagCategoryDetail aplosTagCategory, CancellationToken cancellationToken)
         {
             var tagValues = new List<AplosApiTagDetail>();
