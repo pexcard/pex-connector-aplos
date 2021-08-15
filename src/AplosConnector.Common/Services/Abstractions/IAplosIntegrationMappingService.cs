@@ -18,5 +18,7 @@ namespace AplosConnector.Common.Services.Abstractions
         IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTagGroupDetail> tagGroup);
         PexAplosApiObject Map(AplosApiTagDetail tag);
         IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTagDetail> tags);
+        PexAplosApiObject Map(AplosApiTaxTagDetail taxTag);
+        IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTaxTagDetail> taxTags);
     }
 }
