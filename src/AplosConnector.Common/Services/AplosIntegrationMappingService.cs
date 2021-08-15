@@ -186,5 +186,35 @@ namespace AplosConnector.Common.Services
 
             return result;
         }
+
+        public PexAplosApiObject Map(AplosApiTaxTagDetail taxTag)
+        {
+            PexAplosApiObject result = default;
+            if (taxTag != null)
+            {
+                result = new PexAplosApiObject
+                {
+                    Id = taxTag.Id.ToString(),
+                    Name = taxTag.Name,
+                };
+            }
+
+            return result;
+        }
+
+        public IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTaxTagDetail> taxTags)
+        {
+            List<PexAplosApiObject> result = default;
+            if (taxTags != null)
+            {
+                result = new List<PexAplosApiObject>();
+                foreach (AplosApiTaxTagDetail fund in taxTags)
+                {
+                    result.Add(Map(fund));
+                }
+            }
+
+            return result;
+        }
     }
 }

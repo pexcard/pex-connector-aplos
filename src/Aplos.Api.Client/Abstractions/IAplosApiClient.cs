@@ -29,5 +29,7 @@ namespace Aplos.Api.Client.Abstractions
         Task<AplosApiTransactionListResponse> GetTransactions(DateTime startDate, int pageSize, int pageNum, CancellationToken cancellationToken = default);
         Task<bool> IsHealthy(CancellationToken cancellationToken = default);
         Task<AplosApiPartnerVerificationResponse> GetPartnerVerification(CancellationToken cancellationToken = default);
+        Task<List<AplosApiTaxTagCategoryDetail>> GetTaxTags(CancellationToken cancellationToken = default);
+        Task<AplosApiTaxTagListResponse> GetTaxTags(int pageSize, int pageNum, CancellationToken cancellationToken = default);
     }
 }

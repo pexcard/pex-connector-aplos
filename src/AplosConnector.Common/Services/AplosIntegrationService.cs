@@ -330,7 +330,7 @@ namespace AplosConnector.Common.Services
 
                 if (!string.IsNullOrWhiteSpace(allocationDetail.pexTagValues.AplosTaxTagId))
                 {
-                    line2.TaxTag = new AplosApiTagDetail
+                    line2.TaxTag = new AplosApiTaxTagDetail
                     {
                         Id = allocationDetail.pexTagValues.AplosTaxTagId,
                     };
@@ -481,6 +481,15 @@ namespace AplosConnector.Common.Services
                 log.LogWarning(ex, $"Exception during {nameof(SyncAplosTagsToPex)} for business: {mapping.PEXBusinessAcctId}.");
             }
 
+            try
+            {
+                await SyncAplosTaxTagsToPex(log, mapping, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                log.LogWarning(ex, $"Exception during {nameof(SyncAplosTaxTagsToPex)} for business: {mapping.PEXBusinessAcctId}.");
+            }
+
             mapping.LastSyncUtc = utcNow;
             await _mappingStorage.UpdateAsync(mapping, cancellationToken);
 
@@ -554,6 +563,61 @@ namespace AplosConnector.Common.Services
             }
         }
 
+        private async Task SyncAplosTaxTagsToPex(ILogger log, Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        {
+            if (!(mapping.SyncTags && mapping.SyncTaxTagToPex)) return;
+
+            IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
+            List<AplosApiTaxTagCategoryDetail> aplosTaxTagCategories = await aplosApiClient.GetTaxTags(cancellationToken);
+
+            if (string.IsNullOrEmpty(mapping.PexTaxTagId))
+            {
+                log.LogWarning($"Tag sync is enabled but {nameof(mapping.PexTaxTagId)} is not specified for business: {mapping.PEXBusinessAcctId}");
+                return;
+            }
+
+            TagDropdownDetailsModel pexTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexTaxTagId);
+            if (pexTag == null)
+            {
+                log.LogWarning($"{nameof(mapping.PexTaxTagId)} is unavailable in business: {mapping.PEXBusinessAcctId}");
+                return;
+            }
+
+            var flattenedAplosTags = new List<AplosApiTaxTagDetail>();
+            foreach (var taxTagCategory in aplosTaxTagCategories)
+            {
+                IEnumerable<AplosApiTaxTagDetail> categoryFlattenedAplosTags = GetFlattenedAplosTagValues(taxTagCategory, cancellationToken);
+                flattenedAplosTags.AddRange(categoryFlattenedAplosTags);
+            }
+
+            IEnumerable<PexAplosApiObject> aplosTagsToSync = _aplosIntegrationMappingService.Map(flattenedAplosTags);
+
+            log.LogInformation($"Syncing {aplosTagsToSync.Count()} tax tags to {nameof(mapping.PexTaxTagId)} '{mapping.PexTaxTagId} / {pexTag.Name}' for business: {mapping.PEXBusinessAcctId}");
+
+            SyncStatus syncStatus;
+            int syncCount = 0;
+            try
+            {
+                pexTag.UpsertTagOptions(aplosTagsToSync, out syncCount);
+                await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTag.Id, pexTag, cancellationToken);
+                syncStatus = SyncStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                syncStatus = SyncStatus.Failed;
+                log.LogError(ex, $"Error updating TagId {pexTag.Id}");
+            }
+
+            var result = new SyncResultModel
+            {
+                PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                SyncType = $"Tag Values (990)",
+                SyncStatus = syncStatus.ToString(),
+                SyncedRecords = syncCount,
+            };
+            await _resultStorage.CreateAsync(result, cancellationToken);
+        }
+
         private async Task<IEnumerable<PexAplosApiObject>> GetFlattenedAplosTagValues(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             var tagValues = new List<AplosApiTagDetail>();
@@ -579,6 +643,18 @@ namespace AplosConnector.Common.Services
                     var groupTagValues = GetFlattenedAplosTagValues(tagGroup, cancellationToken);
                     tagValues.AddRange(groupTagValues);
                 }
+            }
+
+            return tagValues;
+        }
+
+        public IEnumerable<AplosApiTaxTagDetail> GetFlattenedAplosTagValues(AplosApiTaxTagCategoryDetail aplosTagCategory, CancellationToken cancellationToken)
+        {
+            var tagValues = new List<AplosApiTaxTagDetail>();
+
+            if (aplosTagCategory.TaxTags != null)
+            {
+                tagValues.AddRange(aplosTagCategory.TaxTags);
             }
 
             return tagValues;
