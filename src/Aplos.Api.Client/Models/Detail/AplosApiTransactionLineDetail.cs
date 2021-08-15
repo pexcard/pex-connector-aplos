@@ -15,5 +15,7 @@ namespace Aplos.Api.Client.Models.Detail
         public AplosApiFundDetail Fund { get; set; }
         [JsonProperty("tags")]
         public List<AplosApiTagDetail> Tags { get; set; }
+        [JsonProperty("tax_tag")]
+        public AplosApiTagDetail TaxTag { get; set; }
     }
 }

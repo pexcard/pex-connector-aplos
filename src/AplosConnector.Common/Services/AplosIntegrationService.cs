@@ -328,6 +328,14 @@ namespace AplosConnector.Common.Services
                     }
                 }
 
+                if (!string.IsNullOrWhiteSpace(allocationDetail.pexTagValues.AplosTaxTagId))
+                {
+                    line2.TaxTag = new AplosApiTagDetail
+                    {
+                        Id = allocationDetail.pexTagValues.AplosTaxTagId,
+                    };
+                }
+
                 lines.Add(line2);
 
                 if (contact is null)
@@ -908,6 +916,9 @@ namespace AplosConnector.Common.Services
                                 }
                             }
                         }
+
+                        TagValueItem taxTag = allocation.GetTagValue(mapping.PexTaxTagId);
+                        pexTagValues.AplosTaxTagId = taxTag?.Value?.ToString();
                     }
                     else
                     {
@@ -1060,6 +1071,7 @@ namespace AplosConnector.Common.Services
                         AplosRegisterAccountNumber = model.AplosRegisterAccountNumber,
                         AplosContactId = model.TransfersAplosContactId,
                         AplosFundId = model.TransfersAplosFundId,
+                        AplosTaxTagId = model.TransfersAplosTaxTagId,
                         AplosTransactionAccountNumber = model.TransfersAplosTransactionAccountNumber
                     };
 
@@ -1152,6 +1164,7 @@ namespace AplosConnector.Common.Services
                         AplosRegisterAccountNumber = model.AplosRegisterAccountNumber,
                         AplosContactId = model.PexFeesAplosContactId,
                         AplosFundId = model.PexFeesAplosFundId,
+                        AplosTaxTagId = model.PexFeesAplosTaxTagId,
                         AplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber
                     };
 
