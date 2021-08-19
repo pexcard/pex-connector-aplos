@@ -521,17 +521,23 @@ namespace AplosConnector.Common.Services
                 IEnumerable<AplosApiTagDetail> flattenedAplosTags = GetFlattenedAplosTagValues(aplosTagCategory, cancellationToken);
                 IEnumerable<PexAplosApiObject> aplosTagsToSync = _aplosIntegrationMappingService.Map(flattenedAplosTags);
 
-                pexTag.UpsertTagOptions(aplosTagsToSync, out var syncCount);
 
                 SyncStatus syncStatus;
+                int syncCount = 0;
+                string syncNotes = null;
+
                 try
                 {
+                    pexTag.UpsertTagOptions(aplosTagsToSync, out syncCount);
+
                     await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTag.Id, pexTag, cancellationToken);
                     syncStatus = SyncStatus.Success;
                 }
                 catch (Exception ex)
                 {
                     syncStatus = SyncStatus.Failed;
+                    syncNotes = $"Error updating TagId {pexTag.Id}: {ex.Message}";
+
                     log.LogError(ex, $"Error updating TagId {pexTag.Id}");
                 }
 
@@ -540,7 +546,8 @@ namespace AplosConnector.Common.Services
                     PEXBusinessAcctId = mapping.PEXBusinessAcctId,
                     SyncType = $"Tag Values ({aplosTagCategory.Name})",
                     SyncStatus = syncStatus.ToString(),
-                    SyncedRecords = syncCount
+                    SyncedRecords = syncCount,
+                    SyncNotes = syncNotes
                 };
                 await _resultStorage.CreateAsync(result, cancellationToken);
             }
@@ -634,17 +641,23 @@ namespace AplosConnector.Common.Services
             }
 
             var aplosFunds = await GetAplosFunds(mapping, cancellationToken);
-            fundsTag.UpsertTagOptions(aplosFunds, out var syncCount);
 
             SyncStatus syncStatus;
+            int syncCount = 0;
+            string syncNotes = null;
+
             try
             {
+                fundsTag.UpsertTagOptions(aplosFunds, out syncCount);
+
                 await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, fundsTag.Id, fundsTag, cancellationToken);
                 syncStatus = SyncStatus.Success;
             }
             catch (Exception ex)
             {
                 syncStatus = SyncStatus.Failed;
+                syncNotes = $"Error updating TagId {fundsTag.Id}: {ex.Message}";
+
                 log.LogError(ex, $"Error updating TagId {fundsTag.Id}");
             }
 
@@ -653,7 +666,8 @@ namespace AplosConnector.Common.Services
                 PEXBusinessAcctId = mapping.PEXBusinessAcctId,
                 SyncType = "Tag Values (Funds)",
                 SyncStatus = syncStatus.ToString(),
-                SyncedRecords = syncCount
+                SyncedRecords = syncCount,
+                SyncNotes = syncNotes
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
         }
@@ -706,17 +720,23 @@ namespace AplosConnector.Common.Services
                 return;
             }
 
-            accountsTag.UpsertTagOptions(accounts, out var syncCount);
 
             SyncStatus syncStatus;
+            int syncCount = 0;
+            string syncNotes = null;
+
             try
             {
+                accountsTag.UpsertTagOptions(accounts, out syncCount);
+
                 await _pexApiClient.UpdateDropdownTag(model.PEXExternalAPIToken, accountsTag.Id, accountsTag);
                 syncStatus = SyncStatus.Success;
             }
             catch (Exception ex)
             {
                 syncStatus = SyncStatus.Failed;
+                syncNotes = $"Error updating TagId {accountsTag.Id}: {ex.Message}";
+
                 log.LogError(ex, $"Error updating TagId {accountsTag.Id}");
             }
 
@@ -725,7 +745,8 @@ namespace AplosConnector.Common.Services
                 PEXBusinessAcctId = model.PEXBusinessAcctId,
                 SyncType = "Tag Values (Accounts)",
                 SyncStatus = syncStatus.ToString(),
-                SyncedRecords = syncCount
+                SyncedRecords = syncCount,
+                SyncNotes = syncNotes
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
         }
