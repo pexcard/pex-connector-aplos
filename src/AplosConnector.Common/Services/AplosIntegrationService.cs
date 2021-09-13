@@ -782,9 +782,9 @@ namespace AplosConnector.Common.Services
             var aplosAccounts = (await GetAplosAccounts(mapping, cancellationToken: cancellationToken)).ToList();
             var aplosTags = (await GetFlattenedAplosTagValues(mapping, cancellationToken)).ToList();
 
-            log.LogDebug($"Retrieved ALL funds from Aplos: {JsonConvert.SerializeObject(aplosFunds, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
-            log.LogDebug($"Retrieved ALL accounts from Aplos: {JsonConvert.SerializeObject(aplosAccounts, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
-            log.LogDebug($"Retrieved ALL tags from Aplos: {JsonConvert.SerializeObject(aplosTags, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
+            log.LogInformation($"Retrieved ALL funds from Aplos: {JsonConvert.SerializeObject(aplosFunds, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
+            log.LogInformation($"Retrieved ALL accounts from Aplos: {JsonConvert.SerializeObject(aplosAccounts, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
+            log.LogInformation($"Retrieved ALL tags from Aplos: {JsonConvert.SerializeObject(aplosTags, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
 
             List<TagDropdownDetailsModel> dropdownTags = default;
             if (useTags)
