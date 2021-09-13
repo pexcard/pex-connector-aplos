@@ -14,6 +14,7 @@ using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Core.Storages;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Enums;
 using PexCard.Api.Client.Core.Extensions;
@@ -780,6 +781,10 @@ namespace AplosConnector.Common.Services
             var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
             var aplosAccounts = (await GetAplosAccounts(mapping, cancellationToken: cancellationToken)).ToList();
             var aplosTags = (await GetFlattenedAplosTagValues(mapping, cancellationToken)).ToList();
+
+            log.LogInformation($"Retrieved ALL funds from Aplos: {JsonConvert.SerializeObject(aplosFunds, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
+            log.LogInformation($"Retrieved ALL accounts from Aplos: {JsonConvert.SerializeObject(aplosAccounts, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
+            log.LogInformation($"Retrieved ALL tags from Aplos: {JsonConvert.SerializeObject(aplosTags, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
 
             List<TagDropdownDetailsModel> dropdownTags = default;
             if (useTags)
