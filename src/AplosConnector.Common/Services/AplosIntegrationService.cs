@@ -779,11 +779,11 @@ namespace AplosConnector.Common.Services
             var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown);
 
             var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
-            var aplosAccounts = (await GetAplosAccounts(mapping, cancellationToken: cancellationToken)).ToList();
+            var aplosExpenseAccounts = (await GetAplosAccounts(mapping, AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE, cancellationToken)).ToList();
             var aplosTags = (await GetFlattenedAplosTagValues(mapping, cancellationToken)).ToList();
 
             log.LogInformation($"Retrieved ALL funds from Aplos: {JsonConvert.SerializeObject(aplosFunds, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
-            log.LogInformation($"Retrieved ALL accounts from Aplos: {JsonConvert.SerializeObject(aplosAccounts, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
+            log.LogInformation($"Retrieved ALL expense accounts from Aplos: {JsonConvert.SerializeObject(aplosExpenseAccounts, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
             log.LogInformation($"Retrieved ALL tags from Aplos: {JsonConvert.SerializeObject(aplosTags, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
 
             List<TagDropdownDetailsModel> dropdownTags = default;
@@ -895,7 +895,7 @@ namespace AplosConnector.Common.Services
                                     StringComparison.InvariantCultureIgnoreCase))?.Options;
                             var expenseAccountName = expenseAccountTag.GetTagOptionName(expenseAccountOptions);
                             log.LogInformation($"Attempting to match expense account tag value {expenseAccountName} by name");
-                            expenseAccountNumberTagValue = aplosAccounts.MatchEntityByName(expenseAccountName, ':')?.Id;
+                            expenseAccountNumberTagValue = aplosExpenseAccounts.MatchEntityByName(expenseAccountName, ':')?.Id;
                         }
 
                         if (decimal.TryParse(expenseAccountNumberTagValue, out decimal transactionAccountNumber))
@@ -947,9 +947,9 @@ namespace AplosConnector.Common.Services
                         break;
                     }
 
-                    if (pexTagValues.AplosTransactionAccountNumber == default || aplosAccounts.All(ec => decimal.TryParse(ec.Id, out decimal accountNumber) && accountNumber != pexTagValues.AplosTransactionAccountNumber))
+                    if (pexTagValues.AplosTransactionAccountNumber == default || aplosExpenseAccounts.All(ec => decimal.TryParse(ec.Id, out decimal accountNumber) && accountNumber != pexTagValues.AplosTransactionAccountNumber))
                     {
-                        syncIneligibilityReason = $"Transaction {transaction.TransactionId}: {nameof(pexTagValues.AplosTransactionAccountNumber)} '{pexTagValues.AplosTransactionAccountNumber}' not valid for {aplosAccounts.Count} accounts found in Aplos";
+                        syncIneligibilityReason = $"Transaction {transaction.TransactionId}: {nameof(pexTagValues.AplosTransactionAccountNumber)} '{pexTagValues.AplosTransactionAccountNumber}' not valid for {aplosExpenseAccounts.Count} accounts found in Aplos";
                         break;
                     }
 
