@@ -7,6 +7,8 @@ using AplosConnector.Common.Models;
 using AplosConnector.Core.Storages;
 using PexCard.Api.Client.Core;
 using System.Threading;
+using PexCard.Api.Client.Core.Exceptions;
+using System.Net;
 
 namespace AplosConnector.SyncWorker
 {
@@ -50,16 +52,24 @@ namespace AplosConnector.SyncWorker
             var mappings = await _mappingStorage.GetAllMappings(cancellationToken);
             foreach (var mapping in mappings)
             {
-                var externalToken = await RenewExternalToken(mapping, cancellationToken);
-                if (!mapping.PEXExternalAPIToken.Equals(externalToken, StringComparison.InvariantCultureIgnoreCase))
+                try
                 {
-                    mapping.PEXExternalAPIToken = externalToken;
-                    mapping.LastRenewedUtc = DateTime.UtcNow;
-                    await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                    var externalToken = await RenewExternalToken(mapping, cancellationToken);
+                    if (!mapping.PEXExternalAPIToken.Equals(externalToken, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        mapping.PEXExternalAPIToken = externalToken;
+                        mapping.LastRenewedUtc = DateTime.UtcNow;
+                        await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                    }
+                    if (!_inUseExternalApiTokens.Contains(mapping.PEXExternalAPIToken))
+                    {
+                        _inUseExternalApiTokens.Add(mapping.PEXExternalAPIToken);
+                    }
                 }
-                if (!_inUseExternalApiTokens.Contains(mapping.PEXExternalAPIToken))
+                catch (Exception ex)
                 {
-                    _inUseExternalApiTokens.Add(mapping.PEXExternalAPIToken);
+                    _log.LogError(ex,
+                        $"Exception during renew external token for business {mapping.PEXBusinessAcctId}. {ex}");
                 }
             }
         }
@@ -70,10 +80,28 @@ namespace AplosConnector.SyncWorker
             var sessions = await _sessionStorage.GetAllSessions(cancellationToken);
             foreach (var session in sessions)
             {
-                if (session.CreatedUtc < DateTime.UtcNow.AddDays(-10) && !_inUseExternalApiTokens.Contains(session.ExternalToken))
+                try
                 {
-                    await _pexApiClient.DeleteExternalToken(session.ExternalToken, cancellationToken);
-                    await _sessionStorage.DeleteBySessionGuidAsync(session.SessionGuid, cancellationToken);
+                    if (session.CreatedUtc < DateTime.UtcNow.AddDays(-10) && !_inUseExternalApiTokens.Contains(session.ExternalToken))
+                    {
+                        try
+                        {
+                            await _pexApiClient.DeleteExternalToken(session.ExternalToken, cancellationToken);
+                        }
+                        catch (PexApiClientException ex) when (ex.Code == HttpStatusCode.Unauthorized)
+                        {
+                            //Proceed - Token expired or does not exist
+                        }
+                        catch (PexApiClientException ex) when (ex.Code == HttpStatusCode.Forbidden)
+                        {
+                            //Proceed - Inactive user / business closed
+                        }
+                        await _sessionStorage.DeleteBySessionGuidAsync(session.SessionGuid, cancellationToken);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _log.LogError(e, $"Exception during clean-up of session '{session.SessionGuid}'. {e}");
                 }
             }
         }
@@ -92,11 +120,11 @@ namespace AplosConnector.SyncWorker
         {
             if (mapping.GetLastRenewedDateUtc() < DateTime.UtcNow.AddMonths(-6))
             {
-                _log.LogWarning("External API token is older than 6 months and could not be renewed");
+                _log.LogWarning($"External API token is older than 6 months and could not be renewed for business: {mapping.PEXBusinessAcctId}");
                 return mapping.PEXExternalAPIToken;
             }
 
-            if (mapping.GetLastRenewedDateUtc() < DateTime.UtcNow.AddMonths(-5))
+            if (mapping.GetLastRenewedDateUtc() < DateTime.UtcNow.AddMonths(-5).AddDays(-1)) //Wait an extra day in case of timing issues (server time differences, DST complications, etc.)
             {
                 _log.LogInformation($"Renewing external API token for business: {mapping.PEXBusinessAcctId}");
                 var response = await _pexApiClient.RenewExternalToken(mapping.PEXExternalAPIToken, cancellationToken);
