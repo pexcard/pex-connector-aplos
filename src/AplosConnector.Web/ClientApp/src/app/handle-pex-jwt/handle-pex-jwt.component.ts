@@ -12,6 +12,8 @@ export class HandlePexJwtComponent implements OnInit {
   constructor(private activatedRoute: ActivatedRoute, private router: Router, private auth: AuthService) { }
 
   ngOnInit() {
+    this.auth.logout();
+
     let jwt: string;
 
     this.activatedRoute.queryParamMap.subscribe(params => {
@@ -23,8 +25,8 @@ export class HandlePexJwtComponent implements OnInit {
           this.auth.login(session);
 
           console.log('navigating away');
-          this.router.navigate(['headless', 'connect']);          
-        }    
+          this.router.navigate(['headless', 'connect']);
+        }
       );
     });
 

@@ -13,6 +13,8 @@ export class FinishPexLoginComponent implements OnInit {
   constructor(private activatedRoute: ActivatedRoute, private router: Router, private auth: AuthService) { }
 
   ngOnInit() {
+    this.auth.logout();
+
     let sessionId: string;
     this.activatedRoute.params.subscribe(params => {
       sessionId = params.sessionId;

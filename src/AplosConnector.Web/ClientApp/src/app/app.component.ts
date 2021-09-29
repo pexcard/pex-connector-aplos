@@ -14,9 +14,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   headlessMode: boolean;
 
-  constructor(private auth: AuthService){ 
+  constructor(private auth: AuthService) {
   }
-  
+
   loginSubscription$: Subscription;
   headlessSubject$: BehaviorSubject<boolean>;
 
@@ -24,10 +24,12 @@ export class AppComponent implements OnInit, OnDestroy {
     this.headlessSubject$ = this.auth.headlessMode;
 
     this.loginSubscription$ = this.auth.sessionId.subscribe(
-      token=>{
+      token => {
         console.log('login state changed', token);
-        if(token){
+        if (token) {
           this.isLoggedIn = true;
+        } else {
+          this.isLoggedIn = false;
         }
       }
     );
@@ -41,7 +43,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.auth.autoLogIn();
   }
 
-  onLogout(){
+  onLogout() {
     this.auth.logout();
   }
 
