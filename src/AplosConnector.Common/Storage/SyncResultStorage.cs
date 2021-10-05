@@ -17,7 +17,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task CreateAsync(SyncResultModel model, CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
             var entity = new SyncResultEntity(model)
             {
                 PartitionKey = PartitionKey, //<----- We should probably use Business Id here....
@@ -29,7 +28,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task<List<SyncResultModel>> GetByBusiness(int businessAcctId, CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
             var query = new TableQuery<SyncResultEntity>() {
                 FilterString = $"PEXBusinessAcctId eq {businessAcctId}"
             };
@@ -50,7 +48,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task<List<SyncResultModel>> GetOldResults(DateTime cutoffDate, CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
             var query = new TableQuery<SyncResultEntity>()
             {
                 FilterString = $"CreatedUtc lt datetime'{cutoffDate:yyyy-MM-dd}'"
@@ -71,11 +68,7 @@ namespace AplosConnector.Core.Storages
 
         public async Task DeleteSyncResult(SyncResultModel model, CancellationToken cancellationToken)
         {
-            var rowKey = $"{model.PEXBusinessAcctId}-{model.SyncType}-{model.CreatedUtc.ToEst().Ticks}";
-
-            await InitTableAsync(cancellationToken);
-
-            var operation = TableOperation.Retrieve<SyncResultEntity>(PartitionKey, rowKey);
+            var operation = TableOperation.Retrieve<SyncResultEntity>(PartitionKey, model.Id);
             var result = await Table.ExecuteAsync(operation, cancellationToken);
             var entity = (SyncResultEntity) result?.Result;
             if (entity != null)
