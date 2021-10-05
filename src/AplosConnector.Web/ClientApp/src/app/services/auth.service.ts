@@ -1,9 +1,10 @@
 import { Injectable, Inject } from "@angular/core";
-import { BehaviorSubject, Observable } from "rxjs";
+import { BehaviorSubject, Observable, of } from "rxjs";
 import { HttpClient } from "@angular/common/http";
 import { retryWithBackoff } from '../operators/retryWithBackoff.operator';
 import { CacheRepositoryService } from './cache-repository.service';
 import { Router } from '@angular/router';
+import { catchError, concatMap } from "rxjs/operators";
 
 @Injectable({
   providedIn: "root"
@@ -41,9 +42,15 @@ export class AuthService {
       });
   }
 
-  login(sessionId: string) {
-    localStorage.setItem(this.SESSION_ID_KEY, sessionId);
-    this.sessionId.next(sessionId);
+  login(sessionId: string): Observable<void> {
+    return this.logout()
+      .pipe(
+        concatMap(() => {
+          localStorage.setItem(this.SESSION_ID_KEY, sessionId);
+          this.sessionId.next(sessionId);
+          return of(void 0);
+        })
+      );
   }
 
   exchangeJWTForSession(jwt: string): Observable<TokenModel>{
@@ -75,18 +82,23 @@ export class AuthService {
     }
   }
 
-  logout() {
+  logout(): Observable<void> {
     let sessionId = localStorage.getItem(this.SESSION_ID_KEY);
     if (sessionId) {
-      this.httpClient
+      return this.httpClient
         .delete(this.baseUrl + `api/Session/?sessionId=${sessionId}`)
-        .pipe( retryWithBackoff() )
-        .subscribe();
-      localStorage.removeItem(this.SESSION_ID_KEY);
-      this.sessionId.next(null);
+        .pipe(
+          catchError(() => of(void 0)),
+          concatMap(() => {
+            localStorage.removeItem(this.SESSION_ID_KEY);
+            this.cache.clearAllAppCache();
+            this.sessionId.next(null);
+            return of(void 0);
+          })
+        );
+    } else {
+      return of(void 0);
     }
-    this.cache.clearAllAppCache();
-    this.router.navigate(['/', 'connect']);
   }
 
   headlessMode = new BehaviorSubject<boolean>(null);
