@@ -13,7 +13,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task EnqueueMapping(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
-            await InitQueueAsync();
             var message = new CloudQueueMessage(JsonConvert.SerializeObject(mapping));
             await Queue.AddMessageAsync(message, cancellationToken);
         }

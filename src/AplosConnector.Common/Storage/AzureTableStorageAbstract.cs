@@ -19,7 +19,7 @@ namespace AplosConnector.Core.Storages
             PartitionKey = partitionKey;
         }
 
-        protected async Task InitTableAsync(CancellationToken cancellationToken)
+        public async Task<AzureTableStorageAbstract> InitTableAsync(CancellationToken cancellationToken)
         {
             var storageAccount = CloudStorageAccount.Parse(ConnectionString);
             var tableClient = storageAccount.CreateCloudTableClient();
@@ -29,6 +29,17 @@ namespace AplosConnector.Core.Storages
             };
             Table = tableClient.GetTableReference(StorageTableName);
             await Table.CreateIfNotExistsAsync(cancellationToken);
+            return this;
+        }
+    }
+
+    public static class AzureTableStorageExtensions
+    {
+        public static TProvider InitTable<TProvider>(
+            this TProvider provider,
+            CancellationToken token = default) where TProvider : AzureTableStorageAbstract
+        {
+            return (TProvider)provider.InitTableAsync(token).GetAwaiter().GetResult();
         }
     }
 }

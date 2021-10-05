@@ -15,7 +15,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task CreateAsync(PexOAuthSessionModel model, CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
             var entity = new PexOAuthSessionEntity(model, PartitionKey);
             var operation = TableOperation.Insert(entity);
             await Table.ExecuteAsync(operation);
@@ -27,7 +26,6 @@ namespace AplosConnector.Core.Storages
             {
                 throw new ArgumentException("session.SessionGuid is not specified");
             }
-            await InitTableAsync(cancellationToken);
             var entity = await GetEntityBySessionGuidAsync(model.SessionGuid, cancellationToken);
             entity.ExternalToken = model.ExternalToken;
             entity.RevokedUtc = model.RevokedUtc;
@@ -38,7 +36,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task DeleteBySessionGuidAsync(Guid sessionGuid, CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
             var entity = await GetEntityBySessionGuidAsync(sessionGuid, cancellationToken);
             if (entity != null)
             {
@@ -49,7 +46,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task<PexOAuthSessionModel> GetBySessionGuidAsync(Guid sessionGuid, CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
             var entity = await GetEntityBySessionGuidAsync(sessionGuid, cancellationToken);
 
             return entity?.ToModel();
@@ -64,8 +60,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task<List<PexOAuthSessionModel>> GetAllSessions(CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
-
             TableContinuationToken token = null;
             var entities = new List<PexOAuthSessionEntity>();
             do

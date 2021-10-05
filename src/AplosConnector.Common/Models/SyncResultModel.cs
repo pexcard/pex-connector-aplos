@@ -9,6 +9,7 @@ namespace AplosConnector.Common.Models
             CreatedUtc = DateTime.UtcNow;
         }
 
+        public string Id { get; set; }
         public DateTime CreatedUtc { get; set; }
         public string SyncType { get; set; }
         public string SyncStatus { get; set; }
