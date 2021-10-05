@@ -20,7 +20,6 @@ using Aplos.Api.Client.Abstractions;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.Services.AppAuthentication;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 
@@ -65,15 +64,15 @@ namespace AplosConnector.Web
 
             string storageConnectionString = _configuration.GetConnectionString("StorageConnectionString");
 
-            services.AddScoped(provider => new PexOAuthSessionStorage(storageConnectionString));
-            services.AddScoped(provider =>
+            services.AddSingleton(provider => new PexOAuthSessionStorage(storageConnectionString).InitTable());
+            services.AddSingleton(provider =>
                 new Pex2AplosMappingStorage(
                     storageConnectionString,
                     provider.GetService<IStorageMappingService>(),
-                    provider.GetService<ILogger<Pex2AplosMappingStorage>>()
-                ));
-            services.AddScoped(provider => new SyncResultStorage(storageConnectionString));
-            services.AddScoped(provider => new Pex2AplosMappingQueue(storageConnectionString));
+                    provider.GetService<ILogger<Pex2AplosMappingStorage>>())
+                .InitTable());
+            services.AddSingleton(provider => new SyncResultStorage(storageConnectionString).InitTable());
+            services.AddSingleton(provider => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
 
             services.AddScoped<IAccessTokenDecryptor>(provider => new AplosAccessTokenDecryptor());
 
@@ -90,9 +89,6 @@ namespace AplosConnector.Web
                 provider.GetService<IPexApiClient>(),
                 provider.GetService<SyncResultStorage>(),
                 provider.GetService<Pex2AplosMappingStorage>()));
-
-            //var appSettings = services.BuildServiceProvider().GetService<IOptions<AppSettingsModel>>().Value;
-            
 
             services.AddCors(options =>
             {

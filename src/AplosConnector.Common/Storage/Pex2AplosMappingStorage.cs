@@ -27,7 +27,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task CreateAsync(Pex2AplosMappingModel model, CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
             var entity = _storageMappingService.Map(model);
             entity.PartitionKey = PartitionKey;
             entity.RowKey = model.PEXBusinessAcctId.ToString();
@@ -46,7 +45,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task DeleteAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
             var entity = await GetEntityByBusinessAcctId(pexBusinessAcctId, cancellationToken);
             var operation = TableOperation.Delete(entity);
             await Table.ExecuteAsync(operation, cancellationToken);
@@ -54,7 +52,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task UpdateAsync(Pex2AplosMappingModel model, CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
             var entity = _storageMappingService.Map(model);
             entity.PartitionKey = PartitionKey;
             entity.RowKey = model.PEXBusinessAcctId.ToString();
@@ -66,7 +63,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task<Pex2AplosMappingModel> GetByBusinessAcctIdAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
             var entity = await GetEntityByBusinessAcctId(pexBusinessAcctId, cancellationToken);
             return _storageMappingService.Map(entity);
         }
@@ -80,8 +76,6 @@ namespace AplosConnector.Core.Storages
 
         public async Task<IEnumerable<Pex2AplosMappingModel>> GetAllMappings(CancellationToken cancellationToken)
         {
-            await InitTableAsync(cancellationToken);
-
             TableContinuationToken token = null;
             var entities = new List<Pex2AplosMappingEntity>();
             do
