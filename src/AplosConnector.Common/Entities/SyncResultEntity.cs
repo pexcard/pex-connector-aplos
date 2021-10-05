@@ -13,6 +13,7 @@ namespace AplosConnector.Common.Entities
 
         public SyncResultEntity(SyncResultModel model)
         {
+            RowKey = model.Id;
             CreatedUtc = model.CreatedUtc;
             SyncType = model.SyncType;
             SyncStatus = model.SyncStatus;
@@ -32,6 +33,7 @@ namespace AplosConnector.Common.Entities
         {
             return new SyncResultModel
             {
+                Id = RowKey,
                 CreatedUtc = CreatedUtc,
                 SyncedRecords = SyncedRecords,
                 SyncNotes = SyncNotes,
