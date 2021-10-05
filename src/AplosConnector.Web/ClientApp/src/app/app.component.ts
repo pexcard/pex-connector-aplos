@@ -44,7 +44,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   onLogout() {
-    this.auth.logout();
+    this.auth.logout().subscribe();
   }
 
   ngOnDestroy(): void {
