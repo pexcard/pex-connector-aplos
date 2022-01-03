@@ -760,7 +760,10 @@ namespace AplosConnector.Common.Services
         {
             if (!mapping.SyncTransactions) return;
 
+            var oneYearAgo = DateTime.Today.Date.AddYears(-1).ToEst();
             var startDate = mapping.EarliestTransactionDateToSync.ToEst();
+
+            startDate = startDate > oneYearAgo ? startDate : oneYearAgo;
 
             var endDate = utcNow.AddDays(1).ToEst();
             log.LogInformation($"Getting transactions from {startDate} to {endDate}");
