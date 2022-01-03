@@ -52,14 +52,15 @@ namespace AplosConnector.SyncWorker
 
             string storageConnectionString = Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process);
 
-            builder.Services.AddScoped(provider => new Pex2AplosMappingStorage(
-                Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process),
-                provider.GetService<IStorageMappingService>(),
-                provider.GetService<ILogger<Pex2AplosMappingStorage>>()
-            ));
-            builder.Services.AddScoped(provider => new PexOAuthSessionStorage(Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process)));
-            builder.Services.AddScoped(provider => new Pex2AplosMappingQueue(Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process)));
-            builder.Services.AddScoped(provider => new SyncResultStorage(Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process)));
+            builder.Services.AddSingleton(provider => 
+                new Pex2AplosMappingStorage(
+                    Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process),
+                    provider.GetService<IStorageMappingService>(),
+                    provider.GetService<ILogger<Pex2AplosMappingStorage>>())
+                .InitTable());
+            builder.Services.AddSingleton(provider => new PexOAuthSessionStorage(Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process)).InitTable());
+            builder.Services.AddSingleton(provider => new Pex2AplosMappingQueue(Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process)).InitQueue());
+            builder.Services.AddSingleton(provider => new SyncResultStorage(Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process)).InitTable());
 
             builder.Services.AddScoped<IAccessTokenDecryptor>(provider => new AplosAccessTokenDecryptor());
 

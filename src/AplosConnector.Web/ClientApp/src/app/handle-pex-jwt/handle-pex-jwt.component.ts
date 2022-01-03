@@ -12,22 +12,19 @@ export class HandlePexJwtComponent implements OnInit {
   constructor(private activatedRoute: ActivatedRoute, private router: Router, private auth: AuthService) { }
 
   ngOnInit() {
-    let jwt: string;
-
     this.activatedRoute.queryParamMap.subscribe(params => {
-      jwt = params.get('jwt');
+      const jwt = params.get('jwt');
       this.auth.exchangeJWTForSession(jwt).subscribe(
         tokenModel =>{
           console.log('got session', tokenModel);
-          let session = tokenModel.token;
-          this.auth.login(session);
-
-          console.log('navigating away');
-          this.router.navigate(['headless', 'connect']);          
-        }    
+          const session = tokenModel.token;
+          this.auth.login(session).subscribe(() => {
+            console.log('navigating away');
+            this.router.navigate(['headless', 'connect']);
+          });
+        }
       );
     });
-
   }
 
 }

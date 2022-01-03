@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { AuthService } from './services/auth.service';
 import { Subscription, BehaviorSubject } from 'rxjs';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-root',
@@ -14,9 +15,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   headlessMode: boolean;
 
-  constructor(private auth: AuthService){ 
+  constructor(private auth: AuthService, private router: Router) {
   }
-  
+
   loginSubscription$: Subscription;
   headlessSubject$: BehaviorSubject<boolean>;
 
@@ -24,10 +25,12 @@ export class AppComponent implements OnInit, OnDestroy {
     this.headlessSubject$ = this.auth.headlessMode;
 
     this.loginSubscription$ = this.auth.sessionId.subscribe(
-      token=>{
+      token => {
         console.log('login state changed', token);
-        if(token){
+        if (token) {
           this.isLoggedIn = true;
+        } else {
+          this.isLoggedIn = false;
         }
       }
     );
@@ -41,8 +44,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.auth.autoLogIn();
   }
 
-  onLogout(){
-    this.auth.logout();
+  onLogout() {
+    this.auth.logout().subscribe(() => {
+      this.router.navigate(['/', 'connect']);
+    });
   }
 
   ngOnDestroy(): void {
