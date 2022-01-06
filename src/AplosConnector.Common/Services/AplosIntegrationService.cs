@@ -760,13 +760,13 @@ namespace AplosConnector.Common.Services
         {
             if (!mapping.SyncTransactions) return;
 
-            var oneYearAgo = DateTime.Today.Date.AddYears(-1).ToEst();
+            var oneYearAgo = DateTime.Today.AddYears(-1).ToEst();
             var startDate = mapping.EarliestTransactionDateToSync.ToEst();
 
             startDate = startDate > oneYearAgo ? startDate : oneYearAgo;
 
             var endDate = utcNow.AddDays(1).ToEst();
-            log.LogInformation($"Getting transactions from {startDate} to {endDate}");
+            log.LogInformation($"Getting cardholder transactions from {startDate} to {endDate} for business: {mapping.PEXBusinessAcctId}");
 
             var allCardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(
                 mapping.PEXExternalAPIToken,
@@ -1034,10 +1034,12 @@ namespace AplosConnector.Common.Services
 
             var endDate = utcNow.AddDays(1).ToEst();
 
+            var oneYearAgo = DateTime.Today.AddYears(-1).ToEst();
             var startDate = mapping.EarliestTransactionDateToSync.ToEst();
 
-            log.LogInformation(
-                $"Getting business transactions for business {mapping.PEXBusinessAcctId} from {startDate} to {endDate}");
+            startDate = startDate > oneYearAgo ? startDate : oneYearAgo;
+
+            log.LogInformation($"Getting business transactions for business {mapping.PEXBusinessAcctId} from {startDate} to {endDate}");
 
             var businessAccountTransactions =
                 await _pexApiClient.GetBusinessAccountTransactions(mapping.PEXExternalAPIToken, startDate, endDate);
