@@ -105,6 +105,10 @@ namespace AplosConnector.Common.Services
                     mapping.AplosPartnerVerified = aplosResponse.Data.PartnerVerification.Authorized;
                     isChanged |= mapping.AplosPartnerVerified;
                 }
+                catch (AplosApiException ex) when (ex.AplosApiError.Status == 401)
+                {
+                    //Expected if PEX is not authorized to access their Aplos account yet
+                }
                 catch (AplosApiException ex) when (ex.AplosApiError.Status == 422)
                 {
                     //Expected if they aren't verified yet
