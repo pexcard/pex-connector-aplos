@@ -432,10 +432,10 @@ namespace AplosConnector.Common.Services
             await EnsurePartnerInfoPopulated(mapping, cancellationToken);
 
             var utcNow = DateTime.UtcNow;
-            List<TransactionModel> additionalFees = default;
+
             try
             {
-                additionalFees = await SyncTransactions(log, mapping, utcNow, cancellationToken);
+                await SyncTransactions(log, mapping, utcNow, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -444,7 +444,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                await SyncBusinessAccountTransactions(log, mapping, utcNow, additionalFees, cancellationToken);
+                await SyncBusinessAccountTransactions(log, mapping, utcNow, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -756,13 +756,13 @@ namespace AplosConnector.Common.Services
             await _resultStorage.CreateAsync(result, cancellationToken);
         }
 
-        private async Task<List<TransactionModel>> SyncTransactions(
+        private async Task SyncTransactions(
             ILogger log,
             Pex2AplosMappingModel mapping,
             DateTime utcNow,
             CancellationToken cancellationToken)
         {
-            if (!mapping.SyncTransactions) return default;
+            if (!mapping.SyncTransactions) return;
 
             var oneYearAgo = DateTime.Today.AddYears(-1).ToEst();
             var startDate = mapping.EarliestTransactionDateToSync.ToEst();
@@ -780,8 +780,6 @@ namespace AplosConnector.Common.Services
             var transactions =
                 allCardholderTransactions.SelectTransactionsToSync(mapping.SyncApprovedOnly,
                 PexCardConst.SyncedWithAplosNote);
-
-            var fees = allCardholderTransactions.SelectCardAccountFees();
 
             log.LogInformation($"Syncing {transactions.Count} transactions for business: {mapping.PEXBusinessAcctId}");
 
@@ -1028,15 +1026,12 @@ namespace AplosConnector.Common.Services
                 SyncNotes = syncNote
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
-
-            return fees;
         }
 
         private async Task SyncBusinessAccountTransactions(
             ILogger log,
             Pex2AplosMappingModel mapping,
             DateTime utcNow,
-            List<TransactionModel> additionalFeeTransactions,
             CancellationToken cancellationToken)
         {
             if (!mapping.SyncTransfers && !mapping.SyncPexFees) return;
@@ -1059,7 +1054,7 @@ namespace AplosConnector.Common.Services
                 cancellationToken);
 
             await SyncTransfers(log, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
-            await SyncPexFees(log, mapping, businessAccountTransactions, aplosTransactions, additionalFeeTransactions, cancellationToken);
+            await SyncPexFees(log, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
         }
 
         private async Task SyncTransfers(
@@ -1159,16 +1154,11 @@ namespace AplosConnector.Common.Services
             Pex2AplosMappingModel model,
             BusinessAccountTransactions businessAccountTransactions,
             List<AplosApiTransactionDetail> aplosTransactions,
-            List<TransactionModel> additionalFeeTransactions,
             CancellationToken cancellationToken)
         {
             if (!model.SyncPexFees) return;
 
             var transactions = businessAccountTransactions.SelectBusinessAccountFees();
-            if (additionalFeeTransactions != null)
-            {
-                transactions.AddRange(additionalFeeTransactions);
-            }
             log.LogInformation($"Syncing {transactions.Count} PEX account fees for business: {model.PEXBusinessAcctId}");
 
             var transactionsToSync = transactions
