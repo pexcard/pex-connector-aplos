@@ -2,7 +2,7 @@
   #wizard
   [clrWizardOpen]="true"
   [(clrWizardOpen)]="open"
-  [clrWizardClosable]="isAuthenticated"
+  [clrWizardClosable]="isAuthenticated && isAplosLinked"
 >
   <clr-wizard-title>PEX Connector for Aplos</clr-wizard-title>
 
@@ -32,6 +32,19 @@
     <button class="btn btn-success" (click)="onApply()">
       APPLY FOR A PEX ACCOUNT
     </button>
+  </clr-wizard-page>
+
+  <clr-wizard-page *ngIf="isAuthenticated && !isPexAccountLinked && !isFirstInstalation"
+    clrWizardPagePreventDefault="true"
+    [clrWizardPagePreventDefault]="true"
+    [clrWizardPageNextDisabled]="true"
+    (clrWizardPageOnCancel)="preventCancel()">
+
+    <ng-template clrPageTitle>Connect to PEX</ng-template>
+    <p>{{businessName}} is currently logged in as {{pexAdminEmailAccount}}. Click the button below to switch to your PEX credentials.</p>
+    <p></p>
+    <app-loading-placeholder [loadingState]="verifyingPexAuthentication" [errorState]="false"></app-loading-placeholder>
+    <button class="btn btn-primary" (click)="onUseCurrentPexAccount()" *ngIf="!verifyingPexAuthentication">USE MY PEX CREDENTIALS</button>
   </clr-wizard-page>
 
   <clr-wizard-page

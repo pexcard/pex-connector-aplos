@@ -15,6 +15,8 @@ import {
 } from "../services/mapping.service";
 import { AplosService, AplosPreferences, AplosAccount, AplosObject } from "../services/aplos.service";
 import { PexService, PexTagInfoModel, CustomFieldType } from '../services/pex.service';
+import { catchError, switchMap, tap } from "rxjs/operators";
+import { of, throwError } from "rxjs";
 
 @Component({
   selector: "app-connect",
@@ -54,6 +56,10 @@ export class ConnectComponent implements OnInit {
 
   isAuthenticated = false;
   sessionId: string;
+  isAplosLinked = false;
+  isPexAccountLinked = false;
+  isFirstInstalation = false;
+  pexAdminEmailAccount: string = 'unknown';
   savingSettings = false;
   projectForm: FormGroup;
   savingProjects = false;
@@ -162,16 +168,42 @@ export class ConnectComponent implements OnInit {
   }
 
   verifyingAplosAuthentication = false;
+  verifyingPexAuthentication = false; 
+  
   aplosAuthenticationStatus: AplosAuthenticationStatusModel;
   ngOnInit() {
+    this.validateConnections();
+  }
+
+  validateConnections() {
     this.auth.sessionId.subscribe(token => {
       if (token) {
         this.isAuthenticated = true;
         this.sessionId = token;
         this.verifyingAplosAuthentication = true;
-        this.mapping.getAplosAuthenticationStatus(this.sessionId)
+        this.verifyingPexAuthentication = true;
+        
+        this.pex.getAuthenticationStatus(this.sessionId)
+          .pipe(
+            tap(() => {
+              this.isPexAccountLinked = true;
+              this.verifyingPexAuthentication = false;
+            }),
+            catchError(err => {
+              this.isPexAccountLinked = false;
+              this.verifyingPexAuthentication = false;
+              if(err.status === 404){
+                this.isFirstInstalation = true;
+                console.log(err)                               
+                return of(err); 
+              }
+              
+              this.isPexAccountLinked = false;                
+              return throwError(err);  
+            }),
+            switchMap(() => this.mapping.getAplosAuthenticationStatus(this.sessionId)))
           .subscribe(
-            (result) => {
+            (result: AplosAuthenticationStatusModel) => {
               console.log('aplosAuthenticationStatus', result);
               this.aplosAuthenticationStatus = { ...result };
 
@@ -181,12 +213,15 @@ export class ConnectComponent implements OnInit {
                 this.getSettings();
                 this.validatePexSetup();
               }
-            }
+            },
+            () => {
+              this.isAplosLinked = false;
+              this.verifyingAplosAuthentication = false;
+            }            
           );
       }
     });
   }
-
 
   loadingAplosAccounts = false;
   errorLoadingAplosAccounts = false;
@@ -290,6 +325,14 @@ export class ConnectComponent implements OnInit {
 
   onAuthenticateWithPex() {
     this.auth.getOauthURL();
+  }
+
+  onUseCurrentPexAccount() {
+    this.pex.updatePexAccountLinked(this.sessionId)
+      .subscribe(
+        () => {
+          this.validateConnections();
+        });
   }
 
   onApply() {
