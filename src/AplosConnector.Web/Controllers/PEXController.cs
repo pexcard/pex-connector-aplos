@@ -9,6 +9,7 @@ using AplosConnector.Core.Storages;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Models;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -18,14 +19,17 @@ namespace AplosConnector.Web.Controllers
         private readonly IPexApiClient _pexApiClient;
         private readonly PexOAuthSessionStorage _pexOAuthSessionStorage;
         private readonly Pex2AplosMappingStorage _pex2AplosMappingStorage;
+        private readonly ILogger<PexController> _logger;
 
         public PexController(
             IPexApiClient pexApiClient,
             PexOAuthSessionStorage pexOAuthSessionStorage,
-            Pex2AplosMappingStorage pex2AplosMappingStorage)
+            Pex2AplosMappingStorage pex2AplosMappingStorage,
+            ILogger<PexController> logger)
         {
             _pexApiClient = pexApiClient;
             _pex2AplosMappingStorage = pex2AplosMappingStorage;
+            _logger = logger;
             _pexOAuthSessionStorage = pexOAuthSessionStorage;
         }
 
@@ -77,6 +81,62 @@ namespace AplosConnector.Web.Controllers
             var result = tags.OrderBy(t => t.Order).ToList();
 
             return result;
+        }
+
+        [HttpGet, Route("AuthenticationStatus")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetAuthenticationStatus(string sessionId, CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
+
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
+            if (session == null) return Unauthorized();
+
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
+            if (mapping == null) return NotFound();
+
+            try
+            {
+                await _pexApiClient.GetToken(mapping.PEXExternalAPIToken, cancellationToken);
+            }
+            catch (Exception e)
+            {
+                var token = mapping.PEXExternalAPIToken?[..4];
+                _logger.LogWarning(e, $"Invalid token {token} for BusinessAccountId: {session.PEXBusinessAcctId}.");
+                return Forbid();
+            }
+
+            return Ok();
+        }
+
+        [HttpPost, Route("UpdatePexAccountLinked")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdatePexAccountLinked(string sessionId, CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
+
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
+            if (session == null) return Unauthorized();
+
+            try
+            {
+                var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
+
+                mapping.PEXExternalAPIToken = session.ExternalToken;
+
+                await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, $"Unable to update PEX Account for BusinessAccountId: {session.PEXBusinessAcctId}");
+                return Forbid();
+            }
+
+            return Ok();
         }
     }
 }

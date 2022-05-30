@@ -39,6 +39,17 @@ export class PexService {
         .pipe(retryWithBackoff())
       , 60);
   }
+
+  getAuthenticationStatus(sessionId: string) {    
+    return this.cache.runAndCacheOrGetFromCache("Pex.AuthenticationStatus", this.httpClient
+      .get(this.buildUrl(sessionId, 'AuthenticationStatus'))
+      .pipe(retryWithBackoff(50, 1, 500)), 5);
+  }
+
+  updatePexAccountLinked(sessionId: string) {
+    return this.httpClient.post(this.buildUrl(sessionId, "UpdatePexAccountLinked"), null)
+      .pipe(retryWithBackoff(50, 1, 500));
+  }
 }
 
 export interface PexValidityModel{
@@ -54,6 +65,13 @@ export interface PexTagInfoModel {
   description: string,
   order: number,
   isRequired: boolean
+}
+
+export interface PexConnectionDetailModel {
+  name: string,
+  email: string,
+  active: boolean,
+  lastSync: string
 }
 
 export enum CustomFieldType
