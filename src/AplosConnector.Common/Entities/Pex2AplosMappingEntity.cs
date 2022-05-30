@@ -52,5 +52,8 @@ namespace AplosConnector.Common.Entities
 
         public string ExpenseAccountMappings { get; set; }
         public string TagMappings { get; set; }
+        
+        public string PEXEmailAccount { get; set; }
+        public string PEXNameAccount { get; set; }
     }
 }

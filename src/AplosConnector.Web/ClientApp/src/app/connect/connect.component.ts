@@ -199,6 +199,7 @@ export class ConnectComponent implements OnInit {
               }
               
               this.isPexAccountLinked = false;                
+              this.getConnectionDetail();
               return throwError(err);  
             }),
             switchMap(() => this.mapping.getAplosAuthenticationStatus(this.sessionId)))
@@ -220,6 +221,14 @@ export class ConnectComponent implements OnInit {
             }            
           );
       }
+    });
+  }
+
+  getConnectionDetail(){
+    this.pex.getConnectionAccountDetail(this.sessionId)
+    .subscribe(result => {
+       this.pexAdminEmailAccount = 
+                    result.email === '' || result.email === undefined || result.email === null ? 'unknown' : result.email; 
     });
   }
 

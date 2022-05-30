@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { ExpenseAccountMappingModel, MappingService, SettingsModel, TagMappingModel } from '../services/mapping.service';
 import { AuthService } from '../services/auth.service';
 import { AplosService, AplosPreferences, AplosAccount, AplosObject } from '../services/aplos.service';
-import { PexService } from '../services/pex.service';
+import { PexConnectionDetailModel, PexService } from '../services/pex.service';
 
 @Component({
   selector: 'app-manage-connections',
@@ -19,6 +19,8 @@ export class ManageConnectionsComponent implements OnInit {
   sessionId = '';
   settings: SettingsModel;
   vendorName: string;
+  pexConnectionDetail: PexConnectionDetailModel | {} = {};
+  refreshingPexAccount = false;
   paymentMethod: string;
   paymentAccount: string;
   bankAccount: string;
@@ -47,6 +49,7 @@ export class ManageConnectionsComponent implements OnInit {
       this.sessionId = sessionId;
       if (sessionId) {
         this.getSettings();
+        this.getPexConnectionDetail();
       }
     });
   }
@@ -78,6 +81,25 @@ export class ManageConnectionsComponent implements OnInit {
       }
     }
     );
+  }
+
+  private getPexConnectionDetail(){
+    this.pex.getConnectionAccountDetail(this.sessionId)
+    .subscribe(result => {
+      this.pexConnectionDetail = result;
+    });
+  }
+
+  refreshPexAccount(){
+    this.refreshingPexAccount = true;
+    this.pex.updatePexAccountLinked(this.sessionId)
+    .subscribe(() => {
+      this.getPexConnectionDetail();
+      this.refreshingPexAccount = false;
+    },
+    () => {
+      this.refreshingPexAccount = false;
+    });
   }
 
   getTagNames() {
