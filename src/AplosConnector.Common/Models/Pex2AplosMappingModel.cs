@@ -137,6 +137,9 @@ namespace AplosConnector.Common.Models
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
 
+        public string PEXEmailAccount { get; set; }
+        public string PEXNameAccount { get; set; }
+
         public DateTime GetLastRenewedDateUtc()
         {
             return LastRenewedUtc ?? CreatedUtc;

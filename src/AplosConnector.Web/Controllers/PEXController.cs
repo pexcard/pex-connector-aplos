@@ -9,6 +9,7 @@ using AplosConnector.Core.Storages;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Models;
 using System.Threading;
+using AplosConnector.Common.Models;
 using Microsoft.Extensions.Logging;
 
 namespace AplosConnector.Web.Controllers
@@ -125,8 +126,11 @@ namespace AplosConnector.Web.Controllers
             try
             {
                 var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
+                var userProfile = await _pexApiClient.GetMyAdminProfile(session.ExternalToken);
 
                 mapping.PEXExternalAPIToken = session.ExternalToken;
+                mapping.PEXEmailAccount = userProfile?.Admin?.Email;
+                mapping.PEXNameAccount = $"{userProfile?.Admin?.FirstName} {userProfile?.Admin?.LastName}";
 
                 await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
             }
@@ -137,6 +141,39 @@ namespace AplosConnector.Web.Controllers
             }
 
             return Ok();
+        }
+
+        [HttpGet, Route("ConnectionAccountDetail")]
+        [ProducesResponseType(typeof(PexConnectionDetailModel), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<PexConnectionDetailModel>> GetPexConnectionDetail(string sessionId, CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
+            
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
+            if (session == null) return Unauthorized();
+
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
+
+            var connectionDetail = new PexConnectionDetailModel
+            {
+                Email = mapping.PEXEmailAccount,
+                Name = mapping.PEXNameAccount,
+                LastSync = mapping.LastSyncUtc
+            };
+
+            try
+            {
+                await _pexApiClient.GetToken(mapping.PEXExternalAPIToken);
+                connectionDetail.Active = true;
+            }
+            catch (Exception)
+            {
+                connectionDetail.Active = false;
+            }
+
+            return Ok(connectionDetail);
         }
     }
 }

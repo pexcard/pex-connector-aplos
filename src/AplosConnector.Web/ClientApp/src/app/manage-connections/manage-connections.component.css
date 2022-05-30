@@ -1,0 +1,6 @@
+.aplosLogo {
+    filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
+	-webkit-filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
+    width: 120px;
+    margin-bottom: 2px;
+}

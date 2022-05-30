@@ -1,7 +1,53 @@
 <div class="clr-row" *ngIf="settings">
+  <div class="clr-col clr-col-sm-6 clr-col-m-4 clr-col-xl-4">
+    <div>
+      <h2> <img src="../assets/Aplos-Logo-White.png" alt="Aplos logo" class="aplosLogo"> Connect</h2>
+       <hr />
+       <div class="clr-row">
+         <div class="clr-col-1" style="padding-right:0; display: flex; justify-content: flex-end; padding-top: 4px;">
+           <clr-icon *ngIf="pexConnectionDetail.active" shape="check" size="md" role="img" class="is-success"></clr-icon> 
+           <clr-icon *ngIf="!pexConnectionDetail.active" shape="times-circle" size="md" role="img" class="is-error"></clr-icon>
+         </div>
+         <div class="clr-col-11">
+           <strong>
+             <span *ngIf="pexConnectionDetail.active">Valid connection</span>
+             <span *ngIf="!pexConnectionDetail.active">Invalid connection</span>
+           </strong>
+           <ul>
+             <li><strong>Name:</strong> {{pexConnectionDetail.name ? pexConnectionDetail.name : "Unknown"}}</li>
+             <li><strong>Email:</strong> {{pexConnectionDetail.email ? pexConnectionDetail.email : "Unknown"}}</li>
+           </ul>
+         </div>
+       </div>
+       <hr />
+       <div class="clr-row">
+         <div class="clr-col-11 clr-offset-1">
+           <strong>Status:</strong> <span *ngIf="!pexConnectionDetail.active"> Idle</span> 
+                                   <span *ngIf="pexConnectionDetail.active"> Active</span><br />
+           <strong>Latest Sync: </strong> {{ pexConnectionDetail.lastSync | date:"d MMM y, hh:mm a" }}
+         </div>
+       </div>
+       <hr />
+       <div>
+         <button type="button" class="btn btn-icon btn-danger-outline" aria-label="Disconnect" (click)="disconnectModal=true">
+           <clr-icon shape="disconnect"></clr-icon> DISCONNECT
+         </button>
+         <button
+         type="button"
+         class="btn btn-icon btn-primary-outline"
+         [clrLoading]="refreshingPexAccount"
+         aria-label="Refresh"
+         (click)="refreshPexAccount()">
+         <clr-icon shape="refresh"></clr-icon> REFRESH
+         </button>        
+       </div>
+     </div>
+  </div>
+</div>
+ 
+<div class="clr-row" *ngIf="settings">
  <div class="clr-col clr-col-xl-8">
     <h4>Settings</h4>
-    
     <table class="table table-vertical">
       <tbody>
         <tr><th>Sync Tags</th>
@@ -229,11 +275,6 @@
       type="button"
       [routerLink]="['/connect']"
       class="btn btn-icon btn-primary-outline"
-      aria-label="edit"
-    >
+      aria-label="edit">
       <clr-icon shape="cog"></clr-icon> EDIT
-    </button>
-    <button type="button" class="btn btn-icon btn-danger-outline" aria-label="Disconnect" (click)="disconnectModal=true">
-      <clr-icon shape="disconnect"></clr-icon> DISCONNECT
-    </button>
-
+  </button>

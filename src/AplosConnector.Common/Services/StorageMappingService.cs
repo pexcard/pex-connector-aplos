@@ -83,6 +83,9 @@ namespace AplosConnector.Common.Services
 
                     ExpenseAccountMappings = JsonConvert.SerializeObject(model.ExpenseAccountMappings),
                     TagMappings = JsonConvert.SerializeObject(model.TagMappings),
+
+                    PEXEmailAccount = model.PEXEmailAccount,
+                    PEXNameAccount = model.PEXNameAccount
                 };
             }
 
@@ -173,6 +176,9 @@ namespace AplosConnector.Common.Services
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
+
+                    PEXEmailAccount = model.PEXEmailAccount,
+                    PEXNameAccount = model.PEXNameAccount,
 
                     ExpenseAccountMappings = model.ExpenseAccountMappings == null
                         ? null

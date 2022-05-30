@@ -46,9 +46,19 @@ export class PexService {
       .pipe(retryWithBackoff(50, 1, 500)), 5);
   }
 
+  getConnectionAccountDetail(sessionId: string) : Observable<PexConnectionDetailModel>{
+    return this.cache.runAndCacheOrGetFromCache("Pex.ConnectionAccountDetail", this.httpClient
+      .get<PexConnectionDetailModel>(this.buildUrl(sessionId,'ConnectionAccountDetail'))
+      .pipe(retryWithBackoff(50, 1, 500)), 5);
+  }
+
   updatePexAccountLinked(sessionId: string) {
     return this.httpClient.post(this.buildUrl(sessionId, "UpdatePexAccountLinked"), null)
       .pipe(retryWithBackoff(50, 1, 500));
+  }
+
+  disconnectPexAccountLinked(sessionId: string){
+    return this.httpClient.post(this.buildUrl(sessionId,"Disconnect"), null);
   }
 }
 
