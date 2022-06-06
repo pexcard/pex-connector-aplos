@@ -124,14 +124,18 @@ namespace AplosConnector.Common.Models
         public bool SyncFundsToPex { get; set; }
         public string PexFundsTagId { get; set; }
         public int DefaultAplosFundId { get; set; }
+        public bool SyncTaxTagToPex { get; set; }
+        public string PexTaxTagId { get; set; }
         public decimal DefaultAplosTransactionAccountNumber { get; set; }
 
         public int TransfersAplosContactId { get; set; }
         public int TransfersAplosFundId { get; set; }
+        public string TransfersAplosTaxTagId { get; set; }
         public decimal TransfersAplosTransactionAccountNumber { get; set; }
 
         public int PexFeesAplosContactId { get; set; }
         public int PexFeesAplosFundId { get; set; }
+        public string PexFeesAplosTaxTagId { get; set; }
         public decimal PexFeesAplosTransactionAccountNumber { get; set; }
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
