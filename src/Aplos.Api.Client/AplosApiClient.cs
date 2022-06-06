@@ -25,6 +25,7 @@ namespace Aplos.Api.Client
         private const string APLOS_ENDPOINT_PARTNERS = "partners/";
         private const string APLOS_ENDPOINT_PARTNERS_VERIFY = APLOS_ENDPOINT_PARTNERS + "verify";
         private const string APLOS_ENDPOINT_TAGS = "tags/";
+        private const string APLOS_ENDPOINT_TAX_TAGS = "taxtags/";
 
         public const string APLOS_ACCOUNT_CATEGORY_ASSET = "asset";
         public const string APLOS_ACCOUNT_CATEGORY_EXPENSE = "expense";
@@ -388,6 +389,55 @@ namespace Aplos.Api.Client
             return await InvokeAplosApiWithAccessToken<AplosApiTagListResponse>(
                 HttpMethod.Get,
                 $"{APLOS_ENDPOINT_TAGS}?page_size={pageSize}&page_num={pageNum}",
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task<List<AplosApiTaxTagCategoryDetail>> GetTaxTags(CancellationToken cancellationToken = default)
+        {
+            var response = await InvokeAplosApiWithAccessToken<AplosApiTaxTagListResponse>(
+                HttpMethod.Get,
+                APLOS_ENDPOINT_TAX_TAGS,
+                cancellationToken: cancellationToken);
+
+            var rawTagCategories = new List<AplosApiTaxTagCategoryDetail>(response.Data.TagCategories);
+
+            while (!string.IsNullOrEmpty(response.Links?.Next))
+            {
+                response = await InvokeAplosApiWithAccessToken<AplosApiTaxTagListResponse>(
+                    HttpMethod.Get,
+                    response.Links.Next.Replace("/api/v1/", ""),
+                    cancellationToken: cancellationToken);
+
+                rawTagCategories.AddRange(response.Data.TagCategories);
+            }
+
+            //Handle when Aplos sends the same tag category more than once.
+            //This happens when there are enough tags to spill over into a new page. The tag category is repeated from a previous page, but the tag groups and tags within those groups are unique per page.
+            var result = new List<AplosApiTaxTagCategoryDetail>();
+            foreach (var tagCategory in rawTagCategories)
+            {
+                var existingCategory = result.Find(r => r.Id == tagCategory.Id);
+                if (existingCategory == null)
+                {
+                    result.Add(tagCategory);
+                }
+                else
+                {
+                    existingCategory.TaxTags.AddRange(tagCategory.TaxTags);
+                }
+            }
+
+            return result;
+        }
+
+        public async Task<AplosApiTaxTagListResponse> GetTaxTags(
+            int pageSize,
+            int pageNum,
+            CancellationToken cancellationToken = default)
+        {
+            return await InvokeAplosApiWithAccessToken<AplosApiTaxTagListResponse>(
+                HttpMethod.Get,
+                $"{APLOS_ENDPOINT_TAX_TAGS}?page_size={pageSize}&page_num={pageNum}",
                 cancellationToken: cancellationToken);
         }
 

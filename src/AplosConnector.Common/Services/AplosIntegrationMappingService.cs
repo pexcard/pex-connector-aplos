@@ -112,6 +112,21 @@ namespace AplosConnector.Common.Services
             return result;
         }
 
+        public PexAplosApiObject Map(AplosApiTaxTagCategoryDetail tagCategory)
+        {
+            PexAplosApiObject result = default;
+            if (tagCategory != null)
+            {
+                result = new PexAplosApiObject
+                {
+                    Id = tagCategory.Id,
+                    Name = tagCategory.Name,
+                };
+            }
+
+            return result;
+        }
+
         public IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTagCategoryDetail> tagCategories)
         {
             List<PexAplosApiObject> result = default;
@@ -119,6 +134,21 @@ namespace AplosConnector.Common.Services
             {
                 result = new List<PexAplosApiObject>();
                 foreach (AplosApiTagCategoryDetail fund in tagCategories)
+                {
+                    result.Add(Map(fund));
+                }
+            }
+
+            return result;
+        }
+
+        public IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTaxTagCategoryDetail> taxTagCategories)
+        {
+            List<PexAplosApiObject> result = default;
+            if (taxTagCategories != null)
+            {
+                result = new List<PexAplosApiObject>();
+                foreach (AplosApiTaxTagCategoryDetail fund in taxTagCategories)
                 {
                     result.Add(Map(fund));
                 }
@@ -179,6 +209,36 @@ namespace AplosConnector.Common.Services
             {
                 result = new List<PexAplosApiObject>();
                 foreach (AplosApiTagDetail fund in tags)
+                {
+                    result.Add(Map(fund));
+                }
+            }
+
+            return result;
+        }
+
+        public PexAplosApiObject Map(AplosApiTaxTagDetail taxTag)
+        {
+            PexAplosApiObject result = default;
+            if (taxTag != null)
+            {
+                result = new PexAplosApiObject
+                {
+                    Id = taxTag.Id,
+                    Name = $"{taxTag.Name} - {taxTag.GroupName}",
+                };
+            }
+
+            return result;
+        }
+
+        public IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTaxTagDetail> taxTags)
+        {
+            List<PexAplosApiObject> result = default;
+            if (taxTags != null)
+            {
+                result = new List<PexAplosApiObject>();
+                foreach (AplosApiTaxTagDetail fund in taxTags)
                 {
                     result.Add(Map(fund));
                 }

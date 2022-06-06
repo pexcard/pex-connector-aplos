@@ -333,6 +333,14 @@ namespace AplosConnector.Common.Services
                     }
                 }
 
+                if (!string.IsNullOrWhiteSpace(allocationDetail.pexTagValues.AplosTaxTagId))
+                {
+                    line2.TaxTag = new AplosApiTaxTagDetail
+                    {
+                        Id = allocationDetail.pexTagValues.AplosTaxTagId
+                    };
+                }
+
                 lines.Add(line2);
 
                 if (contact is null)
@@ -481,6 +489,15 @@ namespace AplosConnector.Common.Services
                     log.LogWarning(ex, $"Exception during {nameof(SyncAplosTagsToPex)} for business: {mapping.PEXBusinessAcctId}.");
                 }
 
+                try
+                {
+                    await SyncAplosTaxTagsToPex(log, mapping, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    log.LogWarning(ex, $"Exception during {nameof(SyncAplosTaxTagsToPex)} for business: {mapping.PEXBusinessAcctId}.");
+                }
+
                 mapping.LastSyncUtc = utcNow;
                 await _mappingStorage.UpdateAsync(mapping, cancellationToken);
 
@@ -562,6 +579,77 @@ namespace AplosConnector.Common.Services
                 await _resultStorage.CreateAsync(result, cancellationToken);
             }
         }
+
+        private async Task SyncAplosTaxTagsToPex(ILogger log, Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        {
+            if (!(mapping.SyncTags && mapping.SyncTaxTagToPex)) return;
+
+            if (string.IsNullOrEmpty(mapping.PexTaxTagId))
+            {
+                log.LogWarning($"Tag sync is enabled but {nameof(mapping.PexTaxTagId)} is not specified for business: {mapping.PEXBusinessAcctId}");
+                return;
+            }
+
+            var pexTaxTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexTaxTagId, cancellationToken);
+            if (pexTaxTag == null)
+            {
+                log.LogWarning($"{nameof(mapping.PexTaxTagId)} is unavailable in business: {mapping.PEXBusinessAcctId}");
+                return;
+            }
+
+            var flattenedTaxTags = await GetFlattenedAplosTaxTagValues(mapping, cancellationToken);
+            var aplosTaxTagsToSync = flattenedTaxTags.ToList();
+            log.LogInformation($"Syncing {aplosTaxTagsToSync.Count} tax tags to {nameof(mapping.PexTaxTagId)} '{mapping.PexTaxTagId} / {pexTaxTag.Name}' for business: {mapping.PEXBusinessAcctId}");
+
+            SyncStatus syncStatus;
+            var syncCount = 0;
+
+            try
+            {
+                pexTaxTag.UpsertTagOptions(aplosTaxTagsToSync, out syncCount);
+                await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTaxTag.Id, pexTaxTag, cancellationToken);
+                syncStatus = SyncStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                syncStatus = SyncStatus.Failed;
+                log.LogError(ex, $"Error updating TagId {pexTaxTag.Id}");
+            }
+
+            var result = new SyncResultModel
+            {
+                PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                SyncType = $"Tag Values (990)",
+                SyncStatus = syncStatus.ToString(),
+                SyncedRecords = syncCount,
+            };
+            await _resultStorage.CreateAsync(result, cancellationToken);
+        }
+
+        private async Task<IEnumerable<PexAplosApiObject>> GetFlattenedAplosTaxTagValues(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        {
+            var tagValues = new List<AplosApiTaxTagDetail>();
+
+            var taxTagCategoryDetails = await GetAplosApiTaxTagExpenseCategoryDetails(mapping, cancellationToken);
+
+            foreach (var tagCategory in taxTagCategoryDetails)
+            {
+                if (tagCategory.TaxTags != null)
+                {
+                    tagValues.AddRange(tagCategory.TaxTags);
+                }
+            }
+
+            return _aplosIntegrationMappingService.Map(tagValues);
+        }
+
+        public async Task<IEnumerable<AplosApiTaxTagCategoryDetail>> GetAplosApiTaxTagExpenseCategoryDetails(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        {
+            var aplosApiClient = MakeAplosApiClient(mapping);
+            var taxTags = await aplosApiClient.GetTaxTags(cancellationToken);
+            return taxTags.Where(c => c.Type == "expense");
+        }
+
 
         private async Task<IEnumerable<PexAplosApiObject>> GetFlattenedAplosTagValues(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
@@ -932,27 +1020,33 @@ namespace AplosConnector.Common.Services
                                     foreach (var tagMapping in mapping.TagMappings)
                                     {
                                         var mappedTagValue = allocation.GetTagValue(tagMapping.PexTagId);
-                                        if (mappedTagValue != null)
+                                        
+                                        if (mappedTagValue == null || mappedTagValue.TagId == mapping.PexTaxTagId)
                                         {
-                                            string aplosTagId = null;
-                                            if (tagMapping.SyncToPex)
-                                            {
-                                                aplosTagId = mappedTagValue.Value.ToString();
-                                            }
-                                            else
-                                            {
-                                                var pexTagOptions = dropdownTags.FirstOrDefault(t =>
-                                                    t.Id.Equals(tagMapping.PexTagId,
-                                                        StringComparison.InvariantCultureIgnoreCase))?.Options;
-                                                var pexTagName = mappedTagValue.GetTagOptionName(pexTagOptions);
-                                                log.LogInformation($"Attempting to match mapped tag value {pexTagName} by name");
-                                                aplosTagId = aplosTags.MatchEntityByName(pexTagName, ':')?.Id;
-                                            }
-
-                                            pexTagValues.AplosTagIds.Add(aplosTagId);
+                                            continue;
                                         }
+                                        
+                                        string aplosTagId;
+                                        if (tagMapping.SyncToPex)
+                                        {
+                                            aplosTagId = mappedTagValue.Value.ToString();
+                                        }
+                                        else
+                                        {
+                                            var pexTagOptions = dropdownTags.FirstOrDefault(t =>
+                                                t.Id.Equals(tagMapping.PexTagId,
+                                                    StringComparison.InvariantCultureIgnoreCase))?.Options;
+                                            var pexTagName = mappedTagValue.GetTagOptionName(pexTagOptions);
+                                            log.LogInformation($"Attempting to match mapped tag value {pexTagName} by name");
+                                            aplosTagId = aplosTags.MatchEntityByName(pexTagName, ':')?.Id;
+                                        }
+
+                                        pexTagValues.AplosTagIds.Add(aplosTagId);
                                     }
                                 }
+
+                                var taxTag = allocation.GetTagValue(mapping.PexTaxTagId);
+                                pexTagValues.AplosTaxTagId = taxTag?.Value?.ToString();
                             }
                             else
                             {
@@ -1115,6 +1209,7 @@ namespace AplosConnector.Common.Services
                             AplosRegisterAccountNumber = model.AplosRegisterAccountNumber,
                             AplosContactId = model.TransfersAplosContactId,
                             AplosFundId = model.TransfersAplosFundId,
+                            AplosTaxTagId = model.TransfersAplosTaxTagId,
                             AplosTransactionAccountNumber = model.TransfersAplosTransactionAccountNumber
                         };
 
@@ -1215,6 +1310,7 @@ namespace AplosConnector.Common.Services
                             AplosRegisterAccountNumber = model.AplosRegisterAccountNumber,
                             AplosContactId = model.PexFeesAplosContactId,
                             AplosFundId = model.PexFeesAplosFundId,
+                            AplosTaxTagId = model.PexFeesAplosTaxTagId,
                             AplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber
                         };
 
@@ -1311,6 +1407,14 @@ namespace AplosConnector.Common.Services
         {
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
             var aplosApiResponse = await aplosApiClient.GetTags(cancellationToken);
+
+            return _aplosIntegrationMappingService.Map(aplosApiResponse);
+        }
+
+        public async Task<IEnumerable<PexAplosApiObject>> GetAplosTaxTagCategories(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        {
+            IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
+            var aplosApiResponse = await aplosApiClient.GetTaxTags(cancellationToken);
 
             return _aplosIntegrationMappingService.Map(aplosApiResponse);
         }

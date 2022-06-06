@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 
 import { ExpenseAccountMappingModel, MappingService, SettingsModel, TagMappingModel } from '../services/mapping.service';
 import { AuthService } from '../services/auth.service';
-import { AplosService, AplosPreferences, AplosAccount, AplosObject } from '../services/aplos.service';
+import { AplosService, AplosPreferences, AplosAccount, AplosObject, AplosApiTaxTagCategoryDetail } from '../services/aplos.service';
 import { PexConnectionDetailModel, PexService } from '../services/pex.service';
 
 @Component({
@@ -29,6 +29,9 @@ export class ManageConnectionsComponent implements OnInit {
   tagNameFund = '';
   tagNameAccount: ExpenseAccountMappingModel[] = [];
   tagMappings: TagMappingModel[] = [];
+  taxTagCategories: AplosApiTaxTagCategoryDetail[] = [];
+  transfersAplosTaxTagName: string = ''
+  pexFeesAplosTaxTagName: string = ''
 
   defaultContact: AplosObject;
   defaultFund: AplosObject;
@@ -60,7 +63,10 @@ export class ManageConnectionsComponent implements OnInit {
         console.log("pex setup is valid", result);
         this.hasTagsAvailable = result.useTagsEnabled;
         this.getTagNames();
-
+        if (this.settings.syncTaxTagToPex)
+        {
+          this.getTaxTagCategories();
+        }
       },
       () => {
         this.hasTagsAvailable = false;
@@ -127,18 +133,51 @@ export class ManageConnectionsComponent implements OnInit {
           console.log('using tagMappings');
           this.aplos.getTagCategories(this.sessionId).subscribe(
             aplosTags => {
+              if (this.settings.syncTaxTagToPex) {
+                aplosTags.push( {id: 990, "name": "990"});
+              }
               this.settings.tagMappings.forEach(tagMapping => {
                 if (tagMapping.aplosTagId && tagMapping.pexTagId) {
                   const aplosTagName = aplosTags.find(tag => { return tag.id.toString() === tagMapping.aplosTagId }).name;
                   const pexTagName = pexTags.find(tag => { return tag.id === tagMapping.pexTagId }).name;
-
                   this.tagMappings.push({ aplosTagId: aplosTagName, pexTagId: pexTagName, syncToPex: tagMapping.syncToPex, });
                 }
               });
             });
         }
       }
+    )
+  }
+
+  getTaxTagCategories() {
+    console.log('using getTaxTagCategories');
+    this.aplos.getTaxTagCategories(this.sessionId).subscribe(
+      taxTagCategoryDetails => {
+        this.settings.taxTagCategoryDetails = taxTagCategoryDetails;
+        this.fillTaxTagNames();
+      }
     );
+  }
+
+  fillTaxTagNames() {
+    if (this.settings.transfersAplosTaxTag)
+    {
+      this.transfersAplosTaxTagName = this.getTaxTagName(this.settings.transfersAplosTaxTag.toString())
+    }
+    if (this.settings.pexFeesAplosTaxTag)
+    {
+      this.pexFeesAplosTaxTagName = this.getTaxTagName(this.settings.pexFeesAplosTaxTag.toString())
+    }
+  }
+
+  getTaxTagName(taxTagId: string) {
+    for (let category of this.settings.taxTagCategoryDetails) {
+      for (let tag of category.tax_tags) {
+        if (tag.id == taxTagId) {
+          return `${tag.name}- ${tag.group_name}`
+        }
+      }
+    }
   }
 
   getTransferInfo() {

@@ -14,9 +14,12 @@ namespace AplosConnector.Common.Services.Abstractions
         IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiFundDetail> funds);
         PexAplosApiObject Map(AplosApiTagCategoryDetail tagCategory);
         IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTagCategoryDetail> tagCategories);
+        IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTaxTagCategoryDetail> tagCategories);
         PexAplosApiObject Map(AplosApiTagGroupDetail tagGroup);
         IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTagGroupDetail> tagGroup);
         PexAplosApiObject Map(AplosApiTagDetail tag);
         IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTagDetail> tags);
+        PexAplosApiObject Map(AplosApiTaxTagDetail taxTag);
+        IEnumerable<PexAplosApiObject> Map(IEnumerable<AplosApiTaxTagDetail> taxTags);
     }
 }

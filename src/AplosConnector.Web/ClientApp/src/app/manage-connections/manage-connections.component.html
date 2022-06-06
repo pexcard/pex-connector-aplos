@@ -113,7 +113,21 @@
               class="is-solid is-error"
             ></clr-icon>
           </td>
-        </tr>        
+        </tr>
+        <tr><th>Sync 990 Tag</th>
+          <td>
+            <clr-icon
+              *ngIf="settings.syncTaxTagToPex"
+              shape="success-standard"
+              class="is-solid is-success"
+            ></clr-icon>
+            <clr-icon
+              *ngIf="!settings.syncTaxTagToPex"
+              shape="ban"
+              class="is-solid is-error"
+            ></clr-icon>
+          </td>
+        </tr>                
         <tr>
           <th>Connected on</th>
           <td>{{settings.connectedOn | date:"yyyy-MM-dd hh:mm a" }}</td> 
@@ -218,8 +232,6 @@
         </tbody>
       </table>
 
-
-
       <table class="table table-vertical" *ngIf="!hasTagsAvailable && settings.syncTransactions">
         <tr class="left">
           <th>Default Fund for purchases</th>
@@ -245,6 +257,10 @@
             <th>Transaction account for transfers</th>
             <td>{{transferAccount | aplosAccount}}</td>
           </tr>
+          <tr class="left" *ngIf="settings.syncTaxTagToPex && settings.transfersAplosTaxTag">
+            <th>990 tag for transfers</th>
+            <td>{{transfersAplosTaxTagName}}</td>
+          </tr>
 
           <tr class="left" *ngIf="settings.syncPexFees && feesContact">
             <th>Contact for fees</th>
@@ -257,6 +273,10 @@
           <tr class="left" *ngIf="settings.syncPexFees && feesAccount">
             <th>Transaction account for fees</th>
             <td>{{feesAccount | aplosAccount}}</td>
+          </tr>
+          <tr class="left" *ngIf="settings.syncTaxTagToPex && settings.pexFeesAplosTaxTag">
+            <th>990 tag for fees</th>
+            <td>{{pexFeesAplosTaxTagName}}</td>
           </tr>
         </tbody>
       </table>
