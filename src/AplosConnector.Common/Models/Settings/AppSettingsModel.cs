@@ -12,6 +12,7 @@ namespace AplosConnector.Common.Models.Settings
         public string AplosApiClientId { get; set; }
         public string AplosApiClientSecret { get; set; }
         public Uri PEXAPIBaseURL { get; set; }
+        public int PEXAPITimeout { get; set; } = 100;
         public string CorsAllowedOrigins { get; set; }
 
         public string DataProtectionApplicationName { get; set; }
