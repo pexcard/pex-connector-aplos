@@ -41,6 +41,7 @@ namespace AplosConnector.SyncWorker
             builder.Services.AddHttpClient();
             builder.Services.AddHttpClient<IPexApiClient, PexApiClient>((client) =>
             {
+                client.Timeout = TimeSpan.FromMinutes(5);
                 client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("PEXAPIBaseURL", EnvironmentVariableTarget.Process));
             })
             .AddPolicyHandler(GetPexRetryPolicy());
