@@ -22,6 +22,7 @@ using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
+using System;
 
 namespace AplosConnector.Web
 {
@@ -54,6 +55,7 @@ namespace AplosConnector.Web
             services.AddHttpClient<IPexApiClient, PexApiClient>((client) =>
             {
                 client.BaseAddress = appSettings.PEXAPIBaseURL;
+                client.Timeout = TimeSpan.FromSeconds(appSettings.PEXAPITimeout);
             })
             .AddPolicyHandler(GetPexRetryPolicy());
 
