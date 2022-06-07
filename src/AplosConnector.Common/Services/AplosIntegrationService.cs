@@ -778,7 +778,7 @@ namespace AplosConnector.Common.Services
 
             var allFees = new List<TransactionModel>();
 
-            var dateRangeBatches = GetDateRangeBatches(new DateRange(startDate, endDate), 14);
+            var dateRangeBatches = GetDateRangeBatches(new DateRange(startDate, endDate), 28);
 
             foreach (var dateRangeBatch in dateRangeBatches)
             {
@@ -1060,7 +1060,7 @@ namespace AplosConnector.Common.Services
 
             startDate = startDate > oneYearAgo ? startDate : oneYearAgo;
 
-            var dateRangeBatches = GetDateRangeBatches(new DateRange(startDate, endDate), 30);
+            var dateRangeBatches = GetDateRangeBatches(new DateRange(startDate, endDate), 28);
 
             var aplosTransactions = await GetTransactions(mapping, startDate, cancellationToken);
 
