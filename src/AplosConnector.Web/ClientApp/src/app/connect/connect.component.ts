@@ -60,6 +60,7 @@ export class ConnectComponent implements OnInit {
   isPexAccountLinked = false;
   isFirstInstalation = false;
   pexAdminEmailAccount: string = 'unknown';
+  businessName:string = null;
   savingSettings = false;
   projectForm: FormGroup;
   savingProjects = false;
@@ -173,6 +174,10 @@ export class ConnectComponent implements OnInit {
   aplosAuthenticationStatus: AplosAuthenticationStatusModel;
   ngOnInit() {
     this.validateConnections();
+
+    this.auth.businessName.subscribe(
+      name => { this.businessName = name }
+    );
   }
 
   validateConnections() {

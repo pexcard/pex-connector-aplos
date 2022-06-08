@@ -12,6 +12,7 @@ import { catchError, concatMap } from "rxjs/operators";
 export class AuthService {
   public sessionId = new BehaviorSubject<string>(null);
   public businessName = new BehaviorSubject<string>(null);
+  private readonly CACHE_KEY_BUSINESS_NAME = 'pex.GetBusinessName';
   private readonly SESSION_ID_KEY = "SESSION_ID";
 
   constructor(
@@ -48,6 +49,7 @@ export class AuthService {
         concatMap(() => {
           localStorage.setItem(this.SESSION_ID_KEY, sessionId);
           this.sessionId.next(sessionId);
+          this.getBusinessName(sessionId);
           return of(void 0);
         })
       );
@@ -69,11 +71,13 @@ export class AuthService {
           if (result.isValid) {
             console.log("Session Found -- Auto-Logging in")
             this.sessionId.next(sessionId);
+            this.getBusinessName(sessionId);
           } else {
             console.log("Session is invalid, cleaning up storage & cache");
             this.cache.clearAllAppCache();
             localStorage.removeItem(this.SESSION_ID_KEY);
             this.sessionId.next(null);
+            this.businessName.next(null);
           }
         });
     }
@@ -93,6 +97,7 @@ export class AuthService {
             localStorage.removeItem(this.SESSION_ID_KEY);
             this.cache.clearAllAppCache();
             this.sessionId.next(null);
+            this.businessName.next(null);            
             return of(void 0);
           })
         );
@@ -104,6 +109,17 @@ export class AuthService {
   headlessMode = new BehaviorSubject<boolean>(null);
   setHeadlessMode(mode: boolean){
     this.headlessMode.next(mode);
+  }
+
+  private getBusinessName(sessionId: string) {
+    return this.cache.runAndCacheOrGetFromCache(
+      this.CACHE_KEY_BUSINESS_NAME,
+      this.httpClient
+        .get<BusinessNameModel>(`${this.baseUrl}api/Session/PEXBusinessName?sessionId=${sessionId}`)
+        .pipe(retryWithBackoff())
+      , 60).subscribe(result => {
+        this.businessName.next(result.businessName);
+      });
   }
 }
 
@@ -123,4 +139,8 @@ interface AplosCredentialVerificationResult {
   canObtainAccessToken: boolean;
   isPartnerVerified: boolean;
   partnerVerificationUrl: string;
+}
+
+interface BusinessNameModel {
+  businessName: string;
 }
