@@ -174,7 +174,7 @@ export class ManageConnectionsComponent implements OnInit {
     for (let category of this.settings.taxTagCategoryDetails) {
       for (let tag of category.tax_tags) {
         if (tag.id == taxTagId) {
-          return `${tag.name}- ${tag.group_name}`
+          return `${tag.name} - ${tag.group_name}`
         }
       }
     }
