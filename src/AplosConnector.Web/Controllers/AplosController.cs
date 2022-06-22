@@ -4,10 +4,12 @@ using AplosConnector.Core.Storages;
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq;
 using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Services.Abstractions;
 using Aplos.Api.Client.Models.Response;
 using System.Threading;
+using Aplos.Api.Client.Models.Detail;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -142,7 +144,7 @@ namespace AplosConnector.Web.Controllers
             return Ok(fund);
         }
 
-        [HttpGet, Route("tagcategories")]
+        [HttpGet, Route("TagCategories")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -158,15 +160,16 @@ namespace AplosConnector.Web.Controllers
             if (mapping == null) return NotFound();
 
             var tagCategories = await _aplosIntegrationService.GetAplosTagCategories(mapping, cancellationToken);
+
             return Ok(tagCategories);
         }
 
-        [HttpGet, Route("taxtags")]
+        [HttpGet, Route("TaxTagCategories")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<IEnumerable<PexAplosApiObject>>> GetTaxTags(string sessionId, CancellationToken cancellationToken)
+        public async Task<ActionResult<IEnumerable<AplosApiTaxTagCategoryDetail>>> GetTaxTagCategories(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
@@ -176,7 +179,7 @@ namespace AplosConnector.Web.Controllers
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
             if (mapping == null) return NotFound();
 
-            var taxTags = await _aplosIntegrationService.GetFlattenedAplosTaxTagValues(mapping, cancellationToken);
+            var taxTags = await _aplosIntegrationService.GetAplosApiTaxTagExpenseCategoryDetails(mapping, cancellationToken);
             return Ok(taxTags);
         }
     }

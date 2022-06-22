@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace AplosConnector.Common.Models
 {
@@ -14,6 +16,7 @@ namespace AplosConnector.Common.Models
             CreatedUtc = mapping.ConnectedOn;
             SyncApprovedOnly = mapping.SyncApprovedOnly;
             SyncTags = mapping.SyncTags;
+            SyncTaxTagToPex = mapping.SyncTaxTagToPex;
             SyncTransactions = mapping.SyncTransactions;
             SyncTransfers = mapping.SyncTransfers;
             SyncPexFees = mapping.SyncPexFees;
@@ -40,16 +43,25 @@ namespace AplosConnector.Common.Models
             TransfersAplosContactId = mapping.TransfersAplosContactId;
             TransfersAplosFundId = mapping.TransfersAplosFundId;
             TransfersAplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber;
+            TransfersAplosTaxTagId = mapping.TransfersAplosTaxTag;
 
             PexFeesAplosContactId = mapping.PexFeesAplosContactId;
             PexFeesAplosFundId = mapping.PexFeesAplosFundId;
             PexFeesAplosTransactionAccountNumber = mapping.PexFeesAplosTransactionAccountNumber;
+            PexFeesAplosTaxTagId = mapping.PexFeesAplosTaxTag;
 
             PexFundsTagId = mapping.PexFundsTagId;
             SyncFundsToPex = mapping.SyncFundsToPex;
 
+            PexTaxTagId = GetPexTaxTagId(mapping.TagMappings);
+
             ExpenseAccountMappings = mapping.ExpenseAccountMappings;
             TagMappings = mapping.TagMappings;
+        }
+
+        private static string GetPexTaxTagId(IEnumerable<TagMappingModel> tagMappings)
+        {
+            return tagMappings?.FirstOrDefault(t => t.AplosTagId == "990")?.PexTagId;
         }
 
         public MappingSettingsModel ToStorageModel()
@@ -59,6 +71,7 @@ namespace AplosConnector.Common.Models
                 ConnectedOn =  CreatedUtc,
                 SyncApprovedOnly = SyncApprovedOnly,
                 SyncTags = SyncTags,
+                SyncTaxTagToPex = SyncTaxTagToPex,
                 SyncTransactions = SyncTransactions,
                 SyncTransfers = SyncTransfers,
                 SyncPexFees = SyncPexFees,
@@ -83,13 +96,17 @@ namespace AplosConnector.Common.Models
                 DefaultAplosTransactionAccountNumber = DefaultAplosTransactionAccountNumber,
                 PexFundsTagId = PexFundsTagId,
 
+                PexTaxTagId = GetPexTaxTagId(TagMappings),
+
                 TransfersAplosContactId = TransfersAplosContactId,
                 TransfersAplosFundId = TransfersAplosFundId,
                 TransfersAplosTransactionAccountNumber = TransfersAplosTransactionAccountNumber,
+                TransfersAplosTaxTag = TransfersAplosTaxTagId,
 
                 PexFeesAplosContactId = PexFeesAplosContactId,
                 PexFeesAplosFundId = PexFeesAplosFundId,
                 PexFeesAplosTransactionAccountNumber = PexFeesAplosTransactionAccountNumber,
+                PexFeesAplosTaxTag = PexFeesAplosTaxTagId,
 
                 SyncFundsToPex = SyncFundsToPex,
 
@@ -104,6 +121,7 @@ namespace AplosConnector.Common.Models
         public DateTime? LastSyncUtc { get; set; }
         public DateTime? LastRenewedUtc { get; set; }
         public bool SyncTags { get; set; }
+        public bool SyncTaxTagToPex { get; set; }
         public bool SyncTransactions { get; set; }
         public bool SyncTransfers { get; set; }
         public bool SyncPexFees { get; set; }
@@ -124,7 +142,6 @@ namespace AplosConnector.Common.Models
         public bool SyncFundsToPex { get; set; }
         public string PexFundsTagId { get; set; }
         public int DefaultAplosFundId { get; set; }
-        public bool SyncTaxTagToPex { get; set; }
         public string PexTaxTagId { get; set; }
         public decimal DefaultAplosTransactionAccountNumber { get; set; }
 

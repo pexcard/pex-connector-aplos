@@ -47,6 +47,7 @@ namespace AplosConnector.Common.Services
                     LastRenewedUtc = model.LastRenewedUtc,
                     PEXExternalAPIToken = model.PEXExternalAPIToken,
                     SyncTags = model.SyncTags,
+                    SyncTaxTagToPex = model.SyncTaxTagToPex,
                     SyncTransactions = model.SyncTransactions,
                     SyncTransfers = model.SyncTransfers,
                     SyncPexFees = model.SyncPexFees,
@@ -73,16 +74,20 @@ namespace AplosConnector.Common.Services
                     TransfersAplosContactId = model.TransfersAplosContactId,
                     TransfersAplosFundId = model.TransfersAplosFundId,
                     TransfersAplosTransactionAccountNumber = model.TransfersAplosTransactionAccountNumber.ToString(),
+                    TransfersAplosTaxTagId = model.TransfersAplosTaxTagId,
 
                     PexFeesAplosContactId = model.PexFeesAplosContactId,
                     PexFeesAplosFundId = model.PexFeesAplosFundId,
                     PexFeesAplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber.ToString(),
+                    PexFeesAplosTaxTagId = model.PexFeesAplosTaxTagId,
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
 
                     ExpenseAccountMappings = JsonConvert.SerializeObject(model.ExpenseAccountMappings),
                     TagMappings = JsonConvert.SerializeObject(model.TagMappings),
+
+                    PexTaxTagId = model.PexTaxTagId,
 
                     PEXEmailAccount = model.PEXEmailAccount,
                     PEXNameAccount = model.PEXNameAccount
@@ -143,6 +148,7 @@ namespace AplosConnector.Common.Services
                     LastRenewedUtc = model.LastRenewedUtc,
                     PEXExternalAPIToken = model.PEXExternalAPIToken,
                     SyncTags = model.SyncTags,
+                    SyncTaxTagToPex = model.SyncTaxTagToPex,
                     SyncTransactions = model.SyncTransactions,
                     SyncTransfers = model.SyncTransfers,
                     SyncPexFees = model.SyncPexFees,
@@ -169,10 +175,12 @@ namespace AplosConnector.Common.Services
                     TransfersAplosContactId = model.TransfersAplosContactId,
                     TransfersAplosFundId = model.TransfersAplosFundId,
                     TransfersAplosTransactionAccountNumber = transfersAplosTransactionAccountNumber,
+                    TransfersAplosTaxTagId = model.TransfersAplosTaxTagId,
 
                     PexFeesAplosContactId = model.PexFeesAplosContactId,
                     PexFeesAplosFundId = model.PexFeesAplosFundId,
                     PexFeesAplosTransactionAccountNumber = pexFeesAplosTransactionAccountNumber,
+                    PexFeesAplosTaxTagId = model.PexFeesAplosTaxTagId,
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
@@ -187,6 +195,9 @@ namespace AplosConnector.Common.Services
                     TagMappings = model.TagMappings == null
                         ? null
                         : JsonConvert.DeserializeObject<TagMappingModel[]>(model.TagMappings),
+                    
+                    PexTaxTagId = model.PexTaxTagId
+
                 };
             }
 

@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { async, ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 
 import { ManageConnectionsComponent } from './manage-connections.component';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
@@ -9,7 +9,7 @@ describe('ManageConnectionsComponent', () => {
   let component: ManageConnectionsComponent;
   let fixture: ComponentFixture<ManageConnectionsComponent>;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [ ManageConnectionsComponent ],
       schemas:[CUSTOM_ELEMENTS_SCHEMA],
