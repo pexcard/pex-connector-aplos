@@ -9,5 +9,6 @@ namespace AplosConnector.Common.Models
         public decimal AplosTransactionAccountNumber { get; set; }
         public decimal AplosRegisterAccountNumber { get; set; }
         public List<string> AplosTagIds { get; set; }
+        public string AplosTaxTagId { get; set; }
     }
 }

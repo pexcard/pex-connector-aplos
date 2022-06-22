@@ -21,6 +21,10 @@ namespace AplosConnector.Common.Models
         /// </summary>
         public bool SyncTags { get; set; }
         /// <summary>
+        /// Whether to sync Aplos 990 tag.
+        /// </summary>
+        public bool SyncTaxTagToPex { get; set; }
+        /// <summary>
         /// Whether to sync PEX transactions to Aplos.
         /// </summary>
         public bool SyncTransactions { get; set; }
@@ -45,20 +49,24 @@ namespace AplosConnector.Common.Models
 
         public bool SyncTransactionsCreateContact { get; set; }
         public int DefaultAplosContactId { get; set; }
+        public string PexFundsTagId { get; set; }
 
         public bool SyncFundsToPex { get; set; }
-        public string PexFundsTagId { get; set; }
         public int DefaultAplosFundId { get; set; }
+
+        public string PexTaxTagId { get; set; }
 
         public decimal DefaultAplosTransactionAccountNumber { get; set; }
 
         public int TransfersAplosContactId { get; set; }
         public int TransfersAplosFundId { get; set; }
         public decimal TransfersAplosTransactionAccountNumber { get; set; }
+        public string TransfersAplosTaxTag { get; set; }
 
         public int PexFeesAplosContactId { get; set; }
         public int PexFeesAplosFundId { get; set; }
         public decimal PexFeesAplosTransactionAccountNumber { get; set; }
+        public string PexFeesAplosTaxTag { get; set; }
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }

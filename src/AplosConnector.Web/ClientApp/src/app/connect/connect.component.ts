@@ -13,7 +13,7 @@ import {
   AplosAuthenticationStatusModel,
   AplosAuthenticationMode
 } from "../services/mapping.service";
-import { AplosService, AplosPreferences, AplosAccount, AplosObject } from "../services/aplos.service";
+import { AplosService, AplosPreferences, AplosAccount, AplosObject, AplosApiTaxTagCategoryDetail } from "../services/aplos.service";
 import { PexService, PexTagInfoModel, CustomFieldType } from '../services/pex.service';
 import { catchError, switchMap, tap } from "rxjs/operators";
 import { of, throwError } from "rxjs";
@@ -69,6 +69,7 @@ export class ConnectComponent implements OnInit {
   aplosExpenseAccounts: AplosAccount[] = [];
   aplosFunds: AplosObject[] = [];
   aplosTagCategories: AplosObject[] = [];
+  aplosTaxTagCategories: AplosApiTaxTagCategoryDetail[] = [];
   hasTagsAvailable = true;
   savingServiceAccountSucceeded = true;
   availablePexTags: PexTagInfoModel[] = [];
@@ -94,16 +95,20 @@ export class ConnectComponent implements OnInit {
     aplosRegisterAccountNumber: 0,
     syncFundsToPex: false,
     syncTags: true,
+    syncTaxTagToPex: false,
     pexFeesAplosContactId: 0,
     pexFeesAplosFundId: 0,
     pexFeesAplosRegisterAccountNumber: 0,
     pexFeesAplosTransactionAccountNumber: 0,
+    pexFeesAplosTaxTag: 0,
     syncPexFees: false,
     transfersAplosContactId: 0,
     transfersAplosFundId: 0,
     transfersAplosTransactionAccountNumber: 0,
+    transfersAplosTaxTag: 0,
     expenseAccountMappings: [],
-    tagMappings: []
+    tagMappings: [],
+    taxTagCategoryDetails: []
   };
 
   getExpenseAccountFormElements() {
@@ -337,6 +342,27 @@ export class ConnectComponent implements OnInit {
     );
   }
 
+  loadingAplosTaxTags = false;
+  errorLoadingAplosTaxTags = false;
+  getTaxTagCategories() {
+    this.loadingAplosTaxTags = true;
+    this.errorLoadingAplosTaxTags = false;
+
+    return this.aplos.getTaxTagCategories(this.sessionId).subscribe(
+      aplosTaxTagCategories => {
+        console.log('getting TaxTags', aplosTaxTagCategories);
+        this.aplosTaxTagCategories = [ ...aplosTaxTagCategories];
+        this.loadingAplosTaxTags = false;
+        console.log('got TaxTags', this.aplosTaxTagCategories);
+      },
+      () => {
+        this.loadingAplosTaxTags = false;
+        this.errorLoadingAplosTaxTags = true;
+      }
+    );
+  }
+
+
   onAuthenticateWithPex() {
     this.auth.getOauthURL();
   }
@@ -373,6 +399,7 @@ export class ConnectComponent implements OnInit {
       this.getExpenseAccounts();
       this.getFunds();
       this.getTagCategories();
+      this.getTaxTagCategories();
       this.initExpenseAccountMappingFormFromSettings(this.settingsModel);
       this.initTagMappingFormFromSettings(this.settingsModel);
     });

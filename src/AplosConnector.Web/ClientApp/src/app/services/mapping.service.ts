@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { retryWithBackoff } from '../operators/retryWithBackoff.operator';
 import { CacheRepositoryService } from './cache-repository.service';
+import { AplosApiTaxTagCategoryDetail } from './aplos.service';
 
 @Injectable({
   providedIn: 'root'
@@ -87,6 +88,7 @@ export interface SyncResultModel {
 export interface SettingsModel {
   syncTransactions: boolean;
   syncTags: boolean;
+  syncTaxTagToPex: boolean;
   
   syncApprovedOnly: boolean;
   earliestTransactionDateToSync: string;
@@ -96,11 +98,13 @@ export interface SettingsModel {
   transfersAplosContactId: number;
   transfersAplosFundId: number;
   transfersAplosTransactionAccountNumber: number;
+  transfersAplosTaxTag: number;
 
   pexFeesAplosRegisterAccountNumber: number;
   pexFeesAplosContactId: number;
   pexFeesAplosFundId: number;
   pexFeesAplosTransactionAccountNumber: number;
+  pexFeesAplosTaxTag: number;
 
   aplosRegisterAccountNumber: number;
 
@@ -124,6 +128,7 @@ export interface SettingsModel {
 
   expenseAccountMappings: ExpenseAccountMappingModel[];
   tagMappings: TagMappingModel[];
+  taxTagCategoryDetails: AplosApiTaxTagCategoryDetail[];
 }
 
 export interface ExpenseAccountMappingModel {
@@ -140,5 +145,5 @@ export interface TagMappingModel {
 
 export enum AplosAuthenticationMode {
   clientAuthentication = 0,
-  partnerAuthentication = 1,
+  partnerAuthentication = 1
 }

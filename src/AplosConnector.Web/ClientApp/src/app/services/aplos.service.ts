@@ -70,6 +70,13 @@ export class AplosService {
       .get<AplosObject[]>(this.buildUrl(sessionId, "tagCategories"))
       .pipe(retryWithBackoff()), 60);
   }
+
+  getTaxTagCategories(sessionId: string): Observable<AplosApiTaxTagCategoryDetail[]> {
+    return this.cache.runAndCacheOrGetFromCache("Aplos.getTaxTagCategories", this.httpClient
+      .get<AplosObject[]>(this.buildUrl(sessionId, "TaxTagCategories"))
+      .pipe(retryWithBackoff()), 60);
+  }
+  
 }
 
 export type AplosAccountCategory = "asset" | "expense";
@@ -86,4 +93,16 @@ export interface AplosPreferences{
   isClassEnabled: boolean;
   isLocationEnabled: boolean;
   locationFieldName: string
+}
+
+export interface AplosApiTaxTagCategoryDetail {
+  id: string;
+  name: string;
+  tax_tags: AplosApiTaxTagDetail[];
+}
+
+export interface AplosApiTaxTagDetail {
+  id: string;
+  name: string;
+  group_name: string;
 }
