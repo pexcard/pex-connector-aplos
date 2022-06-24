@@ -393,7 +393,7 @@ namespace AplosConnector.Common.Services
             {
                 var aplosTxnJson = JsonConvert.SerializeObject(aplosTransaction, Formatting.None);
                 _logger.LogError(ex, "Failed to create Aplos transaction {TransactionId}. AplosTransactionJson: {AplosTransactionJson}", transaction.TransactionId, aplosTxnJson);
-                throw;
+                return TransactionSyncResult.Failed;
             }
 
             return TransactionSyncResult.Success;
