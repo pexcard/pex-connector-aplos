@@ -33,7 +33,7 @@ namespace AplosConnector.Common.Services
     public partial class AplosIntegrationService : IAplosIntegrationService
     {
         private readonly AppSettingsModel _appSettings;
-        private readonly ILogger logger;
+        private readonly ILogger _logger;
         private readonly IAplosApiClientFactory _aplosApiClientFactory;
         private readonly IAplosIntegrationMappingService _aplosIntegrationMappingService;
         private readonly IPexApiClient _pexApiClient;
@@ -50,7 +50,7 @@ namespace AplosConnector.Common.Services
             Pex2AplosMappingStorage mappingStorage)
         {
             _appSettings = appSettings?.Value;
-            this.logger = logger;
+            _logger = logger;
             _aplosApiClientFactory = aplosApiClientFactory;
             _aplosIntegrationMappingService = aplosIntegrationMappingService;
             _pexApiClient = pexApiClient;
@@ -392,7 +392,7 @@ namespace AplosConnector.Common.Services
             catch (AplosApiException ex) when (ex.Message.Contains("Invalid data (bad JSON?)"))
             {
                 var aplosTxnJson = JsonConvert.SerializeObject(aplosTransaction, Formatting.None);
-                logger.LogError(ex, "Failed to create Aplos transaction {TransactionId}. AplosTransactionJson: {AplosTransactionJson}", transaction.TransactionId, aplosTxnJson);
+                _logger.LogError(ex, "Failed to create Aplos transaction {TransactionId}. AplosTransactionJson: {AplosTransactionJson}", transaction.TransactionId, aplosTxnJson);
                 throw;
             }
 
