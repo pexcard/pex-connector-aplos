@@ -26,7 +26,6 @@ namespace AplosConnector.Common.Tests
     {
         private readonly Mock<IAplosApiClient> _mockAplosApiClient;
 
-        private readonly Mock<ILogger<AplosIntegrationService>> _mockLogger;
         private readonly Mock<IOptions<AppSettingsModel>> _mockOptions;
         private readonly Mock<IAplosApiClientFactory> _mockAplosApiClientFactory;
         private readonly Mock<IAplosIntegrationMappingService> _mockAplosIntegrationMappingService;
@@ -36,7 +35,6 @@ namespace AplosConnector.Common.Tests
         {
             _mockAplosApiClient = new Mock<IAplosApiClient>();
 
-            _mockLogger = new Mock<ILogger<AplosIntegrationService>>();
             _mockOptions = new Mock<IOptions<AppSettingsModel>>();
             _mockAplosApiClientFactory = new Mock<IAplosApiClientFactory>();
             _mockAplosIntegrationMappingService = new Mock<IAplosIntegrationMappingService>();
@@ -559,7 +557,6 @@ namespace AplosConnector.Common.Tests
 
         private AplosIntegrationService GetAplosIntegrationService()
         {
-            _mockLogger.Setup(x => x).Returns(new NullLogger<AplosIntegrationService>());
             _mockOptions.Setup(mockOptions => mockOptions.Value).Returns(new AppSettingsModel());
             _mockAplosApiClientFactory
                 .Setup(mockAplosClientFactory => mockAplosClientFactory.CreateClient(
@@ -572,7 +569,7 @@ namespace AplosConnector.Common.Tests
                 .Returns(_mockAplosApiClient.Object);
 
             return new AplosIntegrationService(
-                _mockLogger.Object,
+                new NullLogger<AplosIntegrationService>(),
                 _mockOptions.Object,
                 _mockAplosApiClientFactory.Object,
                 _mockAplosIntegrationMappingService.Object,
