@@ -59,7 +59,7 @@ namespace AplosConnector.SyncWorker
 
             string storageConnectionString = Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process);
 
-            builder.Services.AddSingleton(provider => 
+            builder.Services.AddSingleton(provider =>
                 new Pex2AplosMappingStorage(
                     Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process),
                     provider.GetService<IStorageMappingService>(),
@@ -94,6 +94,7 @@ namespace AplosConnector.SyncWorker
 
             builder.Services.AddScoped<IAplosIntegrationMappingService>(provider => new AplosIntegrationMappingService());
             builder.Services.AddScoped<IAplosIntegrationService>(provider => new AplosIntegrationService(
+                provider.GetService<ILogger<AplosIntegrationService>>(),
                 provider.GetService<IOptions<AppSettingsModel>>(),
                 provider.GetService<IAplosApiClientFactory>(),
                 provider.GetService<IAplosIntegrationMappingService>(),

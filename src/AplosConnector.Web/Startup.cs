@@ -85,6 +85,7 @@ namespace AplosConnector.Web
 
             services.AddScoped<IAplosIntegrationMappingService>(provider => new AplosIntegrationMappingService());
             services.AddScoped<IAplosIntegrationService>(provider => new AplosIntegrationService(
+                provider.GetService<ILogger<AplosIntegrationService>>(),
                 provider.GetService<IOptions<AppSettingsModel>>(),
                 provider.GetService<IAplosApiClientFactory>(),
                 provider.GetService<IAplosIntegrationMappingService>(),
