@@ -389,10 +389,10 @@ namespace AplosConnector.Common.Services
             {
                 await aplosApiClient.CreateTransaction(aplosTransaction);
             }
-            catch (AplosApiException ex) when (ex.Message.Contains("Invalid data (bad JSON?)"))
+            catch (AplosApiException ex)
             {
                 var aplosTxnJson = JsonConvert.SerializeObject(aplosTransaction, Formatting.None);
-                _logger.LogError(ex, "Failed to create Aplos transaction {TransactionId}. AplosTransactionJson: {AplosTransactionJson}", transaction.TransactionId, aplosTxnJson);
+                _logger.LogError(ex, "Failed to create Aplos transaction {TransactionId}. AplosTransactionJson:\n{AplosTransactionJson}", transaction.TransactionId, aplosTxnJson);
                 return TransactionSyncResult.Failed;
             }
 
