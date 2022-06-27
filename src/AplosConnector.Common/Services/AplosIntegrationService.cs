@@ -388,15 +388,16 @@ namespace AplosConnector.Common.Services
             try
             {
                 await aplosApiClient.CreateTransaction(aplosTransaction);
+
+                return TransactionSyncResult.Success;
             }
             catch (Exception ex)
             {
                 var aplosTxnJson = JsonConvert.SerializeObject(aplosTransaction, Formatting.None);
                 _logger.LogError(ex, "Failed to create transaction {TransactionId} in Aplos. AplosTransactionJson:\n{AplosTransactionJson}", transaction.TransactionId, aplosTxnJson);
+
                 return TransactionSyncResult.Failed;
             }
-
-            return TransactionSyncResult.Success;
         }
 
         public async Task<string> GetAplosAccessToken(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
