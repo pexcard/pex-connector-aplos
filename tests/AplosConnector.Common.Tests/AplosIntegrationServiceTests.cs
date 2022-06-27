@@ -569,7 +569,6 @@ namespace AplosConnector.Common.Tests
                 .Returns(_mockAplosApiClient.Object);
 
             return new AplosIntegrationService(
-                new NullLogger<AplosIntegrationService>(),
                 _mockOptions.Object,
                 _mockAplosApiClientFactory.Object,
                 _mockAplosIntegrationMappingService.Object,

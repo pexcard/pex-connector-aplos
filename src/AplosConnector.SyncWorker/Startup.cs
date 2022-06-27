@@ -94,7 +94,6 @@ namespace AplosConnector.SyncWorker
 
             builder.Services.AddScoped<IAplosIntegrationMappingService>(provider => new AplosIntegrationMappingService());
             builder.Services.AddScoped<IAplosIntegrationService>(provider => new AplosIntegrationService(
-                provider.GetService<ILogger<AplosIntegrationService>>(),
                 provider.GetService<IOptions<AppSettingsModel>>(),
                 provider.GetService<IAplosApiClientFactory>(),
                 provider.GetService<IAplosIntegrationMappingService>(),
