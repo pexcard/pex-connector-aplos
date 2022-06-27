@@ -33,7 +33,6 @@ namespace AplosConnector.Common.Services
     public partial class AplosIntegrationService : IAplosIntegrationService
     {
         private readonly AppSettingsModel _appSettings;
-        private readonly ILogger _logger;
         private readonly IAplosApiClientFactory _aplosApiClientFactory;
         private readonly IAplosIntegrationMappingService _aplosIntegrationMappingService;
         private readonly IPexApiClient _pexApiClient;
@@ -41,7 +40,6 @@ namespace AplosConnector.Common.Services
         private readonly Pex2AplosMappingStorage _mappingStorage;
 
         public AplosIntegrationService(
-            ILogger<AplosIntegrationService> logger,
             IOptions<AppSettingsModel> appSettings,
             IAplosApiClientFactory aplosApiClientFactory,
             IAplosIntegrationMappingService aplosIntegrationMappingService,
@@ -50,7 +48,6 @@ namespace AplosConnector.Common.Services
             Pex2AplosMappingStorage mappingStorage)
         {
             _appSettings = appSettings?.Value;
-            _logger = logger;
             _aplosApiClientFactory = aplosApiClientFactory;
             _aplosIntegrationMappingService = aplosIntegrationMappingService;
             _pexApiClient = pexApiClient;
@@ -384,20 +381,9 @@ namespace AplosConnector.Common.Services
             };
 
             IAplosApiClient aplosApiClient = MakeAplosApiClient(mapping);
+            await aplosApiClient.CreateTransaction(aplosTransaction);
 
-            try
-            {
-                await aplosApiClient.CreateTransaction(aplosTransaction);
-
-                return TransactionSyncResult.Success;
-            }
-            catch (Exception ex)
-            {
-                var aplosTxnJson = JsonConvert.SerializeObject(aplosTransaction, Formatting.None);
-                _logger.LogError(ex, "Failed to create transaction {TransactionId} in Aplos. AplosTransactionJson:\n{AplosTransactionJson}", transaction.TransactionId, aplosTxnJson);
-
-                return TransactionSyncResult.Failed;
-            }
+            return TransactionSyncResult.Success;
         }
 
         public async Task<string> GetAplosAccessToken(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
