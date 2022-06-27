@@ -114,7 +114,7 @@ namespace Aplos.Api.Client
 
                 var requestContent = await httpRequestContent?.ReadAsStringAsync();
 
-                _logger.LogError(aplosApiException, $"Error invoking Aplos API.\nRequestBody: {requestContent}\nResponseBody: {responseBody}");
+                _logger.LogError(aplosApiException, $"Error invoking Aplos API.\nRequestBody:\n{requestContent}\nResponseBody:\n{responseBody}");
                 throw aplosApiException;
             }
 
