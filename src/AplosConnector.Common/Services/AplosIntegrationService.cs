@@ -1020,12 +1020,12 @@ namespace AplosConnector.Common.Services
                                     foreach (var tagMapping in mapping.TagMappings)
                                     {
                                         var mappedTagValue = allocation.GetTagValue(tagMapping.PexTagId);
-                                        
+
                                         if (mappedTagValue == null || mappedTagValue.TagId == mapping.PexTaxTagId)
                                         {
                                             continue;
                                         }
-                                        
+
                                         string aplosTagId;
                                         if (tagMapping.SyncToPex)
                                         {

@@ -59,7 +59,7 @@ namespace AplosConnector.SyncWorker
 
             string storageConnectionString = Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process);
 
-            builder.Services.AddSingleton(provider => 
+            builder.Services.AddSingleton(provider =>
                 new Pex2AplosMappingStorage(
                     Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process),
                     provider.GetService<IStorageMappingService>(),

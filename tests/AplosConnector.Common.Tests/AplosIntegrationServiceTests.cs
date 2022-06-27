@@ -9,6 +9,7 @@ using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services;
 using AplosConnector.Common.Services.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using PexCard.Api.Client.Core;
@@ -91,7 +92,7 @@ namespace AplosConnector.Common.Tests
         {
             //Arrange
             var aplosAccount = new AplosApiAccountDetail { AccountNumber = 123, Name = "test" };
-            var aplosAccounts = new List<AplosApiAccountDetail> {aplosAccount};
+            var aplosAccounts = new List<AplosApiAccountDetail> { aplosAccount };
 
             _mockAplosApiClient
                 .Setup(mockAplosClient => mockAplosClient.GetAccounts(It.IsAny<string>(), default))
@@ -187,7 +188,7 @@ namespace AplosConnector.Common.Tests
         {
             //Arrange
             var aplosContact = new AplosApiContactDetail { Id = 123, CompanyName = "test" };
-            var aplosContacts = new List<AplosApiContactDetail> {aplosContact};
+            var aplosContacts = new List<AplosApiContactDetail> { aplosContact };
 
             _mockAplosApiClient
                 .Setup(mockAplosClient => mockAplosClient.GetContacts(default))
@@ -283,7 +284,7 @@ namespace AplosConnector.Common.Tests
         {
             //Arrange
             var aplosFund = new AplosApiFundDetail { Id = 123, Name = "test" };
-            var aplosFunds = new List<AplosApiFundDetail> {aplosFund};
+            var aplosFunds = new List<AplosApiFundDetail> { aplosFund };
 
             _mockAplosApiClient
                 .Setup(mockAplosClient => mockAplosClient.GetFunds(default))
