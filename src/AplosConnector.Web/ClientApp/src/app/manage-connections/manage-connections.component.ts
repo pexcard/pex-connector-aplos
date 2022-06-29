@@ -160,13 +160,8 @@ export class ManageConnectionsComponent implements OnInit {
   }
 
   fillTaxTagNames() {
-    if (this.settings.transfersAplosTaxTag)
-    {
-      this.transfersAplosTaxTagName = this.getTaxTagName(this.settings.transfersAplosTaxTag.toString())
-    }
-    if (this.settings.pexFeesAplosTaxTag)
-    {
-      this.pexFeesAplosTaxTagName = this.getTaxTagName(this.settings.pexFeesAplosTaxTag.toString())
+    if (this.settings.pexFeesAplosTaxTag) {
+      this.pexFeesAplosTaxTagName = this.getTaxTagName(this.settings.pexFeesAplosTaxTag.toString());
     }
   }
 

@@ -74,7 +74,6 @@ namespace AplosConnector.Common.Services
                     TransfersAplosContactId = model.TransfersAplosContactId,
                     TransfersAplosFundId = model.TransfersAplosFundId,
                     TransfersAplosTransactionAccountNumber = model.TransfersAplosTransactionAccountNumber.ToString(),
-                    TransfersAplosTaxTagId = model.TransfersAplosTaxTagId,
 
                     PexFeesAplosContactId = model.PexFeesAplosContactId,
                     PexFeesAplosFundId = model.PexFeesAplosFundId,
@@ -175,7 +174,6 @@ namespace AplosConnector.Common.Services
                     TransfersAplosContactId = model.TransfersAplosContactId,
                     TransfersAplosFundId = model.TransfersAplosFundId,
                     TransfersAplosTransactionAccountNumber = transfersAplosTransactionAccountNumber,
-                    TransfersAplosTaxTagId = model.TransfersAplosTaxTagId,
 
                     PexFeesAplosContactId = model.PexFeesAplosContactId,
                     PexFeesAplosFundId = model.PexFeesAplosFundId,

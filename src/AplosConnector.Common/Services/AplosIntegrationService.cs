@@ -1209,7 +1209,6 @@ namespace AplosConnector.Common.Services
                             AplosRegisterAccountNumber = model.AplosRegisterAccountNumber,
                             AplosContactId = model.TransfersAplosContactId,
                             AplosFundId = model.TransfersAplosFundId,
-                            AplosTaxTagId = model.TransfersAplosTaxTagId,
                             AplosTransactionAccountNumber = model.TransfersAplosTransactionAccountNumber
                         };
 

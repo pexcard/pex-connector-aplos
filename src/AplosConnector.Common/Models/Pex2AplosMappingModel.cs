@@ -43,7 +43,6 @@ namespace AplosConnector.Common.Models
             TransfersAplosContactId = mapping.TransfersAplosContactId;
             TransfersAplosFundId = mapping.TransfersAplosFundId;
             TransfersAplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber;
-            TransfersAplosTaxTagId = mapping.TransfersAplosTaxTag;
 
             PexFeesAplosContactId = mapping.PexFeesAplosContactId;
             PexFeesAplosFundId = mapping.PexFeesAplosFundId;
@@ -101,7 +100,6 @@ namespace AplosConnector.Common.Models
                 TransfersAplosContactId = TransfersAplosContactId,
                 TransfersAplosFundId = TransfersAplosFundId,
                 TransfersAplosTransactionAccountNumber = TransfersAplosTransactionAccountNumber,
-                TransfersAplosTaxTag = TransfersAplosTaxTagId,
 
                 PexFeesAplosContactId = PexFeesAplosContactId,
                 PexFeesAplosFundId = PexFeesAplosFundId,
@@ -147,7 +145,6 @@ namespace AplosConnector.Common.Models
 
         public int TransfersAplosContactId { get; set; }
         public int TransfersAplosFundId { get; set; }
-        public string TransfersAplosTaxTagId { get; set; }
         public decimal TransfersAplosTransactionAccountNumber { get; set; }
 
         public int PexFeesAplosContactId { get; set; }
