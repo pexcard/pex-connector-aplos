@@ -61,7 +61,6 @@ namespace AplosConnector.Common.Models
         public int TransfersAplosContactId { get; set; }
         public int TransfersAplosFundId { get; set; }
         public decimal TransfersAplosTransactionAccountNumber { get; set; }
-        public string TransfersAplosTaxTag { get; set; }
 
         public int PexFeesAplosContactId { get; set; }
         public int PexFeesAplosFundId { get; set; }

@@ -615,24 +615,6 @@
           <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAssetAccounts">{{aplosAccount | aplosAccount}}</option>
         </select>
         </div>
-
-        <div *ngIf="settingsModel.syncTaxTagToPex">
-          <br>
-          Please choose a 990 tag option to use when importing transfers into Aplos:
-          <div class="clr-select-wrapper">
-            <select
-              id="transfersAplosTaxTag"
-              class="clr-select"
-              name="transfersAplosTaxTag"
-              required
-              [(ngModel)]="settingsModel.transfersAplosTaxTag">
-              <option></option>
-              <optgroup  *ngFor="let aplosTaxTagCategory of aplosTaxTagCategories" label="{{aplosTaxTagCategory.name}}">
-                <option  [value]="aplosTaxTag.id" *ngFor="let aplosTaxTag of aplosTaxTagCategory.tax_tags">{{aplosTaxTag.name}} - {{aplosTaxTag.group_name}}</option>
-              </optgroup>
-            </select>
-          </div>
-        </div>
       </div>
       <div *ngIf="settingsModel.syncPexFees">
         <h4>Fees</h4>

@@ -47,7 +47,6 @@ namespace AplosConnector.Common.Entities
         public int TransfersAplosContactId { get; set; }
         public int TransfersAplosFundId { get; set; }
         public string TransfersAplosTransactionAccountNumber { get; set; }
-        public string TransfersAplosTaxTagId { get; set; }
 
         public int PexFeesAplosContactId { get; set; }
         public int PexFeesAplosFundId { get; set; }
