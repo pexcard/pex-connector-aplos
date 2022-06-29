@@ -105,7 +105,6 @@ export class ConnectComponent implements OnInit {
     transfersAplosContactId: 0,
     transfersAplosFundId: 0,
     transfersAplosTransactionAccountNumber: 0,
-    transfersAplosTaxTag: 0,
     expenseAccountMappings: [],
     tagMappings: [],
     taxTagCategoryDetails: []

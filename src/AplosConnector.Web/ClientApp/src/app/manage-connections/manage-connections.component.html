@@ -257,11 +257,6 @@
             <th>Transaction account for transfers</th>
             <td>{{transferAccount | aplosAccount}}</td>
           </tr>
-          <tr class="left" *ngIf="settings.syncTaxTagToPex && settings.transfersAplosTaxTag">
-            <th>990 tag for transfers</th>
-            <td>{{transfersAplosTaxTagName}}</td>
-          </tr>
-
           <tr class="left" *ngIf="settings.syncPexFees && feesContact">
             <th>Contact for fees</th>
             <td>{{feesContact.name}}</td>

@@ -98,7 +98,6 @@ export interface SettingsModel {
   transfersAplosContactId: number;
   transfersAplosFundId: number;
   transfersAplosTransactionAccountNumber: number;
-  transfersAplosTaxTag: number;
 
   pexFeesAplosRegisterAccountNumber: number;
   pexFeesAplosContactId: number;
