@@ -109,7 +109,7 @@ namespace AplosConnector.SyncWorker
         private async Task CleanupSyncResults(CancellationToken cancellationToken)
         {
             _log.LogInformation("Cleaning up Sync Results");
-            var syncResults = await _resultStorage.GetOldResults(DateTime.UtcNow.AddDays(-365), cancellationToken);
+            var syncResults = await _resultStorage.GetOldResults(DateTime.UtcNow.AddYears(-3), cancellationToken);
             foreach(var result in syncResults)
             {
                 await _resultStorage.DeleteSyncResult(result, cancellationToken);
