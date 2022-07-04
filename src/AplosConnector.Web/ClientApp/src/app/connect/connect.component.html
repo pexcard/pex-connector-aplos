@@ -525,6 +525,8 @@
   >
     <ng-template clrPageTitle>Choose default fund &amp; account</ng-template>
 
+    <h4>Please choose the following items when importing Transfers and Fees into Aplos</h4>
+
     <app-loading-placeholder
     [loadingState]="loadingExpenseCategories"
     [errorState]="errorLoadingExpenseCategories"
@@ -540,11 +542,11 @@
       <div *ngIf="!hasTagsAvailable  && settingsModel.syncTransactions">
       
       <h4>Purchases:</h4>
-        Please choose a fund to use when importing purchases into Aplos:
+      <span class="selectLabel">Fund:</span>
         <div class="clr-select-wrapper">
             <select
               id="defaultAplosFundId"
-              class="clr-select"
+              class="clr-select select"
               name="defaultAplosFundId"
               required
               [(ngModel)]="settingsModel.defaultAplosFundId"
@@ -555,11 +557,11 @@
           </div>
         <br>
           
-        Please choose a transaction account to use when importing purchases into Aplos:
+        <span class="selectLabel">Transaction account:</span>
         <div class="clr-select-wrapper">
           <select
           id="defaultAplosTransactionAccountNumber"
-          class="clr-select"
+          class="clr-select select"
           name="defaultAplosTransactionAccountNumber"
           required
           [(ngModel)]="settingsModel.defaultAplosTransactionAccountNumber"
@@ -572,11 +574,11 @@
 
       <div *ngIf="settingsModel.syncTransfers">
         <h4>Transfers:</h4>
-        Please choose a contact to use when importing transfers into Aplos:
+        <span class="selectLabel">Contact:</span>
         <div class="clr-select-wrapper">
             <select
               id="transfersAplosContactId"
-              class="clr-select"
+              class="clr-select select"
               name="transfersAplosContactId"
               required
               [(ngModel)]="settingsModel.transfersAplosContactId"
@@ -587,11 +589,11 @@
           </div>
           <br>
 
-        Please choose a fund to use when importing transfers into Aplos:
+        <span class="selectLabel">Fund:</span>
         <div class="clr-select-wrapper">
             <select
               id="transfersAplosFundId"
-              class="clr-select"
+              class="clr-select select"
               name="transfersAplosFundId"
               required
               [(ngModel)]="settingsModel.transfersAplosFundId"
@@ -602,11 +604,11 @@
           </div>
         <br>
           
-        Please choose a bank account to use when importing transfers into Aplos:
+        <span class="selectLabel">Bank Account:</span>
         <div class="clr-select-wrapper">
           <select
           id="transfersAplosTransactionAccountNumber"
-          class="clr-select"
+          class="clr-select select"
           name="transfersAplosTransactionAccountNumber"
           required
           [(ngModel)]="settingsModel.transfersAplosTransactionAccountNumber"
@@ -617,12 +619,12 @@
         </div>
       </div>
       <div *ngIf="settingsModel.syncPexFees">
-        <h4>Fees</h4>
-        Please choose a contact to use when importing fees into Aplos:
+        <h4>Fees:</h4>
+        <span class="selectLabel">Contact:</span>
         <div class="clr-select-wrapper">
             <select
               id="pexFeesAplosContactId"
-              class="clr-select"
+              class="clr-select select"
               name="pexFeesAplosContactId"
               required
               [(ngModel)]="settingsModel.pexFeesAplosContactId"
@@ -633,11 +635,11 @@
           </div>
           <br>
 
-        Please choose a fund to use when importing fees into Aplos:
+        <span class="selectLabel">Fund:</span>
         <div class="clr-select-wrapper">
             <select
               id="pexFeesAplosFundId"
-              class="clr-select"
+              class="clr-select select"
               name="pexFeesAplosFundId"
               required
               [(ngModel)]="settingsModel.pexFeesAplosFundId"
@@ -648,11 +650,11 @@
           </div>
         <br>
           
-        Please choose a transaction account to use when importing fees into Aplos:
+        <span class="selectLabel">Transaction Account:</span>
         <div class="clr-select-wrapper">
           <select
           id="pexFeesAplosTransactionAccountNumber"
-          class="clr-select"
+          class="clr-select select"
           name="pexFeesAplosTransactionAccountNumber"
           required
           [(ngModel)]="settingsModel.pexFeesAplosTransactionAccountNumber"
@@ -662,12 +664,11 @@
         </select>
         </div>
         <div *ngIf="settingsModel.syncTaxTagToPex">
-          <br>
-          Please choose a 990 tag option to use when importing fees into Aplos:
+          <span class="selectLabel">990 Tag Option:</span>
           <div class="clr-select-wrapper">
             <select
               id="pexFeesAplosTaxTag"
-              class="clr-select"
+              class="clr-select select"
               name="pexFeesAplosTaxTag"
               required
               [(ngModel)]="settingsModel.pexFeesAplosTaxTag">

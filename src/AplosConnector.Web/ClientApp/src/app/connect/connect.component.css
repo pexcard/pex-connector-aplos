@@ -1,0 +1,8 @@
+.selectLabel {
+    min-width: 160px;
+    display: inline-block;
+}
+
+.select {
+    min-width: 330px;
+}
