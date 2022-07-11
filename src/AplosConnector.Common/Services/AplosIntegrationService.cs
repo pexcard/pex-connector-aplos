@@ -963,7 +963,7 @@ namespace AplosConnector.Common.Services
                                     {
                                         pexTagValues.AplosFundId = aplosFundId;
                                     }
-                                    else if (int.TryParse(aplosFunds.FindMatchingEntity(fundName, fundTransactionTag.Value.ToString(), ':')?.Id, out var aplosFundId2))
+                                    else if (int.TryParse(aplosFunds.FindMatchingEntity(fundName, fundName, ':')?.Id, out var aplosFundId2))
                                     {
                                         pexTagValues.AplosFundId = aplosFundId2;
                                     }
@@ -1006,7 +1006,7 @@ namespace AplosConnector.Common.Services
                                             StringComparison.InvariantCultureIgnoreCase))?.Options;
                                     var expenseAccountName = expenseAccountTag.GetTagOptionName(expenseAccountOptions);
                                     log.LogInformation($"Attempting to match expense account tag value {expenseAccountName} by name");
-                                    expenseAccountNumberTagValue = aplosExpenseAccounts.FindMatchingEntity(expenseAccountTag.Value.ToString(), expenseAccountName, ':')?.Id ?? aplosExpenseAccounts.FindMatchingEntity(expenseAccountName, expenseAccountTag.Value.ToString(), ':')?.Id;
+                                    expenseAccountNumberTagValue = aplosExpenseAccounts.FindMatchingEntity(expenseAccountTag.Value.ToString(), expenseAccountName, ':')?.Id ?? aplosExpenseAccounts.FindMatchingEntity(expenseAccountName, expenseAccountName, ':')?.Id;
                                 }
 
                                 if (decimal.TryParse(expenseAccountNumberTagValue, out decimal transactionAccountNumber))
@@ -1042,7 +1042,7 @@ namespace AplosConnector.Common.Services
                                                     StringComparison.InvariantCultureIgnoreCase))?.Options;
                                             var pexTagName = mappedTagValue.GetTagOptionName(pexTagOptions);
                                             log.LogInformation($"Attempting to match mapped tag value {pexTagName} by name");
-                                            aplosTagId = aplosTags.FindMatchingEntity(mappedTagValue.Value.ToString(), pexTagName, ':')?.Id ?? aplosTags.FindMatchingEntity(pexTagName, mappedTagValue.Value.ToString(), ':')?.Id;
+                                            aplosTagId = aplosTags.FindMatchingEntity(mappedTagValue.Value.ToString(), pexTagName, ':')?.Id ?? aplosTags.FindMatchingEntity(pexTagName, pexTagName, ':')?.Id;
                                         }
 
                                         pexTagValues.AplosTagIds.Add(aplosTagId);
