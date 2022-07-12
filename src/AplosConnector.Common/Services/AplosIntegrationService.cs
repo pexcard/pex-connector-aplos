@@ -960,7 +960,7 @@ namespace AplosConnector.Common.Services
                                 var allocationFundEntityId = aplosFunds.FindMatchingEntity(allocationFundTagOptionValue, allocationFundTagOptionName, ':')?.Id;
                                 if (allocationFundEntityId == null)
                                 {
-                                    log.LogWarning($"Could not match PEX expense account tag '{nameof(allocationFundTagOptionName)}' / '{allocationFundTagOptionValue}' with an Aplos fund.");
+                                    log.LogWarning($"Could not match PEX expense account tag '{nameof(allocationFundTagOptionName)}' / '{allocationFundTagOptionValue}' with an Aplos fund entity.");
                                 }
                                 else
                                 {
@@ -999,7 +999,7 @@ namespace AplosConnector.Common.Services
                                 var allocationExpenseAccountEntityId = aplosExpenseAccounts.FindMatchingEntity(allocationExpenseAccountTagOptionValue, allocationExpenseAccountTagOptionName, ':')?.Id;
                                 if (allocationExpenseAccountEntityId == null)
                                 {
-                                    log.LogWarning($"Could not match PEX expense account tag '{nameof(allocationExpenseAccountTagOptionName)}' / '{allocationExpenseAccountTagOptionValue}' with an Aplos expense account.");
+                                    log.LogWarning($"Could not match PEX expense account tag '{nameof(allocationExpenseAccountTagOptionName)}' / '{allocationExpenseAccountTagOptionValue}' with an Aplos expense account entity.");
                                 }
                                 else
                                 {
@@ -1031,7 +1031,7 @@ namespace AplosConnector.Common.Services
 
                                         if (allocationTagEntityId is null)
                                         {
-                                            log.LogWarning($"Could not match PEX tag '{nameof(allocationTagOptionName)}' / '{allocationTagOptionValue}' with an Aplos tag.");
+                                            log.LogWarning($"Could not match PEX tag '{nameof(allocationTagOptionName)}' / '{allocationTagOptionValue}' with an Aplos tag entity.");
                                         }
                                         else
                                         {
