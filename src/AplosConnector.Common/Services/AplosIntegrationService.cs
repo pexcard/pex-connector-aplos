@@ -957,9 +957,8 @@ namespace AplosConnector.Common.Services
                                 if (allocationFundTag != null)
                                 {
                                     var fundTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(mapping.PexFundsTagId, StringComparison.InvariantCultureIgnoreCase));
-                                    var fundTagOptions = fundTagDefinition?.Options;
                                     var allocationFundTagOptionValue = allocationFundTag?.Value?.ToString();
-                                    var allocationFundTagOptionName = allocationFundTag?.GetTagOptionName(fundTagOptions);
+                                    var allocationFundTagOptionName = allocationFundTag?.GetTagOptionName(fundTagDefinition?.Options);
                                     var allocationFundEntityId = aplosFunds.FindMatchingEntity(allocationFundTagOptionValue, allocationFundTagOptionName, ':')?.Id;
                                     if (allocationFundEntityId == null)
                                     {
@@ -998,8 +997,7 @@ namespace AplosConnector.Common.Services
                                 }
 
                                 var expenseAccountTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(expenseAccountTagId, StringComparison.InvariantCultureIgnoreCase));
-                                var expenseAccountTagOptions = expenseAccountTagDefinition?.Options;
-                                var allocationExpenseAccountTagOptionName = expenseAccountTag.GetTagOptionName(expenseAccountTagOptions);
+                                var allocationExpenseAccountTagOptionName = expenseAccountTag.GetTagOptionName(expenseAccountTagDefinition?.Options);
                                 var allocationExpenseAccountTagOptionValue = expenseAccountTag.Value?.ToString();
                                 var allocationExpenseAccountEntityId = aplosExpenseAccounts.FindMatchingEntity(allocationExpenseAccountTagOptionValue, allocationExpenseAccountTagOptionName, ':')?.Id;
                                 if (allocationExpenseAccountEntityId == null)
@@ -1030,9 +1028,8 @@ namespace AplosConnector.Common.Services
                                         }
 
                                         var allocationTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(tagMapping.PexTagId, StringComparison.InvariantCultureIgnoreCase));
-                                        var allocationTagOptions = allocationTagDefinition?.Options;
                                         var allocationTagOptionValue = allocationTag.Value?.ToString();
-                                        var allocationTagOptionName = allocationTag.GetTagOptionName(allocationTagOptions);
+                                        var allocationTagOptionName = allocationTag.GetTagOptionName(allocationTagDefinition?.Options);
                                         var allocationTagEntityId = aplosTags.FindMatchingEntity(allocationTag.Value.ToString(), allocationTagOptionName, ':')?.Id;
                                         if (allocationTagEntityId is null)
                                         {
