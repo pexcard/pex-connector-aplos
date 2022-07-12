@@ -953,29 +953,29 @@ namespace AplosConnector.Common.Services
 
                             if (useTags)
                             {
-                                var fundTransactionTag = allocation.GetTagValue(mapping.PexFundsTagId);
-                                if (!mapping.SyncFundsToPex)
+                                var fundTagOptions = dropdownTags.FirstOrDefault(t => t.Id.Equals(mapping.PexFundsTagId, StringComparison.InvariantCultureIgnoreCase))?.Options;
+                                var allocationFundTag = allocation.GetTagValue(mapping.PexFundsTagId);
+                                var allocationFundTagOptionValue = allocationFundTag?.Value?.ToString();
+                                var allocationFundTagOptionName = allocationFundTag?.GetTagOptionName(fundTagOptions);
+                                var allocationFundEntityId = aplosFunds.FindMatchingEntity(allocationFundTagOptionValue, allocationFundTagOptionName, ':')?.Id;
+                                if (allocationFundEntityId == null)
                                 {
-                                    var fundOptions = dropdownTags.FirstOrDefault(t =>
-                                        t.Id.Equals(mapping.PexFundsTagId, StringComparison.InvariantCultureIgnoreCase))?.Options;
-                                    var fundName = fundTransactionTag?.GetTagOptionName(fundOptions);
-                                    if (int.TryParse(aplosFunds.FindMatchingEntity(fundTransactionTag.Value.ToString(), fundName, ':')?.Id, out var aplosFundId))
+                                    log.LogWarning($"Could not match expense account tag '{nameof(allocationFundTagOptionName)}' / '{allocationFundTagOptionValue}' with an Aplos fund.");
+                                }
+                                else
+                                {
+                                    if (int.TryParse(allocationFundEntityId, out var aplosFundId))
                                     {
                                         pexTagValues.AplosFundId = aplosFundId;
                                     }
-                                    else if (int.TryParse(aplosFunds.MatchEntityByName(fundTransactionTag.Value.ToString(), ':')?.Id, out var aplosFundId2))
+                                    else
                                     {
-                                        pexTagValues.AplosFundId = aplosFundId2;
+                                        log.LogWarning($"Could not parse Aplos expense fund id '{allocationFundEntityId}' into a int.");
                                     }
-                                }
-                                else if (int.TryParse(fundTransactionTag?.Value.ToString(), out var aplosFundId))
-                                {
-                                    pexTagValues.AplosFundId = aplosFundId;
                                 }
 
                                 string expenseAccountTagId = null;
                                 TagValueItem expenseAccountTag = null;
-                                var areExpenseAccountTagsSynced = false;
                                 foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
                                 {
                                     var expenseAccountTransactionTag = allocation.GetTagValue(expenseAccountMapping.ExpenseAccountsPexTagId);
@@ -983,7 +983,6 @@ namespace AplosConnector.Common.Services
                                     {
                                         expenseAccountTagId = expenseAccountMapping.ExpenseAccountsPexTagId;
                                         expenseAccountTag = expenseAccountTransactionTag;
-                                        areExpenseAccountTagsSynced = expenseAccountMapping.SyncExpenseAccounts;
                                         break;
                                     }
                                 }
@@ -994,28 +993,24 @@ namespace AplosConnector.Common.Services
                                     break;
                                 }
 
-                                string expenseAccountNumberTagValue;
-                                if (areExpenseAccountTagsSynced)
+                                var expenseAccountTagOptions = dropdownTags.FirstOrDefault(t => t.Id.Equals(expenseAccountTagId, StringComparison.InvariantCultureIgnoreCase))?.Options;
+                                var allocationExpenseAccountTagOptionName = expenseAccountTag.GetTagOptionName(expenseAccountTagOptions);
+                                var allocationExpenseAccountTagOptionValue = expenseAccountTag.Value.ToString();
+                                var allocationExpenseAccountEntityId = aplosExpenseAccounts.FindMatchingEntity(allocationExpenseAccountTagOptionValue, allocationExpenseAccountTagOptionName, ':')?.Id;
+                                if (allocationExpenseAccountEntityId == null)
                                 {
-                                    expenseAccountNumberTagValue = expenseAccountTag.Value.ToString();
+                                    log.LogWarning($"Could not match expense account tag '{nameof(allocationExpenseAccountTagOptionName)}' / '{allocationExpenseAccountTagOptionValue}' with an Aplos expense account.");
                                 }
                                 else
                                 {
-                                    var expenseAccountOptions = dropdownTags.FirstOrDefault(t =>
-                                        t.Id.Equals(expenseAccountTagId,
-                                            StringComparison.InvariantCultureIgnoreCase))?.Options;
-                                    var expenseAccountName = expenseAccountTag.GetTagOptionName(expenseAccountOptions);
-                                    log.LogInformation($"Attempting to match expense account tag value {expenseAccountName} by name");
-                                    expenseAccountNumberTagValue = aplosExpenseAccounts.FindMatchingEntity(expenseAccountTag.Value.ToString(), expenseAccountName, ':')?.Id ?? aplosExpenseAccounts.MatchEntityByName(expenseAccountTag.Value.ToString(), ':')?.Id;
-                                }
-
-                                if (decimal.TryParse(expenseAccountNumberTagValue, out decimal transactionAccountNumber))
-                                {
-                                    pexTagValues.AplosTransactionAccountNumber = transactionAccountNumber;
-                                }
-                                else
-                                {
-                                    log.LogWarning($"Could not parse {nameof(expenseAccountNumberTagValue)} '{expenseAccountNumberTagValue}' into a decimal.");
+                                    if (decimal.TryParse(allocationExpenseAccountEntityId, out decimal aplosTransactionAccountNumber))
+                                    {
+                                        pexTagValues.AplosTransactionAccountNumber = aplosTransactionAccountNumber;
+                                    }
+                                    else
+                                    {
+                                        log.LogWarning($"Could not parse Aplos expense account id '{allocationExpenseAccountEntityId}' into a decimal.");
+                                    }
                                 }
 
                                 if (mapping.TagMappings != null)
@@ -1023,29 +1018,25 @@ namespace AplosConnector.Common.Services
                                     pexTagValues.AplosTagIds = new List<string>();
                                     foreach (var tagMapping in mapping.TagMappings)
                                     {
-                                        var mappedTagValue = allocation.GetTagValue(tagMapping.PexTagId);
-
-                                        if (mappedTagValue == null || mappedTagValue.TagId == mapping.PexTaxTagId)
+                                        var allocationTag = allocation.GetTagValue(tagMapping.PexTagId);
+                                        if (allocationTag == null || allocationTag.TagId == mapping.PexTaxTagId)
                                         {
                                             continue;
                                         }
 
-                                        string aplosTagId;
-                                        if (tagMapping.SyncToPex)
+                                        var allocationTagOptions = dropdownTags.FirstOrDefault(t => t.Id.Equals(tagMapping.PexTagId, StringComparison.InvariantCultureIgnoreCase))?.Options;
+                                        var allocationTagOptionValue = allocationTag.Value.ToString();
+                                        var allocationTagOptionName = allocationTag.GetTagOptionName(allocationTagOptions);
+                                        var allocationTagEntityId = aplosTags.FindMatchingEntity(allocationTag.Value.ToString(), allocationTagOptionName, ':')?.Id;
+
+                                        if (allocationTagEntityId is null)
                                         {
-                                            aplosTagId = mappedTagValue.Value.ToString();
+                                            log.LogWarning($"Could not match PEX tag '{nameof(allocationTagOptionName)}' / '{allocationTagOptionValue}' with an Aplos tag.");
                                         }
                                         else
                                         {
-                                            var pexTagOptions = dropdownTags.FirstOrDefault(t =>
-                                                t.Id.Equals(tagMapping.PexTagId,
-                                                    StringComparison.InvariantCultureIgnoreCase))?.Options;
-                                            var pexTagName = mappedTagValue.GetTagOptionName(pexTagOptions);
-                                            log.LogInformation($"Attempting to match mapped tag value {pexTagName} by name");
-                                            aplosTagId = aplosTags.FindMatchingEntity(mappedTagValue.Value.ToString(), pexTagName, ':')?.Id ?? aplosTags.MatchEntityByName(mappedTagValue.Value.ToString(), ':')?.Id;
+                                            pexTagValues.AplosTagIds.Add(allocationTagEntityId);
                                         }
-
-                                        pexTagValues.AplosTagIds.Add(aplosTagId);
                                     }
                                 }
 
