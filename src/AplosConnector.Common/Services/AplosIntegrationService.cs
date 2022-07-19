@@ -1165,6 +1165,11 @@ namespace AplosConnector.Common.Services
                 var businessAccountTransactions = await _pexApiClient.GetBusinessAccountTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End);
 
                 await SyncTransfers(log, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
+
+                var additionalFeeTransactionsInRange = additionalFeeTransactions
+                    .Where(f => f.TransactionTime.Date >= dateRangeBatch.Start && f.TransactionTime.Date < dateRangeBatch.End)
+                    .ToList();
+
                 await SyncPexFees(log, mapping, businessAccountTransactions, aplosTransactions, additionalFeeTransactions, cancellationToken);
             }
         }
