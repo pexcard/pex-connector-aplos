@@ -976,6 +976,10 @@ namespace AplosConnector.Common.Services
                                         }
                                     }
                                 }
+                                else
+                                {
+                                    log.LogInformation($"No PEX fund tag on allocation {allocation.Amount:C}.");
+                                }
 
                                 string expenseAccountTagId = null;
                                 TagValueItem expenseAccountTag = null;
@@ -1024,13 +1028,14 @@ namespace AplosConnector.Common.Services
                                         var allocationTag = allocation.GetTagValue(tagMapping.PexTagId);
                                         if (allocationTag == null || allocationTag.TagId == mapping.PexTaxTagId)
                                         {
+                                            log.LogInformation($"No PEX tag {tagMapping.PexTagId} on allocation {allocation.Amount:C}");
                                             continue;
                                         }
 
                                         var allocationTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(tagMapping.PexTagId, StringComparison.InvariantCultureIgnoreCase));
                                         var allocationTagOptionValue = allocationTag.Value?.ToString();
                                         var allocationTagOptionName = allocationTag.GetTagOptionName(allocationTagDefinition?.Options);
-                                        var allocationTagEntityId = aplosTags.FindMatchingEntity(allocationTag.Value.ToString(), allocationTagOptionName, ':')?.Id;
+                                        var allocationTagEntityId = aplosTags.FindMatchingEntity(allocationTagOptionValue, allocationTagOptionName, ':')?.Id;
                                         if (allocationTagEntityId is null)
                                         {
                                             log.LogWarning($"Could not match PEX tag '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with an Aplos tag entity.");
@@ -1068,7 +1073,7 @@ namespace AplosConnector.Common.Services
 
                         if (!string.IsNullOrEmpty(syncIneligibilityReason))
                         {
-                            log.LogInformation(syncIneligibilityReason);
+                            log.LogWarning(syncIneligibilityReason);
                             continue;
                         }
 
