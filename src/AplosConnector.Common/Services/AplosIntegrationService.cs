@@ -1081,7 +1081,7 @@ namespace AplosConnector.Common.Services
                             continue;
                         }
 
-                        log.LogDebug($"Starting sync for transaction {transaction.TransactionId}");
+                        log.LogInformation($"Starting sync for transaction {transaction.TransactionId}");
 
                         var transactionSyncResult = TransactionSyncResult.Failed;
                         try
