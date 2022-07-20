@@ -1022,15 +1022,18 @@ namespace AplosConnector.Common.Services
                                     }
                                 }
 
-                                if (mapping.TagMappings != null)
+                                if (mapping.TagMappings?.Any() == true)
                                 {
                                     pexTagValues.AplosTagIds = new List<string>();
+
+                                    log.LogInformation($"Processing {mapping.TagMappings.Length} Aplos tag mappings for transaction {transaction.TransactionId} allocation {allocation.Amount:C}");
+
                                     foreach (var tagMapping in mapping.TagMappings)
                                     {
                                         var allocationTag = allocation.GetTagValue(tagMapping.PexTagId);
                                         if (allocationTag == null || allocationTag.TagId == mapping.PexTaxTagId)
                                         {
-                                            log.LogInformation($"No PEX tag {tagMapping.PexTagId} on allocation {allocation.Amount:C}");
+                                            log.LogInformation($"No PEX tag {tagMapping.PexTagId} on transaction {transaction.TransactionId} allocation {allocation.Amount:C}");
                                             continue;
                                         }
 
@@ -1048,6 +1051,10 @@ namespace AplosConnector.Common.Services
                                             pexTagValues.AplosTagIds.Add(allocationTagEntity.Id);
                                         }
                                     }
+                                }
+                                else
+                                {
+                                    log.LogInformation($"No Aplos tag mappings to process.");
                                 }
 
                                 var taxTag = allocation.GetTagValue(mapping.PexTaxTagId);
@@ -1113,7 +1120,7 @@ namespace AplosConnector.Common.Services
                         }
                         else if (transactionSyncResult == TransactionSyncResult.Failed)
                         {
-                            log.LogWarning ($"Failed to sync transaction {transaction.TransactionId}");
+                            log.LogWarning($"Failed to sync transaction {transaction.TransactionId}");
                             failureCount++;
                         }
                     }
