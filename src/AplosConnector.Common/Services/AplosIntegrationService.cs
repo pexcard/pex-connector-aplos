@@ -1081,7 +1081,7 @@ namespace AplosConnector.Common.Services
                             continue;
                         }
 
-                        log.LogInformation($"Starting sync for transaction {transaction.TransactionId}");
+                        log.LogDebug($"Starting sync for transaction {transaction.TransactionId}");
 
                         var transactionSyncResult = TransactionSyncResult.Failed;
                         try
@@ -1101,18 +1101,19 @@ namespace AplosConnector.Common.Services
 
                         if (transactionSyncResult != TransactionSyncResult.NotEligible)
                         {
+                            log.LogWarning($"Sync not eligible for transaction {transaction.TransactionId}");
                             eligibleCount++;
                         }
                         if (transactionSyncResult == TransactionSyncResult.Success)
                         {
                             syncCount++;
-                            log.LogInformation($"Synced transaction {transaction.TransactionId} with Aplos");
-                            var syncedNoteText =
-                                $"{PexCardConst.SyncedWithAplosNote} on {DateTime.UtcNow.ToEst():MM/dd/yyyy h:mm tt}";
+                            log.LogInformation($"Synced transaction {transaction.TransactionId}");
+                            var syncedNoteText = $"{PexCardConst.SyncedWithAplosNote} on {DateTime.UtcNow.ToEst():MM/dd/yyyy h:mm tt}";
                             await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText);
                         }
                         else if (transactionSyncResult == TransactionSyncResult.Failed)
                         {
+                            log.LogWarning ($"Failed to sync transaction {transaction.TransactionId}");
                             failureCount++;
                         }
                     }
