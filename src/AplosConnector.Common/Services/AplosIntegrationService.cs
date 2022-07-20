@@ -956,10 +956,10 @@ namespace AplosConnector.Common.Services
                                 var allocationFundTag = allocation.GetTagValue(mapping.PexFundsTagId);
                                 if (allocationFundTag != null)
                                 {
-                                    var fundTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(mapping.PexFundsTagId, StringComparison.InvariantCultureIgnoreCase));
+                                    var fundTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(allocationFundTag.TagId, StringComparison.InvariantCultureIgnoreCase));
                                     var allocationFundTagOptionValue = allocationFundTag?.Value?.ToString();
                                     var allocationFundTagOptionName = allocationFundTag?.GetTagOptionName(fundTagDefinition?.Options);
-                                    var allocationFundEntity = aplosFunds.FindMatchingEntity(allocationFundTagOptionValue, allocationFundTagOptionName, ':');
+                                    var allocationFundEntity = aplosFunds.FindMatchingEntity(allocationFundTagOptionValue, allocationFundTagOptionName, ':', log);
                                     if (allocationFundEntity == null)
                                     {
                                         log.LogWarning($"Could not match PEX fund tag '{fundTagDefinition?.Name}' option ['{allocationFundTagOptionName}' : '{allocationFundTagOptionValue}'] with an Aplos fund entity.");
@@ -1001,10 +1001,10 @@ namespace AplosConnector.Common.Services
                                     break;
                                 }
 
-                                var expenseAccountTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(expenseAccountTagId, StringComparison.InvariantCultureIgnoreCase));
+                                var expenseAccountTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(expenseAccountTag.TagId, StringComparison.InvariantCultureIgnoreCase));
                                 var allocationExpenseAccountTagOptionName = expenseAccountTag.GetTagOptionName(expenseAccountTagDefinition?.Options);
                                 var allocationExpenseAccountTagOptionValue = expenseAccountTag.Value?.ToString();
-                                var allocationExpenseAccountEntity = aplosExpenseAccounts.FindMatchingEntity(allocationExpenseAccountTagOptionValue, allocationExpenseAccountTagOptionName, ':');
+                                var allocationExpenseAccountEntity = aplosExpenseAccounts.FindMatchingEntity(allocationExpenseAccountTagOptionValue, allocationExpenseAccountTagOptionName, ':', log);
                                 if (allocationExpenseAccountEntity == null)
                                 {
                                     log.LogWarning($"Could not match PEX expense account tag '{expenseAccountTagDefinition?.Name}' option ['{allocationExpenseAccountTagOptionName}' : '{allocationExpenseAccountTagOptionValue}'] with an Aplos expense account entity.");
@@ -1034,10 +1034,10 @@ namespace AplosConnector.Common.Services
                                             continue;
                                         }
 
-                                        var allocationTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(tagMapping.PexTagId, StringComparison.InvariantCultureIgnoreCase));
+                                        var allocationTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(allocationTag.TagId, StringComparison.InvariantCultureIgnoreCase));
                                         var allocationTagOptionValue = allocationTag.Value?.ToString();
                                         var allocationTagOptionName = allocationTag.GetTagOptionName(allocationTagDefinition?.Options);
-                                        var allocationTagEntity = aplosTags.FindMatchingEntity(allocationTagOptionValue, allocationTagOptionName, ':');
+                                        var allocationTagEntity = aplosTags.FindMatchingEntity(allocationTagOptionValue, allocationTagOptionName, ':', log);
                                         if (allocationTagEntity is null)
                                         {
                                             log.LogWarning($"Could not match PEX tag '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with an Aplos tag entity.");
