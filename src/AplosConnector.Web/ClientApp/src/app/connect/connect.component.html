@@ -222,7 +222,8 @@
           [(ngModel)]="settingsModel.syncTransfers"
           />
         <label>
-          Automatically import PEX transfers into Aplos.
+          <span *ngIf="isPrepaid()">Automatically import PEX transfers into Aplos.</span>
+          <span *ngIf="isCredit()">Automatically import PEX bill payments into Aplos.</span>
         </label>
       </clr-toggle-wrapper>
 
@@ -267,15 +268,25 @@
           <div class="card-text">
             Please choose an account you have set up to represent your PEX funds:
             <div class="clr-select-wrapper">
-              <select
+              
+              <select *ngIf="isPrepaid()"
                 id="aplosRegisterAccountNumber"
                 class="clr-select"
                 [(ngModel)]="settingsModel.aplosRegisterAccountNumber"
-                name="aplosRegisterAccountNumber"
-              >
+                name="aplosRegisterAccountNumber">
                 <option></option>
                 <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAssetAccounts">{{aplosAccount | aplosAccount}}</option>
               </select>
+              
+              <select *ngIf="isCredit()"
+                id="aplosRegisterAccountNumber"
+                class="clr-select"
+                [(ngModel)]="settingsModel.aplosRegisterAccountNumber"
+                name="aplosRegisterAccountNumber">
+                <option></option>
+                <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosLiabilityAccounts">{{aplosAccount | aplosAccount}}</option>
+              </select>
+
             </div>
             <p>
               <strong>Tip:</strong> Consider creating a new account in Aplos called 'PEX' if you would like to book all of your PEX purchases against a single account.
@@ -413,8 +424,11 @@
         If you use multiple tags within PEX for accounts, click the <clr-icon shape="plus" size="18"></clr-icon> button to add additional tag(s).
       </p>
       <table class="table">
-        <caption>
+        <caption *ngIf="isPrepaid()">
           Expense Account
+        </caption>
+        <caption *ngIf="isCredit()">
+          Liability Account
         </caption>
         <thead>
           <tr>
@@ -525,7 +539,8 @@
   >
     <ng-template clrPageTitle>Choose default fund &amp; account</ng-template>
 
-    <h4>Please choose the following items when importing Transfers and Fees into Aplos</h4>
+    <h4 *ngIf="isPrepaid()" >Please choose the following items when importing Transfers and Fees into Aplos</h4>
+    <h4 *ngIf="isCredit()">Please choose the following items when importing Bill Payments and Fees into Aplos</h4>
 
     <app-loading-placeholder
     [loadingState]="loadingExpenseCategories"
@@ -573,7 +588,8 @@
       </div>
 
       <div *ngIf="settingsModel.syncTransfers">
-        <h4>Transfers:</h4>
+        <h4 *ngIf="isPrepaid()">Transfers:</h4>
+        <h4 *ngIf="isCredit()">Bill Payments:</h4>
         <span class="selectLabel">Contact:</span>
         <div class="clr-select-wrapper">
             <select
@@ -651,16 +667,26 @@
         <br>
           
         <span class="selectLabel">Transaction Account:</span>
-        <div class="clr-select-wrapper">
+        <div *ngIf="isPrepaid()" class="clr-select-wrapper">
           <select
           id="pexFeesAplosTransactionAccountNumber"
           class="clr-select select"
           name="pexFeesAplosTransactionAccountNumber"
           required
-          [(ngModel)]="settingsModel.pexFeesAplosTransactionAccountNumber"
-        >
+          [(ngModel)]="settingsModel.pexFeesAplosTransactionAccountNumber">
           <option></option>
           <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
+          </select>
+        </div>
+        <div *ngIf="isCredit()" class="clr-select-wrapper">
+          <select
+          id="pexFeesAplosTransactionAccountNumber"
+          class="clr-select select"
+          name="pexFeesAplosTransactionAccountNumber"
+          required
+          [(ngModel)]="settingsModel.pexFeesAplosTransactionAccountNumber">
+          <option></option>
+          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosLiabilityAccounts">{{aplosAccount | aplosAccount}}</option>
         </select>
         </div>
         <div *ngIf="settingsModel.syncTaxTagToPex">

@@ -1,4 +1,5 @@
 ﻿using System;
+using PexCard.Api.Client.Core.Models;
 
 namespace AplosConnector.Common.Models
 {
@@ -69,5 +70,6 @@ namespace AplosConnector.Common.Models
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
+        public FundingSource PEXFundingSource { get; set; }
     }
 }

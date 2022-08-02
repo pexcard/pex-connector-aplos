@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.Azure.Cosmos.Table;
+using PexCard.Api.Client.Core.Models;
 
 namespace AplosConnector.Common.Entities
 {
@@ -12,6 +13,7 @@ namespace AplosConnector.Common.Entities
 
         public string PEXExternalAPIToken { get; set; }
         public int PEXBusinessAcctId { get; set; }
+        public int PEXFundingSource { get; set; }
         public DateTime CreatedUtc { get; set; }
         public DateTime? LastSyncUtc { get; set; }
         public DateTime? LastRenewedUtc { get; set; }

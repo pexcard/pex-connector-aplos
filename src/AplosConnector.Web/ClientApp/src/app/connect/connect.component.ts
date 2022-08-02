@@ -11,7 +11,8 @@ import {
 
   TagMappingModel,
   AplosAuthenticationStatusModel,
-  AplosAuthenticationMode
+  AplosAuthenticationMode,
+  FundingSource
 } from "../services/mapping.service";
 import { AplosService, AplosPreferences, AplosAccount, AplosObject, AplosApiTaxTagCategoryDetail } from "../services/aplos.service";
 import { PexService, PexTagInfoModel, CustomFieldType } from '../services/pex.service';
@@ -67,6 +68,7 @@ export class ConnectComponent implements OnInit {
   aplosContacts: AplosObject[] = [];
   aplosAssetAccounts: AplosAccount[] = [];
   aplosExpenseAccounts: AplosAccount[] = [];
+  aplosLiabilityAccounts: AplosAccount[] = [];
   aplosFunds: AplosObject[] = [];
   aplosTagCategories: AplosObject[] = [];
   aplosTaxTagCategories: AplosApiTaxTagCategoryDetail[] = [];
@@ -107,7 +109,8 @@ export class ConnectComponent implements OnInit {
     transfersAplosTransactionAccountNumber: 0,
     expenseAccountMappings: [],
     tagMappings: [],
-    taxTagCategoryDetails: []
+    taxTagCategoryDetails: [],
+    pexFundingSource: 0
   };
 
   getExpenseAccountFormElements() {
@@ -281,6 +284,26 @@ export class ConnectComponent implements OnInit {
     )
   }
 
+  loadingLiabilityAccounts = false;
+  errorLoadingLiabilityAccounts = false;
+  getLiabilityAccounts() {
+    this.loadingLiabilityAccounts = true;
+    this.errorLoadingLiabilityAccounts = false;
+
+    return this.aplos.getAccounts(this.sessionId, "liability").subscribe(
+      liabilityAccounts => {
+        console.log('getting liability accounts', liabilityAccounts);
+        this.aplosLiabilityAccounts = [...liabilityAccounts];
+        this.loadingLiabilityAccounts = false;
+        console.log('got liability accounts', this.aplosLiabilityAccounts);
+      },
+      () => {
+        this.loadingLiabilityAccounts = false;
+        this.errorLoadingLiabilityAccounts = true;
+      }
+    )
+  }
+
   loadingAplosContacts = false;
   errorLoadingAplosContacts = false;
   getContacts() {
@@ -382,7 +405,7 @@ export class ConnectComponent implements OnInit {
   onAplosPartnerVerification() {
     this.redirectingToAplosAuth = true;
     window.location.href = this.aplosAuthenticationStatus.partnerVerificationUrl;
-}
+  }
 
   getSettings() {
     this.mapping.getSettings(this.sessionId).subscribe(data => {
@@ -395,7 +418,14 @@ export class ConnectComponent implements OnInit {
 
       this.getContacts();
       this.getAssetAccounts();
-      this.getExpenseAccounts();
+
+      if (this.isPrepaid()) {
+        this.getExpenseAccounts();
+      }
+      else if (this.isCredit()) {
+        this.getLiabilityAccounts();
+      }
+
       this.getFunds();
       this.getTagCategories();
       this.getTaxTagCategories();
@@ -594,6 +624,15 @@ export class ConnectComponent implements OnInit {
   onTagMappingCancel() {
     this.open = false;
   }
+
+  isPrepaid() : boolean {
+    return this.settingsModel.pexFundingSource == FundingSource.Prepaid;
+  }
+
+  isCredit() : boolean {
+    return this.settingsModel.pexFundingSource == FundingSource.Credit;
+  }
+
 }
 
 export interface OauthResponse {
