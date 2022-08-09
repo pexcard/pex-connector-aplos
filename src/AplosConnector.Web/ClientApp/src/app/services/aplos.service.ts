@@ -79,7 +79,7 @@ export class AplosService {
   
 }
 
-export type AplosAccountCategory = "asset" | "expense";
+export type AplosAccountCategory = "asset" | "expense" | "liability";
 
 export interface AplosObject {
   id: number;

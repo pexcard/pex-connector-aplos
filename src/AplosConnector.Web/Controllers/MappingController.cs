@@ -71,6 +71,8 @@ namespace AplosConnector.Web.Controllers
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(pexAcctId, cancellationToken);
             mapping.UpdateFromSettings(settings);
 
+            await _aplosIntegrationService.UpdateFundingSource(mapping, cancellationToken);
+
             await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
 
             return Ok();
@@ -89,7 +91,9 @@ namespace AplosConnector.Web.Controllers
 
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
 
-            return mapping?.ToStorageModel();
+            await _aplosIntegrationService.UpdateFundingSource(mapping, cancellationToken);
+
+            return mapping.ToStorageModel();
         }
 
         [HttpGet, Route("AplosAuthenticationStatus")]

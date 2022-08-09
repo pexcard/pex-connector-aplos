@@ -128,6 +128,8 @@ export interface SettingsModel {
   expenseAccountMappings: ExpenseAccountMappingModel[];
   tagMappings: TagMappingModel[];
   taxTagCategoryDetails: AplosApiTaxTagCategoryDetail[];
+  pexFundingSource: FundingSource;
+
 }
 
 export interface ExpenseAccountMappingModel {
@@ -145,4 +147,9 @@ export interface TagMappingModel {
 export enum AplosAuthenticationMode {
   clientAuthentication = 0,
   partnerAuthentication = 1
+}
+
+export enum FundingSource {
+  Prepaid = 1,
+  Credit = 2
 }

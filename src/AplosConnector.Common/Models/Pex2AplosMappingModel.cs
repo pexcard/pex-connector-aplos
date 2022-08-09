@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using PexCard.Api.Client.Core.Models;
 
 namespace AplosConnector.Common.Models
 {
@@ -56,6 +57,7 @@ namespace AplosConnector.Common.Models
 
             ExpenseAccountMappings = mapping.ExpenseAccountMappings;
             TagMappings = mapping.TagMappings;
+            PEXFundingSource = mapping.PEXFundingSource;
         }
 
         private static string GetPexTaxTagId(IEnumerable<TagMappingModel> tagMappings)
@@ -110,11 +112,13 @@ namespace AplosConnector.Common.Models
 
                 ExpenseAccountMappings = ExpenseAccountMappings,
                 TagMappings = TagMappings,
+                PEXFundingSource = PEXFundingSource
             };
         }
 
         public string PEXExternalAPIToken { get; set; }
         public int PEXBusinessAcctId { get; set; }
+        public FundingSource PEXFundingSource { get; set; }
         public DateTime CreatedUtc { get; set; }
         public DateTime? LastSyncUtc { get; set; }
         public DateTime? LastRenewedUtc { get; set; }

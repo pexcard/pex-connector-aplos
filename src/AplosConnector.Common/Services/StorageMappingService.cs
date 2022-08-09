@@ -4,6 +4,7 @@ using AplosConnector.Common.Services.Abstractions;
 using Microsoft.AspNetCore.DataProtection;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using PexCard.Api.Client.Core.Models;
 
 namespace AplosConnector.Common.Services
 {
@@ -43,6 +44,7 @@ namespace AplosConnector.Common.Services
                 {
                     CreatedUtc = model.CreatedUtc,
                     PEXBusinessAcctId = model.PEXBusinessAcctId,
+                    PEXFundingSource = (int)model.PEXFundingSource,
                     LastSyncUtc = model.LastSyncUtc,
                     LastRenewedUtc = model.LastRenewedUtc,
                     PEXExternalAPIToken = model.PEXExternalAPIToken,
@@ -143,6 +145,7 @@ namespace AplosConnector.Common.Services
                 {
                     CreatedUtc = model.CreatedUtc,
                     PEXBusinessAcctId = model.PEXBusinessAcctId,
+                    PEXFundingSource = (FundingSource)model.PEXFundingSource,
                     LastSyncUtc = model.LastSyncUtc,
                     LastRenewedUtc = model.LastRenewedUtc,
                     PEXExternalAPIToken = model.PEXExternalAPIToken,
