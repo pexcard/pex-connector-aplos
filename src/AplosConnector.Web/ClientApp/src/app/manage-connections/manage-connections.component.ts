@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { ExpenseAccountMappingModel, MappingService, SettingsModel, TagMappingModel } from '../services/mapping.service';
+import { ExpenseAccountMappingModel, FundingSource, MappingService, SettingsModel, TagMappingModel } from '../services/mapping.service';
 import { AuthService } from '../services/auth.service';
 import { AplosService, AplosPreferences, AplosAccount, AplosObject, AplosApiTaxTagCategoryDetail } from '../services/aplos.service';
 import { PexConnectionDetailModel, PexService } from '../services/pex.service';
@@ -252,6 +252,14 @@ export class ManageConnectionsComponent implements OnInit {
         }
       );
     }
+  }
+
+  isPrepaid() : boolean {
+    return this.settings.pexFundingSource == FundingSource.Prepaid;
+  }
+
+  isCredit() : boolean {
+    return this.settings.pexFundingSource == FundingSource.Credit;
   }
 
   onDisconnect() {

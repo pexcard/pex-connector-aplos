@@ -50,7 +50,7 @@
     <h4>Settings</h4>
     <table class="table table-vertical">
       <tbody>
-        <tr><th>Sync Tags</th>
+        <tr><th>Sync tags</th>
           <td>
             <clr-icon
               *ngIf="settings.syncTags"
@@ -64,7 +64,7 @@
             ></clr-icon>
           </td>
         </tr>
-        <tr><th>Sync Transactions</th>
+        <tr><th>Sync transactions</th>
         <td>
             <clr-icon
               *ngIf="settings.syncTransactions"
@@ -86,7 +86,9 @@
             >
           </td>
         </tr>
-        <tr><th>Sync Transfers</th>
+        <tr>
+          <th *ngIf="isPrepaid()">Sync transfers</th>
+          <th *ngIf="isCredit()">Sync bill payments</th>
           <td>
             <clr-icon
               *ngIf="settings.syncTransfers"
@@ -100,7 +102,7 @@
             ></clr-icon>
           </td>
         </tr>
-        <tr><th>Sync Fees</th>
+        <tr><th>Sync fees</th>
           <td>
             <clr-icon
               *ngIf="settings.syncPexFees"
@@ -114,7 +116,7 @@
             ></clr-icon>
           </td>
         </tr>
-        <tr><th>Sync 990 Tag</th>
+        <tr><th>Sync 990 tag</th>
           <td>
             <clr-icon
               *ngIf="settings.syncTaxTagToPex"
@@ -246,15 +248,18 @@
       <table class="table table-vertical" *ngIf="settings.syncTransfers || settings.syncPexFees">
         <tbody>
           <tr class="left" *ngIf="settings.syncTransfers && transferContact">
-            <th>Contact for transfers</th>
+            <th *ngIf="isPrepaid()">Contact for transfers</th>
+            <th *ngIf="isCredit()">Contact for bill payments</th>
             <td>{{transferContact.name}}</td>
           </tr>
           <tr class="left" *ngIf="settings.syncTransfers && transferFund">
-            <th>Fund for transfers</th>
+            <th *ngIf="isPrepaid()">Fund for transfers</th>
+            <th *ngIf="isCredit()">Fund for bill payments</th>
             <td>{{transferFund.name}}</td>
           </tr>
           <tr class="left" *ngIf="settings.syncTransfers && transferAccount">
-            <th>Transaction account for transfers</th>
+            <th *ngIf="isPrepaid()">Transaction account for transfers</th>
+            <th *ngIf="isCredit()">Transaction account for bill payments</th>
             <td>{{transferAccount | aplosAccount}}</td>
           </tr>
           <tr class="left" *ngIf="settings.syncPexFees && feesContact">
