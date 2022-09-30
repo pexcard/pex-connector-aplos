@@ -320,7 +320,8 @@
           ></app-loading-placeholder>
 
           <div class="card-text" *ngIf="!settingsModel.syncTransactionsCreateContact">
-            Please choose a contact for your purchases:
+            <span *ngIf="isPrepaid()">Please choose a contact for your purchases:</span>
+            <span *ngIf="isCredit()">Please choose a contact for your transactions:</span>
             <div class="clr-select-wrapper">
               <select
                 id="select-full-vendor"
@@ -420,7 +421,8 @@
     </form>
     <form clrForm [formGroup]="expenseAccountForm" [class.hide]="!savingSettings">
       <p>
-        Map your expense account in Aplos to the appropriate tag(s) within PEX.
+        <span *ngIf="isPrepaid()">Map your expense account in Aplos to the appropriate tag(s) within PEX.</span>
+        <span *ngIf="isCredit()">Map your liability account in Aplos to the appropriate tag(s) within PEX.</span>
         If you use multiple tags within PEX for accounts, click the <clr-icon shape="plus" size="18"></clr-icon> button to add additional tag(s).
       </p>
       <table class="table">
