@@ -71,6 +71,11 @@ namespace AplosConnector.Common.Services
 
                 await _mappingStorage.CreateAsync(mapping, cancellationToken);
             }
+            else if (mapping.PEXExternalAPIToken != session.ExternalToken)
+            {
+                mapping.PEXExternalAPIToken = session.ExternalToken;
+                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+            }
 
             await EnsurePartnerInfoPopulated(mapping, cancellationToken);
 
