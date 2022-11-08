@@ -79,7 +79,8 @@ export class ConnectComponent implements OnInit {
 
   settingsModel: SettingsModel = {
     syncTransactions: true,
-    syncTransfers: true,
+    syncTransfers: false,
+    syncInvoices: false,
     syncApprovedOnly: true,
     connectedOn: new Date(),
     lastSync: new Date(),

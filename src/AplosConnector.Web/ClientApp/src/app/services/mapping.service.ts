@@ -93,6 +93,7 @@ export interface SettingsModel {
   syncApprovedOnly: boolean;
   earliestTransactionDateToSync: string;
   syncTransfers: boolean;
+  syncInvoices: boolean,
   syncPexFees: boolean;
 
   transfersAplosContactId: number;

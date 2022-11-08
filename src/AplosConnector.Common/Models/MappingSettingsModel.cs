@@ -39,6 +39,10 @@ namespace AplosConnector.Common.Models
         /// </summary>
         public bool SyncTransfers { get; set; }
         /// <summary>
+        /// Whether to sync PEX invoices to Aplos.
+        /// </summary>
+        public bool SyncInvoices { get; set; }
+        /// <summary>
         /// Whether to sync PEX account fees to Aplos.
         /// </summary>
         public bool SyncPexFees { get; set; }

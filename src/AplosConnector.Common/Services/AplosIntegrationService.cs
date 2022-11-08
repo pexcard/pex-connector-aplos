@@ -16,6 +16,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Enums;
+using PexCard.Api.Client.Core.Exceptions;
 using PexCard.Api.Client.Core.Extensions;
 using PexCard.Api.Client.Core.Models;
 using System;
@@ -882,7 +883,7 @@ namespace AplosConnector.Common.Services
                 log.LogInformation($"Getting cardholder transactions from {dateRangeBatch.Start} to {dateRangeBatch.End} for business: {mapping.PEXBusinessAcctId}");
 
                 var allCardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken,
-                    dateRangeBatch.Start, dateRangeBatch.End, token: cancellationToken);
+                    dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
 
                 var transactions = FilterTransactions(mapping, allCardholderTransactions);
 
@@ -1195,7 +1196,7 @@ namespace AplosConnector.Common.Services
             List<TransactionModel> additionalFeeTransactions,
             CancellationToken cancellationToken)
         {
-            if (!mapping.SyncTransfers && !mapping.SyncPexFees) return;
+            if (!mapping.SyncTransfers && !mapping.SyncPexFees && !mapping.SyncInvoices) return;
 
             var endDate = utcNow.AddDays(1).ToEst();
 
@@ -1204,25 +1205,247 @@ namespace AplosConnector.Common.Services
 
             startDate = startDate > oneYearAgo ? startDate : oneYearAgo;
 
-            var dateRangeBatches = GetDateRangeBatches(new DateRange(startDate, endDate), 28);
-
             var aplosTransactions = await GetTransactions(mapping, startDate, cancellationToken);
 
-            foreach (var dateRangeBatch in dateRangeBatches)
+            if (mapping.SyncInvoices)
             {
-                log.LogInformation($"Getting business transactions for business {mapping.PEXBusinessAcctId} from {dateRangeBatch.Start} to {dateRangeBatch.End}");
+                await SyncInvoices(log, mapping, aplosTransactions, cancellationToken);
+            }
+            else
+            {
+                var dateRangeBatches = GetDateRangeBatches(new DateRange(startDate, endDate), 28);
 
-                var businessAccountTransactions = await _pexApiClient.GetBusinessAccountTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, token: cancellationToken);
+                foreach (var dateRangeBatch in dateRangeBatches)
+                {
+                    log.LogInformation($"Getting business transactions for business {mapping.PEXBusinessAcctId} from {dateRangeBatch.Start} to {dateRangeBatch.End}");
 
-                await SyncTransfers(log, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
+                    var businessAccountTransactions = await _pexApiClient.GetBusinessAccountTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
 
-                var additionalFeeTransactionsInRange = additionalFeeTransactions
-                    .Where(f => f.TransactionTime.Date >= dateRangeBatch.Start && f.TransactionTime.Date < dateRangeBatch.End)
-                    .ToList();
+                    await SyncTransfers(log, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
 
-                await SyncPexFees(log, mapping, businessAccountTransactions, aplosTransactions, additionalFeeTransactionsInRange, cancellationToken);
+                    var additionalFeeTransactionsInRange = additionalFeeTransactions
+                        .Where(f => f.TransactionTime.Date >= dateRangeBatch.Start && f.TransactionTime.Date < dateRangeBatch.End)
+                        .ToList();
+
+                    await SyncPexFees(log, mapping, businessAccountTransactions, aplosTransactions, additionalFeeTransactionsInRange, cancellationToken);
+                }
             }
         }
+
+        private async Task SyncInvoices(
+            ILogger log,
+            Pex2AplosMappingModel mapping,
+            List<AplosApiTransactionDetail> aplosTransactions,
+            CancellationToken cancellationToken)
+        {
+             if (!mapping.SyncInvoices) return;
+
+            var invoices = await _pexApiClient.GetInvoices(mapping.PEXExternalAPIToken, mapping.EarliestTransactionDateToSync, cancellationToken);
+
+            var invoicesToSync = invoices
+                .Where(i => i.Status == InvoiceStatus.Closed && !WasPexTransactionSyncedToAplos(aplosTransactions, i.InvoiceId.ToString()))
+                .ToList();
+
+            var syncCount = 0;
+            var failureCount = 0;
+
+            var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
+
+            foreach (var invoiceModel in invoicesToSync)
+            {
+                var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+
+                var totalPaymentsAmount = invoicePayments.Sum(p => p.Amount);
+
+                if (totalPaymentsAmount != invoiceModel.InvoiceAmount)
+                {
+                    failureCount++;
+                    continue;
+                }
+
+                List<InvoiceAllocationModel> invoiceAllocations;
+                try
+                {
+                    invoiceAllocations = await _pexApiClient.GetInvoiceAllocations(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+                }
+                catch (PexApiClientException)
+                {
+                    failureCount ++;
+                    continue;
+                }
+
+                var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
+                var totalAllocationsAmount = 0m;
+               
+                foreach (var invoiceAllocationMode in invoiceAllocations)
+                {
+                    if (aplosFunds.All(f => f.Id != invoiceAllocationMode.TagValue) || !int.TryParse(invoiceAllocationMode.TagValue, out var tagValue))
+                    {
+                        continue;
+                    }
+
+                    totalAllocationsAmount += invoiceAllocationMode.TotalAmount;
+
+                    var allocationTagValue = new AllocationTagValue
+                    {
+                        Amount = invoiceAllocationMode.TotalAmount,
+                        Allocation = new List<TagValueItem>
+                        {
+                            new TagValueItem
+                            {
+                                Value = invoiceAllocationMode.TagValue
+                            }
+                        }
+                    };
+
+                    var pexTagValues = new PexTagValuesModel
+                    {
+                        AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
+                        AplosContactId = mapping.TransfersAplosContactId,
+                        AplosFundId = tagValue,
+                        AplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber
+                    };
+
+                    allocationDetails.Add((allocationTagValue, pexTagValues));
+                }
+
+                if (totalAllocationsAmount != totalPaymentsAmount)
+                {
+                    failureCount++;
+                    continue;
+                }
+
+                log.LogInformation($"Starting sync for invoice {invoiceModel.InvoiceId}");
+                var transactionSyncResult = TransactionSyncResult.Failed;
+                try
+                {
+                    transactionSyncResult = await SyncInvoice(allocationDetails, mapping, invoiceModel, null, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    log.LogError(ex, $"Exception syncing invoice {invoiceModel.InvoiceId}.");
+                }
+
+                if (transactionSyncResult == TransactionSyncResult.Success)
+                {
+                    syncCount++;
+                    log.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
+                }
+                else if (transactionSyncResult == TransactionSyncResult.Failed)
+                {
+                    failureCount++;
+                }
+            }
+
+            var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} invoices from PEX.";
+            SyncStatus syncStatus;
+            if (syncCount == 0 && failureCount > 0)
+            {
+                syncStatus = SyncStatus.Failed;
+            }
+            else
+            {
+                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+            }
+            var result = new SyncResultModel
+            {
+                PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                SyncType = "Bill payments",
+                SyncStatus = syncStatus.ToString(),
+                SyncedRecords = syncCount,
+                SyncNotes = syncNote
+            };
+            await _resultStorage.CreateAsync(result, cancellationToken);
+        }
+
+        public async Task<TransactionSyncResult> SyncInvoice(
+            IEnumerable<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)> allocationDetails,
+            Pex2AplosMappingModel mapping,
+            InvoiceModel invoice,
+            CardholderDetailsModel cardholderDetails,
+            CancellationToken cancellationToken)
+        {
+            var lines = new List<AplosApiTransactionLineDetail>();
+
+            decimal invoiceTotalAmount = 0;
+
+            AplosApiContactDetail contact = default;
+            foreach (var allocationDetail in allocationDetails)
+            {
+                var allocationAmount = allocationDetail.allocation.Amount;
+                invoiceTotalAmount += allocationAmount;
+
+                var line1 = new AplosApiTransactionLineDetail
+                {
+                    Account = new AplosApiAccountDetail { AccountNumber = allocationDetail.pexTagValues.AplosRegisterAccountNumber },
+                    Amount = allocationAmount,
+                    Fund = new AplosApiFundDetail { Id = allocationDetail.pexTagValues.AplosFundId },
+                };
+                lines.Add(line1);
+
+                var line2 = new AplosApiTransactionLineDetail
+                {
+                    Account = new AplosApiAccountDetail { AccountNumber = allocationDetail.pexTagValues.AplosTransactionAccountNumber },
+                    Amount = -allocationAmount,
+                    Fund = new AplosApiFundDetail { Id = allocationDetail.pexTagValues.AplosFundId },
+                };
+
+                if (allocationDetail.pexTagValues.AplosTagIds != null)
+                {
+                    line2.Tags = new List<AplosApiTagDetail>();
+                    foreach (var aplosTagId in allocationDetail.pexTagValues.AplosTagIds)
+                    {
+                        var tagValue = new AplosApiTagDetail
+                        {
+                            Id = aplosTagId,
+                        };
+                        line2.Tags.Add(tagValue);
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(allocationDetail.pexTagValues.AplosTaxTagId))
+                {
+                    line2.TaxTag = new AplosApiTaxTagDetail
+                    {
+                        Id = allocationDetail.pexTagValues.AplosTaxTagId
+                    };
+                }
+
+                lines.Add(line2);
+
+                if (contact is null)
+                { 
+                    contact = new AplosApiContactDetail { Id = allocationDetail.pexTagValues.AplosContactId, };
+                }
+            }
+
+            var noteBuilder = new StringBuilder(invoice.InvoiceId.ToString());
+            if (cardholderDetails != null)
+            {
+                noteBuilder.Append($" | {cardholderDetails.ProfileAddress.ContactName}");
+            }
+
+            //Max length of note is 1000 chars (at least UI doesn't allow to enter more)
+            const int noteMaxLength = 1000;
+            var aplosTransactionNote = noteBuilder.Length > noteMaxLength
+                ? noteBuilder.ToString(0, noteMaxLength)
+                : noteBuilder.ToString();
+
+            var aplosTransaction = new AplosApiTransactionDetail
+            {
+                Contact = contact,
+                Amount = invoiceTotalAmount,
+                Date = invoice.DueDate,
+                Note = aplosTransactionNote,
+                Lines = lines.ToArray(),
+            };
+
+            var aplosApiClient = MakeAplosApiClient(mapping);
+            await aplosApiClient.CreateTransaction(aplosTransaction, cancellationToken);
+
+            return TransactionSyncResult.Success;
+        }
+
 
         private async Task SyncTransfers(
             ILogger log,
