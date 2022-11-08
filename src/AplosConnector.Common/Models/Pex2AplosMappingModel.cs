@@ -21,6 +21,7 @@ namespace AplosConnector.Common.Models
             SyncTransactions = mapping.SyncTransactions;
             SyncTransfers = mapping.SyncTransfers;
             SyncPexFees = mapping.SyncPexFees;
+            SyncInvoices = mapping.SyncInvoices;
             LastSyncUtc = mapping.LastSync;
             EarliestTransactionDateToSync = mapping.EarliestTransactionDateToSync;
 
@@ -75,6 +76,7 @@ namespace AplosConnector.Common.Models
                 SyncTaxTagToPex = SyncTaxTagToPex,
                 SyncTransactions = SyncTransactions,
                 SyncTransfers = SyncTransfers,
+                SyncInvoices = SyncInvoices,
                 SyncPexFees = SyncPexFees,
                 LastSync = LastSyncUtc,
                 EarliestTransactionDateToSync = EarliestTransactionDateToSync,
@@ -127,6 +129,7 @@ namespace AplosConnector.Common.Models
         public bool SyncTransactions { get; set; }
         public bool SyncTransfers { get; set; }
         public bool SyncPexFees { get; set; }
+        public bool SyncInvoices { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
 

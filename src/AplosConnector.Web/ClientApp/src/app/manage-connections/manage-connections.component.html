@@ -86,9 +86,8 @@
             >
           </td>
         </tr>
-        <tr>
-          <th *ngIf="isPrepaid()">Sync transfers</th>
-          <th *ngIf="isCredit()">Sync bill payments</th>
+        <tr *ngIf="isPrepaid()">
+          <th>Sync transfers</th>
           <td>
             <clr-icon
               *ngIf="settings.syncTransfers"
@@ -102,7 +101,22 @@
             ></clr-icon>
           </td>
         </tr>
-        <tr><th>Sync fees</th>
+        <tr *ngIf="isCredit()">
+          <th>Sync bill payments</th>
+          <td>
+            <clr-icon
+              *ngIf="settings.syncInvoices"
+              shape="success-standard"
+              class="is-solid is-success"
+            ></clr-icon>
+            <clr-icon
+              *ngIf="!settings.syncInvoices"
+              shape="ban"
+              class="is-solid is-error"
+            ></clr-icon>
+          </td>
+        </tr>
+        <tr *ngIf="isPrepaid()"><th>Sync fees</th>
           <td>
             <clr-icon
               *ngIf="settings.syncPexFees"
@@ -245,19 +259,19 @@
         </tr>
       </table>
 
-      <table class="table table-vertical" *ngIf="settings.syncTransfers || settings.syncPexFees">
+      <table class="table table-vertical" *ngIf="settings.syncTransfers || settingsModel.syncInvoices || settings.syncPexFees">
         <tbody>
-          <tr class="left" *ngIf="settings.syncTransfers && transferContact">
+          <tr class="left" *ngIf="settings.syncTransfers || settingsModel.syncInvoices && transferContact">
             <th *ngIf="isPrepaid()">Contact for transfers</th>
             <th *ngIf="isCredit()">Contact for bill payments</th>
             <td>{{transferContact.name}}</td>
           </tr>
-          <tr class="left" *ngIf="settings.syncTransfers && transferFund">
+          <tr class="left" *ngIf="settings.syncTransfers || settingsModel.syncInvoices && transferFund">
             <th *ngIf="isPrepaid()">Fund for transfers</th>
             <th *ngIf="isCredit()">Fund for bill payments</th>
             <td>{{transferFund.name}}</td>
           </tr>
-          <tr class="left" *ngIf="settings.syncTransfers && transferAccount">
+          <tr class="left" *ngIf="settings.syncTransfers || settingsModel.syncInvoices && transferAccount">
             <th *ngIf="isPrepaid()">Transaction account for transfers</th>
             <th *ngIf="isCredit()">Transaction account for bill payments</th>
             <td>{{transferAccount | aplosAccount}}</td>

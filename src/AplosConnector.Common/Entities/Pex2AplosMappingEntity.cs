@@ -21,6 +21,7 @@ namespace AplosConnector.Common.Entities
         public bool SyncTaxTagToPex { get; set; }
         public bool SyncTransactions { get; set; }
         public bool SyncTransfers { get; set; }
+        public bool SyncInvoices { get; set; }
         public bool SyncPexFees { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
