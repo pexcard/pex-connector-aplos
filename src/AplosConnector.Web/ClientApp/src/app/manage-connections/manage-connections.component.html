@@ -259,19 +259,19 @@
         </tr>
       </table>
 
-      <table class="table table-vertical" *ngIf="settings.syncTransfers || settingsModel.syncInvoices || settings.syncPexFees">
+      <table class="table table-vertical" *ngIf="settings.syncTransfers || settings.syncInvoices || settings.syncPexFees">
         <tbody>
-          <tr class="left" *ngIf="settings.syncTransfers || settingsModel.syncInvoices && transferContact">
+          <tr class="left" *ngIf="settings.syncTransfers || settings.syncInvoices && transferContact">
             <th *ngIf="isPrepaid()">Contact for transfers</th>
             <th *ngIf="isCredit()">Contact for bill payments</th>
             <td>{{transferContact.name}}</td>
           </tr>
-          <tr class="left" *ngIf="settings.syncTransfers || settingsModel.syncInvoices && transferFund">
+          <tr class="left" *ngIf="settings.syncTransfers || settings.syncInvoices && transferFund">
             <th *ngIf="isPrepaid()">Fund for transfers</th>
             <th *ngIf="isCredit()">Fund for bill payments</th>
             <td>{{transferFund.name}}</td>
           </tr>
-          <tr class="left" *ngIf="settings.syncTransfers || settingsModel.syncInvoices && transferAccount">
+          <tr class="left" *ngIf="settings.syncTransfers || settings.syncInvoices && transferAccount">
             <th *ngIf="isPrepaid()">Transaction account for transfers</th>
             <th *ngIf="isCredit()">Transaction account for bill payments</th>
             <td>{{transferAccount | aplosAccount}}</td>
