@@ -176,7 +176,7 @@ export class ManageConnectionsComponent implements OnInit {
   }
 
   getTransferInfo() {
-    if (this.settings.syncTransfers) {
+    if (this.settings.syncTransfers || this.settings.syncInvoices) {
       this.aplos.getContact(this.sessionId, this.settings.transfersAplosContactId).subscribe(
         contact => {
           console.log('got transfer contact', contact);

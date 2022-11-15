@@ -64,8 +64,9 @@
             ></clr-icon>
           </td>
         </tr>
-        <tr><th>Sync transactions</th>
-        <td>
+        <tr *ngIf="isPrepaid()">
+          <th>Sync transactions</th>
+          <td>
             <clr-icon
               *ngIf="settings.syncTransactions"
               shape="success-standard"
@@ -101,22 +102,8 @@
             ></clr-icon>
           </td>
         </tr>
-        <tr *ngIf="isCredit()">
-          <th>Sync bill payments</th>
-          <td>
-            <clr-icon
-              *ngIf="settings.syncInvoices"
-              shape="success-standard"
-              class="is-solid is-success"
-            ></clr-icon>
-            <clr-icon
-              *ngIf="!settings.syncInvoices"
-              shape="ban"
-              class="is-solid is-error"
-            ></clr-icon>
-          </td>
-        </tr>
-        <tr *ngIf="isPrepaid()"><th>Sync fees</th>
+        <tr *ngIf="isPrepaid()">
+          <th>Sync fees</th>
           <td>
             <clr-icon
               *ngIf="settings.syncPexFees"
@@ -125,6 +112,21 @@
             ></clr-icon>
             <clr-icon
               *ngIf="!settings.syncPexFees"
+              shape="ban"
+              class="is-solid is-error"
+            ></clr-icon>
+          </td>
+        </tr>
+        <tr *ngIf="isCredit()">
+          <th>Sync purchases, bill payments and fees</th>
+          <td>
+            <clr-icon
+              *ngIf="settings.syncInvoices"
+              shape="success-standard"
+              class="is-solid is-success"
+            ></clr-icon>
+            <clr-icon
+              *ngIf="!settings.syncInvoices"
               shape="ban"
               class="is-solid is-error"
             ></clr-icon>
@@ -261,30 +263,30 @@
 
       <table class="table table-vertical" *ngIf="settings.syncTransfers || settings.syncInvoices || settings.syncPexFees">
         <tbody>
-          <tr class="left" *ngIf="settings.syncTransfers || settings.syncInvoices && transferContact">
+          <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferContact">
             <th *ngIf="isPrepaid()">Contact for transfers</th>
             <th *ngIf="isCredit()">Contact for bill payments</th>
             <td>{{transferContact.name}}</td>
           </tr>
-          <tr class="left" *ngIf="settings.syncTransfers || settings.syncInvoices && transferFund">
+          <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferFund">
             <th *ngIf="isPrepaid()">Fund for transfers</th>
             <th *ngIf="isCredit()">Fund for bill payments</th>
             <td>{{transferFund.name}}</td>
           </tr>
-          <tr class="left" *ngIf="settings.syncTransfers || settings.syncInvoices && transferAccount">
+          <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferAccount">
             <th *ngIf="isPrepaid()">Transaction account for transfers</th>
             <th *ngIf="isCredit()">Transaction account for bill payments</th>
             <td>{{transferAccount | aplosAccount}}</td>
           </tr>
-          <tr class="left" *ngIf="settings.syncPexFees && feesContact">
+          <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesContact">
             <th>Contact for fees</th>
             <td>{{feesContact.name}}</td>
           </tr>
-          <tr class="left" *ngIf="settings.syncPexFees && feesFund">
+          <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesFund">
             <th>Fund for fees</th>
             <td>{{feesFund.name}}</td>
           </tr>
-          <tr class="left" *ngIf="settings.syncPexFees && feesAccount">
+          <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesAccount">
             <th>Transaction account for fees</th>
             <td>{{feesAccount | aplosAccount}}</td>
           </tr>
