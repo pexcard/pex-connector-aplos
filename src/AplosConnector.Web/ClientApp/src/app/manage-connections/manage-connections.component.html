@@ -268,7 +268,7 @@
             <th *ngIf="isCredit()">Contact for bill payments</th>
             <td>{{transferContact.name}}</td>
           </tr>
-          <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferFund">
+          <tr class="left" *ngIf="settings.syncTransfers && transferFund">
             <th *ngIf="isPrepaid()">Fund for transfers</th>
             <th *ngIf="isCredit()">Fund for bill payments</th>
             <td>{{transferFund.name}}</td>
