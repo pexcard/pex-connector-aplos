@@ -560,37 +560,32 @@
     </clr-spinner>
   
     <form clrForm #defaultCategoryForm="ngForm" [class.hide]="!savingSettings">
-
       <div *ngIf="!hasTagsAvailable  && settingsModel.syncTransactions">
-      
-      <h4>Purchases:</h4>
-      <span class="selectLabel">Fund:</span>
+        <h4>Purchases:</h4>
+        <span class="selectLabel">Fund:</span>
         <div class="clr-select-wrapper">
             <select
               id="defaultAplosFundId"
               class="clr-select select"
               name="defaultAplosFundId"
               required
-              [(ngModel)]="settingsModel.defaultAplosFundId"
-            >
+              [(ngModel)]="settingsModel.defaultAplosFundId">
             <option></option>
             <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
             </select>
-          </div>
+        </div>
         <br>
-          
         <span class="selectLabel">Transaction Account:</span>
         <div class="clr-select-wrapper">
           <select
-          id="defaultAplosTransactionAccountNumber"
-          class="clr-select select"
-          name="defaultAplosTransactionAccountNumber"
-          required
-          [(ngModel)]="settingsModel.defaultAplosTransactionAccountNumber"
-        >
-          <option></option>
-          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
-        </select>
+            id="defaultAplosTransactionAccountNumber"
+            class="clr-select select"
+            name="defaultAplosTransactionAccountNumber"
+            required
+            [(ngModel)]="settingsModel.defaultAplosTransactionAccountNumber">
+            <option></option>
+            <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
+          </select>
         </div>
       </div>
 
@@ -599,34 +594,32 @@
         <h4 *ngIf="isCredit()">Bill Payments:</h4>
         <span class="selectLabel">Contact:</span>
         <div class="clr-select-wrapper">
-            <select
-              id="transfersAplosContactId"
-              class="clr-select select"
-              name="transfersAplosContactId"
-              required
-              [(ngModel)]="settingsModel.transfersAplosContactId"
-            >
-              <option></option>
-              <option [value]="aplosContact.id" *ngFor="let aplosContact of aplosContacts">{{aplosContact.name}}</option>
-            </select>
-          </div>
-          <br>
-
-        <span class="selectLabel">Fund:</span>
-        <div class="clr-select-wrapper">
-            <select
-              id="transfersAplosFundId"
-              class="clr-select select"
-              name="transfersAplosFundId"
-              required
-              [(ngModel)]="settingsModel.transfersAplosFundId"
-            >
-              <option></option>
-              <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
-            </select>
-          </div>
+          <select
+            id="transfersAplosContactId"
+            class="clr-select select"
+            name="transfersAplosContactId"
+            required
+            [(ngModel)]="settingsModel.transfersAplosContactId">
+            <option></option>
+            <option [value]="aplosContact.id" *ngFor="let aplosContact of aplosContacts">{{aplosContact.name}}</option>
+          </select>
+        </div>
         <br>
-          
+        <div *ngIf="isPrepaid()">
+          <span class="selectLabel">Fund:</span>
+          <div class="clr-select-wrapper">
+              <select
+                id="transfersAplosFundId"
+                class="clr-select select"
+                name="transfersAplosFundId"
+                required
+                [(ngModel)]="settingsModel.transfersAplosFundId">
+                <option></option>
+                <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
+              </select>
+            </div>
+          <br>
+        </div>
         <span class="selectLabel">Bank Account:</span>
         <div class="clr-select-wrapper">
           <select
@@ -641,7 +634,7 @@
         </select>
         </div>
       </div>
-      <div *ngIf="settingsModel.syncPexFees">
+      <div *ngIf="settingsModel.syncPexFees || settingsModel.syncInvoices">
         <h4>Fees:</h4>
         <span class="selectLabel">Contact:</span>
         <div class="clr-select-wrapper">

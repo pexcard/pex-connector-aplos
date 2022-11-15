@@ -1207,28 +1207,23 @@ namespace AplosConnector.Common.Services
 
             var aplosTransactions = await GetTransactions(mapping, startDate, cancellationToken);
 
-            if (mapping.SyncInvoices)
+            await SyncInvoices(log, mapping, aplosTransactions, cancellationToken);
+
+            var dateRangeBatches = GetDateRangeBatches(new DateRange(startDate, endDate), 28);
+
+            foreach (var dateRangeBatch in dateRangeBatches)
             {
-                await SyncInvoices(log, mapping, aplosTransactions, cancellationToken);
-            }
-            else
-            {
-                var dateRangeBatches = GetDateRangeBatches(new DateRange(startDate, endDate), 28);
+                log.LogInformation($"Getting business transactions for business {mapping.PEXBusinessAcctId} from {dateRangeBatch.Start} to {dateRangeBatch.End}");
 
-                foreach (var dateRangeBatch in dateRangeBatches)
-                {
-                    log.LogInformation($"Getting business transactions for business {mapping.PEXBusinessAcctId} from {dateRangeBatch.Start} to {dateRangeBatch.End}");
+                var businessAccountTransactions = await _pexApiClient.GetBusinessAccountTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
 
-                    var businessAccountTransactions = await _pexApiClient.GetBusinessAccountTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
+                await SyncTransfers(log, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
 
-                    await SyncTransfers(log, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
+                var additionalFeeTransactionsInRange = additionalFeeTransactions
+                    .Where(f => f.TransactionTime.Date >= dateRangeBatch.Start && f.TransactionTime.Date < dateRangeBatch.End)
+                    .ToList();
 
-                    var additionalFeeTransactionsInRange = additionalFeeTransactions
-                        .Where(f => f.TransactionTime.Date >= dateRangeBatch.Start && f.TransactionTime.Date < dateRangeBatch.End)
-                        .ToList();
-
-                    await SyncPexFees(log, mapping, businessAccountTransactions, aplosTransactions, additionalFeeTransactionsInRange, cancellationToken);
-                }
+                await SyncPexFees(log, mapping, businessAccountTransactions, aplosTransactions, additionalFeeTransactionsInRange, cancellationToken);
             }
         }
 
