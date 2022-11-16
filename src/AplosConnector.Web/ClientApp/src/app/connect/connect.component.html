@@ -241,7 +241,7 @@
           clrToggle
           name="syncInvoices"
           [(ngModel)]="settingsModel.syncInvoices"/>
-        <label>Automatically import approved PEX purchases, bill payments and fees into Aplos.</label>
+        <label>Automatically import PEX purchases with Fund and Account tags and bill payments into Aplos.</label>
       </clr-toggle-wrapper>
 
       <clr-toggle-wrapper>
@@ -426,17 +426,10 @@
     </form>
     <form clrForm [formGroup]="expenseAccountForm" [class.hide]="!savingSettings">
       <p>
-        <span *ngIf="isPrepaid()">Map your expense account in Aplos to the appropriate tag(s) within PEX.</span>
-        <span *ngIf="isCredit()">Map your liability account in Aplos to the appropriate tag(s) within PEX.</span>
-        If you use multiple tags within PEX for accounts, click the <clr-icon shape="plus" size="18"></clr-icon> button to add additional tag(s).
+        Map your expense account in Aplos to the appropriate tag(s) within PEX. If you use multiple tags within PEX for accounts, click the <clr-icon shape="plus" size="18"></clr-icon> button to add additional tag(s).
       </p>
       <table class="table">
-        <caption *ngIf="isPrepaid()">
-          Expense Account
-        </caption>
-        <caption *ngIf="isCredit()">
-          Liability Account
-        </caption>
+        <caption>Expense Account</caption>
         <thead>
           <tr>
             <th class="left">Aplos field</th>
@@ -590,9 +583,14 @@
       </div>
 
       <div *ngIf="settingsModel.syncTransfers || settingsModel.syncInvoices">
-        <h4 *ngIf="isPrepaid()">Transfers:</h4>
-        <h4 *ngIf="isCredit()">Bill Payments:</h4>
-        <span class="selectLabel">Contact:</span>
+        <span *ngIf="isPrepaid()">
+          <h4>Transfers:</h4>
+          <span class="selectLabel">Contact:</span>
+        </span>
+        <span *ngIf="isCredit()">
+          <h4>Bill Payments:</h4>
+          <span class="selectLabel">Payee:</span>
+        </span>
         <div class="clr-select-wrapper">
           <select
             id="transfersAplosContactId"
@@ -690,6 +688,7 @@
         </select>
         </div>
         <div *ngIf="settingsModel.syncTaxTagToPex">
+          <br/>
           <span class="selectLabel">990 Tag Option:</span>
           <div class="clr-select-wrapper">
             <select

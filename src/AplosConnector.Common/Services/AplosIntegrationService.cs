@@ -795,7 +795,7 @@ namespace AplosConnector.Common.Services
 
             log.LogInformation($"Syncing accounts for business: {mapping.PEXBusinessAcctId}");
 
-            var aplosAccounts = await GetAplosAccounts(mapping, GetAplosAccountCategory(mapping.PEXFundingSource), cancellationToken);
+            var aplosAccounts = await GetAplosAccounts(mapping, GetAplosAccountCategory(), cancellationToken);
 
             foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
             {
@@ -896,7 +896,7 @@ namespace AplosConnector.Common.Services
 
                 var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
 
-                var aplosAccountCategory = GetAplosAccountCategory(mapping.PEXFundingSource);
+                var aplosAccountCategory = GetAplosAccountCategory();
                 
                 var aplosExpenseAccounts = (await GetAplosAccounts(mapping, aplosAccountCategory, cancellationToken)).ToList();
                 var aplosTags = (await GetFlattenedAplosTagValues(mapping, cancellationToken)).ToList();
@@ -1164,12 +1164,9 @@ namespace AplosConnector.Common.Services
             return allFees;
         }
 
-        private static string GetAplosAccountCategory(FundingSource fundingSource)
+        private static string GetAplosAccountCategory()
         {
-            var aplosAccountCategory = fundingSource == FundingSource.Credit
-                ? AplosApiClient.APLOS_ACCOUNT_CATEGORY_LIABILITY
-                : AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE;
-            return aplosAccountCategory;
+            return AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE;
         }
 
         private static List<TransactionModel> FilterTransactions(Pex2AplosMappingModel mapping, CardholderTransactions transactions)
