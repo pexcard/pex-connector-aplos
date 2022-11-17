@@ -665,27 +665,16 @@
         <br>
           
         <span class="selectLabel">Transaction Account:</span>
-        <div *ngIf="isPrepaid()" class="clr-select-wrapper">
+        <div class="clr-select-wrapper">
           <select
-          id="pexFeesAplosTransactionAccountNumber"
-          class="clr-select select"
-          name="pexFeesAplosTransactionAccountNumber"
-          required
-          [(ngModel)]="settingsModel.pexFeesAplosTransactionAccountNumber">
-          <option></option>
-          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
+            id="pexFeesAplosTransactionAccountNumber"
+            class="clr-select select"
+            name="pexFeesAplosTransactionAccountNumber"
+            required
+            [(ngModel)]="settingsModel.pexFeesAplosTransactionAccountNumber">
+            <option></option>
+            <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
           </select>
-        </div>
-        <div *ngIf="isCredit()" class="clr-select-wrapper">
-          <select
-          id="pexFeesAplosTransactionAccountNumber"
-          class="clr-select select"
-          name="pexFeesAplosTransactionAccountNumber"
-          required
-          [(ngModel)]="settingsModel.pexFeesAplosTransactionAccountNumber">
-          <option></option>
-          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosLiabilityAccounts">{{aplosAccount | aplosAccount}}</option>
-        </select>
         </div>
         <div *ngIf="settingsModel.syncTaxTagToPex">
           <br/>
