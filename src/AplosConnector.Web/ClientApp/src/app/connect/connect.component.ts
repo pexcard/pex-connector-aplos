@@ -419,11 +419,9 @@ export class ConnectComponent implements OnInit {
 
       this.getContacts();
       this.getAssetAccounts();
-
-      if (this.isPrepaid()) {
-        this.getExpenseAccounts();
-      }
-      else if (this.isCredit()) {
+      this.getExpenseAccounts();
+      
+      if (this.isCredit()) {
         this.getLiabilityAccounts();
       }
 
