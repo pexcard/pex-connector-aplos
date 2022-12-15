@@ -17,7 +17,7 @@ variables:
   solution: '**/*.sln'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
-  dotnetVersion: '3.1'
+  dotnetVersion: '6.0'
   DOTNET_ROLL_FORWARD: 'Major' #Needed for SonarCloud scanner to work on .NET Core 3+
 
 steps:
