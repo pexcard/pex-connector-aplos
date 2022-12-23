@@ -17,7 +17,7 @@ variables:
   solution: '**/*.sln'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
-  dotnetVersion: '3.1'
+  dotnetVersion: '6.0'
   DOTNET_ROLL_FORWARD: 'Major' #Needed for SonarCloud scanner to work on .NET Core 3+
 
 steps:
@@ -28,7 +28,7 @@ steps:
 
 - task: NodeTool@0
   inputs:
-    versionSpec: '14.x'
+    versionSpec: '18.x'
   displayName: 'Install node.js'
 
 - task: SonarCloudPrepare@1
@@ -59,7 +59,7 @@ steps:
   displayName: 'Copy artifacts'
   inputs:
     SourceFolder: '$(system.defaultworkingdirectory)'
-    Contents: 'src/AplosConnector.Web/bin/Release/netcoreapp$(dotnetVersion)/publish/**'
+    Contents: 'src/AplosConnector.Web/bin/$(buildConfiguration)/publish/**'
     TargetFolder: '$(build.artifactstagingdirectory)'
     CleanTargetFolder: true
     OverWrite: true
@@ -68,7 +68,7 @@ steps:
   displayName: 'Copy artifacts'
   inputs:
     SourceFolder: '$(system.defaultworkingdirectory)'
-    Contents: 'src/AplosConnector.SyncWorker/bin/Release/netcoreapp$(dotnetVersion)/publish/**'
+    Contents: 'src/AplosConnector.SyncWorker/bin/$(buildConfiguration)/publish/**'
     TargetFolder: '$(build.artifactstagingdirectory)'
     CleanTargetFolder: false
     OverWrite: true

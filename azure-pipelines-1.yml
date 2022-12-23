@@ -17,7 +17,7 @@ variables:
   solution: '**/*.sln'
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
-  dotnetVersion: '3.1'
+  dotnetVersion: '6.0'
   DOTNET_ROLL_FORWARD: 'Major' #Needed for SonarCloud scanner to work on .NET Core 3+
 
 steps:
@@ -46,14 +46,14 @@ steps:
 
 - task: NodeTool@0
   inputs:
-    versionSpec: '14.x'
+    versionSpec: '18.x'
   displayName: 'Install node.js'
 
 - script: |
     npm install -g @angular/cli
     cd src/AplosConnector.Web/ClientApp
-    npm install
-    ng build --prod
+    NODE_OPTIONS=--openssl-legacy-provider npm install
+    NODE_OPTIONS=--openssl-legacy-provider npm run build -- --prod
   displayName: 'npm install and ng build'
 
 - task: SonarCloudAnalyze@1
