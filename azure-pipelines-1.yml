@@ -52,8 +52,8 @@ steps:
 - script: |
     npm install -g @angular/cli
     cd src/AplosConnector.Web/ClientApp
-    npm install
-    ng build --prod
+    NODE_OPTIONS=--openssl-legacy-provider npm install
+    NODE_OPTIONS=--openssl-legacy-provider npm run build -- --prod
   displayName: 'npm install and ng build'
 
 - task: SonarCloudAnalyze@1
