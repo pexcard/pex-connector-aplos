@@ -74,7 +74,7 @@ namespace AplosConnector.SyncWorker
             {
                 var syncTransactionsInterval =
                     Environment.GetEnvironmentVariable("SyncTransactionsIntervalDays", EnvironmentVariableTarget.Process);
-                if (!int.TryParse(syncTransactionsInterval, out var syncTransactionsIntervalDays))
+                if (!double.TryParse(syncTransactionsInterval, out var syncTransactionsIntervalDays))
                 {
                     syncTransactionsIntervalDays = 60;
                 }
