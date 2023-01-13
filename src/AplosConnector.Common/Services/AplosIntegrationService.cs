@@ -1217,8 +1217,8 @@ namespace AplosConnector.Common.Services
                 await SyncTransfers(log, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
 
                 var additionalFeeTransactionsInRange = additionalFeeTransactions
-                    .Where(f => f.TransactionTime.Date >= dateRangeBatch.Start && f.TransactionTime.Date < dateRangeBatch.End)
-                    .ToList();
+                    ?.Where(f => f.TransactionTime.Date >= dateRangeBatch.Start && f.TransactionTime.Date < dateRangeBatch.End)
+                    ?.ToList();
 
                 await SyncPexFees(log, mapping, businessAccountTransactions, aplosTransactions, additionalFeeTransactionsInRange, cancellationToken);
             }
