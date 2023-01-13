@@ -1,6 +1,5 @@
-﻿using System;
-using Microsoft.Azure.Cosmos.Table;
-using PexCard.Api.Client.Core.Models;
+﻿using Microsoft.Azure.Cosmos.Table;
+using System;
 
 namespace AplosConnector.Common.Entities
 {
@@ -9,8 +8,10 @@ namespace AplosConnector.Common.Entities
         public Pex2AplosMappingEntity()
         {
             CreatedUtc = DateTime.UtcNow;
+            IsManualSync = false; // always reset to false when saving
         }
 
+        public bool IsManualSync { get; set; }
         public string PEXExternalAPIToken { get; set; }
         public int PEXBusinessAcctId { get; set; }
         public int PEXFundingSource { get; set; }
@@ -25,6 +26,7 @@ namespace AplosConnector.Common.Entities
         public bool SyncPexFees { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
+        public DateTime? EndDateUtc { get; set; }
 
         public string AplosAccountId { get; set; }
         public bool AplosPartnerVerified { get; set; }
@@ -61,5 +63,8 @@ namespace AplosConnector.Common.Entities
         
         public string PEXEmailAccount { get; set; }
         public string PEXNameAccount { get; set; }
+
+        public double? SyncTransactionsIntervalDays { get; set; }
+        public double? FetchTransactionsIntervalDays { get; set; }
     }
 }

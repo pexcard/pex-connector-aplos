@@ -84,13 +84,7 @@ namespace AplosConnector.Web
                 provider.GetService<ILogger<AplosApiClientFactory>>()));
 
             services.AddScoped<IAplosIntegrationMappingService>(provider => new AplosIntegrationMappingService());
-            services.AddScoped<IAplosIntegrationService>(provider => new AplosIntegrationService(
-                provider.GetService<IOptions<AppSettingsModel>>(),
-                provider.GetService<IAplosApiClientFactory>(),
-                provider.GetService<IAplosIntegrationMappingService>(),
-                provider.GetService<IPexApiClient>(),
-                provider.GetService<SyncResultStorage>(),
-                provider.GetService<Pex2AplosMappingStorage>()));
+            services.AddScoped<IAplosIntegrationService, AplosIntegrationService>();
 
             services.AddCors(options =>
             {

@@ -42,6 +42,7 @@ namespace AplosConnector.Common.Services
 
                 result = new Pex2AplosMappingEntity
                 {
+                    IsManualSync = model.IsManualSync,
                     CreatedUtc = model.CreatedUtc,
                     PEXBusinessAcctId = model.PEXBusinessAcctId,
                     PEXFundingSource = (int)model.PEXFundingSource,
@@ -56,6 +57,7 @@ namespace AplosConnector.Common.Services
                     SyncPexFees = model.SyncPexFees,
                     SyncApprovedOnly = model.SyncApprovedOnly,
                     EarliestTransactionDateToSync = model.EarliestTransactionDateToSync,
+                    EndDateUtc = model.EndDateUtc,
 
                     AplosAccountId = model.AplosAccountId,
                     AplosPartnerVerified = model.AplosPartnerVerified,
@@ -92,7 +94,10 @@ namespace AplosConnector.Common.Services
                     PexTaxTagId = model.PexTaxTagId,
 
                     PEXEmailAccount = model.PEXEmailAccount,
-                    PEXNameAccount = model.PEXNameAccount
+                    PEXNameAccount = model.PEXNameAccount,
+
+                    SyncTransactionsIntervalDays = model.SyncTransactionsIntervalDays,
+                    FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays
                 };
             }
 
@@ -144,6 +149,7 @@ namespace AplosConnector.Common.Services
 
                 result = new Pex2AplosMappingModel
                 {
+                    IsManualSync = model.IsManualSync,
                     CreatedUtc = model.CreatedUtc,
                     PEXBusinessAcctId = model.PEXBusinessAcctId,
                     PEXFundingSource = (FundingSource)model.PEXFundingSource,
@@ -158,6 +164,7 @@ namespace AplosConnector.Common.Services
                     SyncPexFees = model.SyncPexFees,
                     SyncApprovedOnly = model.SyncApprovedOnly,
                     EarliestTransactionDateToSync = model.EarliestTransactionDateToSync,
+                    EndDateUtc = model.EndDateUtc,
 
                     AplosAccountId = model.AplosAccountId,
                     AplosPartnerVerified = model.AplosPartnerVerified,
@@ -198,9 +205,11 @@ namespace AplosConnector.Common.Services
                     TagMappings = model.TagMappings == null
                         ? null
                         : JsonConvert.DeserializeObject<TagMappingModel[]>(model.TagMappings),
-                    
-                    PexTaxTagId = model.PexTaxTagId
 
+                    PexTaxTagId = model.PexTaxTagId,
+
+                    SyncTransactionsIntervalDays = model.SyncTransactionsIntervalDays,
+                    FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays
                 };
             }
 
