@@ -5,6 +5,7 @@ namespace AplosConnector.Common.Models
 {
     public class MappingSettingsModel
     {
+        public bool IsManualSync { get; set; }
         public DateTime ConnectedOn { get; set; }
         public DateTime? LastSync { get; set; }
 
@@ -34,6 +35,7 @@ namespace AplosConnector.Common.Models
         /// </summary>
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
+        public DateTime? EndDateUtc { get; set; }
         /// <summary>
         /// Whether to sync PEX transfers to Aplos.
         /// </summary>
@@ -75,5 +77,8 @@ namespace AplosConnector.Common.Models
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
         public FundingSource PEXFundingSource { get; set; }
+
+        public double? SyncTransactionsIntervalDays { get; set; }
+        public double? FetchTransactionsIntervalDays { get; set; }
     }
 }

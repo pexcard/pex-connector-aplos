@@ -14,6 +14,7 @@ namespace AplosConnector.Common.Models
 
         public void UpdateFromSettings(MappingSettingsModel mapping)
         {
+            IsManualSync = mapping.IsManualSync;
             CreatedUtc = mapping.ConnectedOn;
             SyncApprovedOnly = mapping.SyncApprovedOnly;
             SyncTags = mapping.SyncTags;
@@ -24,6 +25,7 @@ namespace AplosConnector.Common.Models
             SyncInvoices = mapping.SyncInvoices;
             LastSyncUtc = mapping.LastSync;
             EarliestTransactionDateToSync = mapping.EarliestTransactionDateToSync;
+            EndDateUtc = mapping.EndDateUtc;
 
             AplosAccountId = mapping.AplosAccountId;
             AplosPartnerVerified = mapping.AplosPartnerVerified;
@@ -70,7 +72,8 @@ namespace AplosConnector.Common.Models
         {
             return new MappingSettingsModel
             {
-                ConnectedOn =  CreatedUtc,
+                IsManualSync = IsManualSync,
+                ConnectedOn = CreatedUtc,
                 SyncApprovedOnly = SyncApprovedOnly,
                 SyncTags = SyncTags,
                 SyncTaxTagToPex = SyncTaxTagToPex,
@@ -80,6 +83,7 @@ namespace AplosConnector.Common.Models
                 SyncPexFees = SyncPexFees,
                 LastSync = LastSyncUtc,
                 EarliestTransactionDateToSync = EarliestTransactionDateToSync,
+                EndDateUtc = EndDateUtc,
 
                 AplosAccountId = AplosAccountId,
                 AplosPartnerVerified = AplosPartnerVerified,
@@ -114,10 +118,14 @@ namespace AplosConnector.Common.Models
 
                 ExpenseAccountMappings = ExpenseAccountMappings,
                 TagMappings = TagMappings,
-                PEXFundingSource = PEXFundingSource
+                PEXFundingSource = PEXFundingSource,
+
+                SyncTransactionsIntervalDays = SyncTransactionsIntervalDays,
+                FetchTransactionsIntervalDays = FetchTransactionsIntervalDays,
             };
         }
 
+        public bool IsManualSync { get; set; }
         public string PEXExternalAPIToken { get; set; }
         public int PEXBusinessAcctId { get; set; }
         public FundingSource PEXFundingSource { get; set; }
@@ -132,6 +140,7 @@ namespace AplosConnector.Common.Models
         public bool SyncInvoices { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
+        public DateTime? EndDateUtc { get; set; }
 
         public string AplosAccountId { get; set; }
         public bool AplosPartnerVerified { get; set; }
@@ -164,6 +173,8 @@ namespace AplosConnector.Common.Models
 
         public string PEXEmailAccount { get; set; }
         public string PEXNameAccount { get; set; }
+        public double? SyncTransactionsIntervalDays { get; set; }
+        public double? FetchTransactionsIntervalDays { get; set; }
 
         public DateTime GetLastRenewedDateUtc()
         {

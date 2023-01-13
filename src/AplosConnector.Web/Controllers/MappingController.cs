@@ -161,6 +161,8 @@ namespace AplosConnector.Web.Controllers
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
             if (mapping == null) return NotFound();
 
+            mapping.IsManualSync = true;
+
             await _mappingQueue.EnqueueMapping(mapping, cancellationToken);
             return Ok();
         }

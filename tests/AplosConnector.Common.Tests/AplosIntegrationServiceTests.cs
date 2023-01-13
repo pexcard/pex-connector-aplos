@@ -27,6 +27,7 @@ namespace AplosConnector.Common.Tests
         private readonly Mock<IAplosApiClient> _mockAplosApiClient;
 
         private readonly Mock<IOptions<AppSettingsModel>> _mockOptions;
+        private readonly SyncSettingsModel _mockSettings;
         private readonly Mock<IAplosApiClientFactory> _mockAplosApiClientFactory;
         private readonly Mock<IAplosIntegrationMappingService> _mockAplosIntegrationMappingService;
         private readonly Mock<IPexApiClient> _mockPexApiClient;
@@ -36,6 +37,7 @@ namespace AplosConnector.Common.Tests
             _mockAplosApiClient = new Mock<IAplosApiClient>();
 
             _mockOptions = new Mock<IOptions<AppSettingsModel>>();
+            _mockSettings = new SyncSettingsModel();
             _mockAplosApiClientFactory = new Mock<IAplosApiClientFactory>();
             _mockAplosIntegrationMappingService = new Mock<IAplosIntegrationMappingService>();
             _mockPexApiClient = new Mock<IPexApiClient>();
@@ -569,12 +571,14 @@ namespace AplosConnector.Common.Tests
                 .Returns(_mockAplosApiClient.Object);
 
             return new AplosIntegrationService(
+                new NullLogger<AplosIntegrationService>(),
                 _mockOptions.Object,
                 _mockAplosApiClientFactory.Object,
                 _mockAplosIntegrationMappingService.Object,
                 _mockPexApiClient.Object,
                 null,
-                null);
+                null,
+                _mockSettings);
         }
 
         private Pex2AplosMappingModel GetMapping(

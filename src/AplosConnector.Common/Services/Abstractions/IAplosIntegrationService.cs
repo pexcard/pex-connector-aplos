@@ -1,14 +1,13 @@
-﻿using AplosConnector.Common.Enums;
+﻿using Aplos.Api.Client.Abstractions;
+using Aplos.Api.Client.Models.Detail;
+using AplosConnector.Common.Enums;
 using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Aplos;
-using Microsoft.Extensions.Logging;
 using PexCard.Api.Client.Core.Models;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Aplos.Api.Client.Models.Detail;
-using Aplos.Api.Client.Abstractions;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace AplosConnector.Common.Services.Abstractions
 {
@@ -25,7 +24,7 @@ namespace AplosConnector.Common.Services.Abstractions
         Task<IEnumerable<PexAplosApiObject>> GetAplosTagCategories(Pex2AplosMappingModel mapping, CancellationToken cancellationToken);
         Task<List<AplosApiTransactionDetail>> GetTransactions(Pex2AplosMappingModel mapping, DateTime startDate, CancellationToken cancellationToken);
         IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping, AplosAuthenticationMode? overrideAuthenticationMode = null);
-        Task Sync(Pex2AplosMappingModel mapping, ILogger log, CancellationToken cancellationToken);
+        Task Sync(Pex2AplosMappingModel mapping, CancellationToken cancellationToken);
         Task<TransactionSyncResult> SyncTransaction(IEnumerable<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)> allocationDetails, Pex2AplosMappingModel mapping, TransactionModel transaction, CardholderDetailsModel cardholderDetails, CancellationToken cancellationToken);
         Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session, CancellationToken cancellationToken);
         Task<IEnumerable<AplosApiTaxTagCategoryDetail>> GetAplosApiTaxTagExpenseCategoryDetails(Pex2AplosMappingModel mapping, CancellationToken cancellationToken);

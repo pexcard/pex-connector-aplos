@@ -1,27 +1,26 @@
-﻿using System;
-using System.Net.Http;
+﻿using Aplos.Api.Client;
+using Aplos.Api.Client.Abstractions;
+using AplosConnector.Common.Models;
+using AplosConnector.Common.Models.Settings;
+using AplosConnector.Common.Services;
+using AplosConnector.Common.Services.Abstractions;
+using AplosConnector.Core.Storages;
+using AplosConnector.SyncWorker;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+using Microsoft.Azure.KeyVault;
+using Microsoft.Azure.Services.AppAuthentication;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Aplos.Api.Client;
-using AplosConnector.Common.Models.Settings;
-using AplosConnector.Core.Storages;
-using AplosConnector.SyncWorker;
-using AplosConnector.SyncWorker.Models;
 using PexCard.Api.Client;
 using PexCard.Api.Client.Core;
 using Polly;
 using Polly.Extensions.Http;
-using AplosConnector.Common.Services.Abstractions;
-using AplosConnector.Common.Services;
-using Aplos.Api.Client.Abstractions;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Azure.Services.AppAuthentication;
-using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
+using System;
+using System.Net.Http;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 namespace AplosConnector.SyncWorker
@@ -93,13 +92,7 @@ namespace AplosConnector.SyncWorker
                 provider.GetService<ILogger<AplosApiClientFactory>>()));
 
             builder.Services.AddScoped<IAplosIntegrationMappingService>(provider => new AplosIntegrationMappingService());
-            builder.Services.AddScoped<IAplosIntegrationService>(provider => new AplosIntegrationService(
-                provider.GetService<IOptions<AppSettingsModel>>(),
-                provider.GetService<IAplosApiClientFactory>(),
-                provider.GetService<IAplosIntegrationMappingService>(),
-                provider.GetService<IPexApiClient>(),
-                provider.GetService<SyncResultStorage>(),
-                provider.GetService<Pex2AplosMappingStorage>()));
+            builder.Services.AddScoped<IAplosIntegrationService, AplosIntegrationService>();
 
             var dataProtectionApplicationName = Environment.GetEnvironmentVariable("DataProtectionApplicationName", EnvironmentVariableTarget.Process);
             var dataProtectionBlobContainer = Environment.GetEnvironmentVariable("DataProtectionBlobContainer", EnvironmentVariableTarget.Process);
