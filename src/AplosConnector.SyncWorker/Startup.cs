@@ -49,7 +49,7 @@ namespace AplosConnector.SyncWorker
                 }
                 client.Timeout = TimeSpan.FromSeconds(pexApiTimeout);
             })
-            .AddPolicyHandler(GetPexRetryPolicy());
+            .UsePexRetryPolicies<PexApiClient>();
 
             builder.Services.AddScoped<IStorageMappingService>(
                 provider => new StorageMappingService(
@@ -116,13 +116,6 @@ namespace AplosConnector.SyncWorker
                     keyVaultClient,
                     dataProtectionKeyIdentifier)
                 .DisableAutomaticKeyGeneration();
-        }
-
-        private static IAsyncPolicy<HttpResponseMessage> GetPexRetryPolicy()
-        {
-            return HttpPolicyExtensions
-                .HandleTransientHttpError()
-                .RetryAsync(3);
         }
     }
 }
