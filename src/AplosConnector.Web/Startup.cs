@@ -23,6 +23,7 @@ using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using System;
+using AplosConnector.Common.Models;
 
 namespace AplosConnector.Web
 {
@@ -51,6 +52,8 @@ namespace AplosConnector.Web
             var appSettings = configSection.Get<AppSettingsModel>();
             services.Configure<AppSettingsModel>(configSection);
 
+            services.AddSingleton(new SyncSettingsModel());
+
             services.AddHttpClient();
             services.AddHttpClient<IPexApiClient, PexApiClient>((client) =>
             {
@@ -66,15 +69,15 @@ namespace AplosConnector.Web
 
             string storageConnectionString = _configuration.GetConnectionString("StorageConnectionString");
 
-            services.AddSingleton(provider => new PexOAuthSessionStorage(storageConnectionString).InitTable());
-            services.AddSingleton(provider =>
+            services.AddScoped(provider => new PexOAuthSessionStorage(storageConnectionString).InitTable());
+            services.AddScoped(provider =>
                 new Pex2AplosMappingStorage(
                     storageConnectionString,
                     provider.GetService<IStorageMappingService>(),
                     provider.GetService<ILogger<Pex2AplosMappingStorage>>())
                 .InitTable());
-            services.AddSingleton(provider => new SyncResultStorage(storageConnectionString).InitTable());
-            services.AddSingleton(provider => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
+            services.AddScoped(provider => new SyncResultStorage(storageConnectionString).InitTable());
+            services.AddScoped(provider => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
 
             services.AddScoped<IAccessTokenDecryptor>(provider => new AplosAccessTokenDecryptor());
 
@@ -84,7 +87,15 @@ namespace AplosConnector.Web
                 provider.GetService<ILogger<AplosApiClientFactory>>()));
 
             services.AddScoped<IAplosIntegrationMappingService>(provider => new AplosIntegrationMappingService());
-            services.AddScoped<IAplosIntegrationService, AplosIntegrationService>();
+            services.AddScoped<IAplosIntegrationService>(provider => new AplosIntegrationService(
+                provider.GetService<ILogger<AplosIntegrationService>>(),
+                provider.GetService<IOptions<AppSettingsModel>>(),
+                provider.GetService<IAplosApiClientFactory>(),
+                provider.GetService<IAplosIntegrationMappingService>(),
+                provider.GetService<IPexApiClient>(),
+                provider.GetService<SyncResultStorage>(),
+                provider.GetService<Pex2AplosMappingStorage>(),
+                provider.GetService<SyncSettingsModel>()));
 
             services.AddCors(options =>
             {

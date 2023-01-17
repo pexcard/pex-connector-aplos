@@ -49,12 +49,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="appsettings.Development.json">
-      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
     <!-- Don't publish the SPA source files, but do show them in the project files list -->
     <Compile Remove="AplosConnector.Service\**" />
     <Compile Remove="ClientApp\.vscode\**" />

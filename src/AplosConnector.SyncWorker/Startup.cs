@@ -17,8 +17,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PexCard.Api.Client;
 using PexCard.Api.Client.Core;
-using Polly;
-using Polly.Extensions.Http;
 using System;
 using System.Net.Http;
 
