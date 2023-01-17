@@ -15,6 +15,7 @@ using Microsoft.Azure.Storage.Blob;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using PexCard.Api.Client;
 using PexCard.Api.Client.Core;
 using System;
@@ -34,6 +35,8 @@ namespace AplosConnector.SyncWorker
                 {
                     configuration.Bind(settings);
                 });
+
+            builder.Services.AddScoped(_ => new SyncSettingsModel());
 
             builder.Services.AddHttpClient();
             builder.Services.AddHttpClient<IPexApiClient, PexApiClient>((client) =>
@@ -72,7 +75,7 @@ namespace AplosConnector.SyncWorker
             {
                 var syncTransactionsInterval =
                     Environment.GetEnvironmentVariable("SyncTransactionsIntervalDays", EnvironmentVariableTarget.Process);
-                if (!double.TryParse(syncTransactionsInterval, out var syncTransactionsIntervalDays))
+                if (!int.TryParse(syncTransactionsInterval, out var syncTransactionsIntervalDays))
                 {
                     syncTransactionsIntervalDays = 60;
                 }
@@ -90,7 +93,15 @@ namespace AplosConnector.SyncWorker
                 provider.GetService<ILogger<AplosApiClientFactory>>()));
 
             builder.Services.AddScoped<IAplosIntegrationMappingService>(provider => new AplosIntegrationMappingService());
-            builder.Services.AddScoped<IAplosIntegrationService, AplosIntegrationService>();
+            builder.Services.AddScoped<IAplosIntegrationService>(provider => new AplosIntegrationService(
+                provider.GetService<ILogger<AplosIntegrationService>>(),
+                provider.GetService<IOptions<AppSettingsModel>>(),
+                provider.GetService<IAplosApiClientFactory>(),
+                provider.GetService<IAplosIntegrationMappingService>(),
+                provider.GetService<IPexApiClient>(),
+                provider.GetService<SyncResultStorage>(),
+                provider.GetService<Pex2AplosMappingStorage>(),
+                provider.GetService<SyncSettingsModel>()));
 
             var dataProtectionApplicationName = Environment.GetEnvironmentVariable("DataProtectionApplicationName", EnvironmentVariableTarget.Process);
             var dataProtectionBlobContainer = Environment.GetEnvironmentVariable("DataProtectionBlobContainer", EnvironmentVariableTarget.Process);
