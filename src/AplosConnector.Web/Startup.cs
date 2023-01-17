@@ -1,28 +1,27 @@
-using System.Net.Http;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.SpaServices.AngularCli;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Aplos.Api.Client;
+using Aplos.Api.Client.Abstractions;
+using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Settings;
-using AplosConnector.Core.Storages;
-using PexCard.Api.Client;
-using PexCard.Api.Client.Core;
-using Polly;
-using Polly.Extensions.Http;
-using Microsoft.Extensions.Hosting;
 using AplosConnector.Common.Services;
 using AplosConnector.Common.Services.Abstractions;
-using Aplos.Api.Client.Abstractions;
+using AplosConnector.Core.Storages;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.SpaServices.AngularCli;
 using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PexCard.Api.Client;
+using PexCard.Api.Client.Core;
 using System;
+using System.Net.Http;
 
 namespace AplosConnector.Web
 {
@@ -51,13 +50,15 @@ namespace AplosConnector.Web
             var appSettings = configSection.Get<AppSettingsModel>();
             services.Configure<AppSettingsModel>(configSection);
 
+            services.AddScoped(_ => new SyncSettingsModel());
+
             services.AddHttpClient();
             services.AddHttpClient<IPexApiClient, PexApiClient>((client) =>
             {
                 client.BaseAddress = appSettings.PEXAPIBaseURL;
                 client.Timeout = TimeSpan.FromSeconds(appSettings.PEXAPITimeout);
             })
-            .AddPolicyHandler(GetPexRetryPolicy());
+            .UsePexRetryPolicies<PexApiClient>();
 
             services.AddScoped<IStorageMappingService>(
                 provider => new StorageMappingService(
@@ -84,7 +85,15 @@ namespace AplosConnector.Web
                 provider.GetService<ILogger<AplosApiClientFactory>>()));
 
             services.AddScoped<IAplosIntegrationMappingService>(provider => new AplosIntegrationMappingService());
-            services.AddScoped<IAplosIntegrationService, AplosIntegrationService>();
+            services.AddScoped<IAplosIntegrationService>(provider => new AplosIntegrationService(
+                provider.GetService<ILogger<AplosIntegrationService>>(),
+                provider.GetService<IOptions<AppSettingsModel>>(),
+                provider.GetService<IAplosApiClientFactory>(),
+                provider.GetService<IAplosIntegrationMappingService>(),
+                provider.GetService<IPexApiClient>(),
+                provider.GetService<SyncResultStorage>(),
+                provider.GetService<Pex2AplosMappingStorage>(),
+                provider.GetService<SyncSettingsModel>()));
 
             services.AddCors(options =>
             {
@@ -186,13 +195,6 @@ namespace AplosConnector.Web
                     spa.UseAngularCliServer(npmScript: "start");
                 }
             });
-        }
-
-        private static IAsyncPolicy<HttpResponseMessage> GetPexRetryPolicy()
-        {
-            return HttpPolicyExtensions
-                .HandleTransientHttpError()
-                .RetryAsync(3);
         }
     }
 }
