@@ -52,6 +52,8 @@ namespace AplosConnector.Core.Storages
 
         public async Task UpdateAsync(Pex2AplosMappingModel model, CancellationToken cancellationToken)
         {
+            model.IsManualSync = false; // always reset to false when saving
+
             var entity = _storageMappingService.Map(model);
             entity.PartitionKey = PartitionKey;
             entity.RowKey = model.PEXBusinessAcctId.ToString();

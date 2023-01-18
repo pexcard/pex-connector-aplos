@@ -42,7 +42,7 @@ namespace AplosConnector.Common.Services
 
                 result = new Pex2AplosMappingEntity
                 {
-                    IsManualSync = model.IsManualSync,
+                    IsManualSync = false, // always reset to false when saving
                     CreatedUtc = model.CreatedUtc,
                     PEXBusinessAcctId = model.PEXBusinessAcctId,
                     PEXFundingSource = (int)model.PEXFundingSource,
