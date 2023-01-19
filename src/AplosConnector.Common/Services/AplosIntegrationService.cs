@@ -897,10 +897,9 @@ namespace AplosConnector.Common.Services
 
             foreach (var dateRangeBatch in fetchTransactionDateBatches)
             {
-                _logger.LogInformation($"Getting cardholder transactions from {dateRangeBatch.Start} to {dateRangeBatch.End} for business: {mapping.PEXBusinessAcctId}");
+                _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod} in batches of {fetchBatchSizeDays} day(s) (batchSizeSource={fetchBatchSizeSource}).");
 
-                var allCardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken,
-                    dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
+                var allCardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
 
                 var transactions = FilterTransactions(mapping, allCardholderTransactions);
 
@@ -1227,20 +1226,17 @@ namespace AplosConnector.Common.Services
             var aplosTransactions = await GetTransactions(mapping, startDate, cancellationToken);
             await SyncInvoices(_logger, mapping, aplosTransactions, cancellationToken);
 
+            var allBusinessAccountTransactions = new BusinessAccountTransactions(new List<TransactionModel>());
             foreach (var dateRangeBatch in fetchTransactionDateBatches)
             {
-                _logger.LogInformation($"Getting business transactions for business {mapping.PEXBusinessAcctId} from {dateRangeBatch.Start} to {dateRangeBatch.End}");
+                _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod} in batches of {fetchBatchSizeDays} day(s) (batchSizeSource={fetchBatchSizeSource}).");
 
                 var businessAccountTransactions = await _pexApiClient.GetBusinessAccountTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
-
-                await SyncTransfers(_logger, mapping, businessAccountTransactions, aplosTransactions, cancellationToken);
-
-                var additionalFeeTransactionsInRange = additionalFeeTransactions
-                    ?.Where(f => f.TransactionTime.Date >= dateRangeBatch.Start && f.TransactionTime.Date < dateRangeBatch.End)
-                    ?.ToList();
-
-                await SyncPexFees(_logger, mapping, businessAccountTransactions, aplosTransactions, additionalFeeTransactionsInRange, cancellationToken);
+                allBusinessAccountTransactions.AddRange(businessAccountTransactions);
             }
+
+            await SyncTransfers(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, cancellationToken);
+            await SyncPexFees(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, additionalFeeTransactions, cancellationToken);
         }
 
         private async Task SyncInvoices(
