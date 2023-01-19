@@ -884,8 +884,6 @@ namespace AplosConnector.Common.Services
                 return new List<TransactionModel>();
             }
 
-            var allFees = new List<TransactionModel>();
-
             var syncTimePeriod = new TimePeriod(startDate, endDate);
             var fetchBatchSizeSource = mapping.FetchTransactionsIntervalDays.HasValue ? "business mapping" : "connector settings";
             var fetchBatchSizeDays = mapping.FetchTransactionsIntervalDays.GetValueOrDefault(_syncSettings.FetchTransactionsIntervalDays);
@@ -895,31 +893,27 @@ namespace AplosConnector.Common.Services
             var failureCount = 0;
             var eligibleCount = 0;
 
+            var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
+            var aplosAccountCategory = GetAplosAccountCategory();
+            var aplosExpenseAccounts = (await GetAplosAccounts(mapping, aplosAccountCategory, cancellationToken)).ToList();
+            var aplosTags = (await GetFlattenedAplosTagValues(mapping, cancellationToken)).ToList();
+
+            _logger.LogInformation($"Retrieved ALL funds from Aplos: {JsonConvert.SerializeObject(aplosFunds, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
+            _logger.LogInformation($"Retrieved ALL {aplosAccountCategory} accounts from Aplos: {JsonConvert.SerializeObject(aplosExpenseAccounts, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
+            _logger.LogInformation($"Retrieved ALL tags from Aplos: {JsonConvert.SerializeObject(aplosTags, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
+
+            var allCardholderTransactions = new CardholderTransactions(new List<TransactionModel>());
             foreach (var dateRangeBatch in fetchTransactionDateBatches)
             {
                 _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod} in batches of {fetchBatchSizeDays} day(s) (batchSizeSource={fetchBatchSizeSource}).");
 
-                var allCardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
-
-                var transactions = FilterTransactions(mapping, allCardholderTransactions);
-
-                var fees = allCardholderTransactions.SelectCardAccountFees();
-                allFees.AddRange(fees);
+                var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
+                allCardholderTransactions.AddRange(cardholderTransactions);
+                var transactions = FilterTransactions(mapping, cardholderTransactions);
 
                 _logger.LogInformation($"Syncing {transactions.Count} transactions for business: {mapping.PEXBusinessAcctId}");
 
                 var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown, cancellationToken);
-
-                var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
-
-                var aplosAccountCategory = GetAplosAccountCategory();
-
-                var aplosExpenseAccounts = (await GetAplosAccounts(mapping, aplosAccountCategory, cancellationToken)).ToList();
-                var aplosTags = (await GetFlattenedAplosTagValues(mapping, cancellationToken)).ToList();
-
-                _logger.LogInformation($"Retrieved ALL funds from Aplos: {JsonConvert.SerializeObject(aplosFunds, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
-                _logger.LogInformation($"Retrieved ALL {aplosAccountCategory} accounts from Aplos: {JsonConvert.SerializeObject(aplosExpenseAccounts, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
-                _logger.LogInformation($"Retrieved ALL tags from Aplos: {JsonConvert.SerializeObject(aplosTags, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
 
                 List<TagDropdownDetailsModel> dropdownTags = default;
                 if (useTags)
@@ -932,24 +926,21 @@ namespace AplosConnector.Common.Services
                     {
                         foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
                         {
-                            dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken,
-                                expenseAccountMapping.ExpenseAccountsPexTagId, cancellationToken));
+                            dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, cancellationToken));
                         }
                     }
                     if (mapping.TagMappings != null)
                     {
                         foreach (var tagMapping in mapping.TagMappings)
                         {
-                            dropdownTagTasks.Add(
-                                _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, cancellationToken));
+                            dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, cancellationToken));
                         }
                     }
                     await Task.WhenAll(dropdownTagTasks);
                     dropdownTags = dropdownTagTasks.Where(t => !t.IsFaulted).Select(t => t.Result).ToList();
                     foreach (var failedTask in dropdownTagTasks.Where(t => t.IsFaulted))
                     {
-                        _logger.LogError(failedTask.Exception?.InnerException,
-                            $"Exception getting dropdown tag for business {mapping.PEXBusinessAcctId}. {failedTask.Exception?.InnerException}");
+                        _logger.LogError(failedTask.Exception?.InnerException, $"Exception getting dropdown tag for business {mapping.PEXBusinessAcctId}. {failedTask.Exception?.InnerException}");
                     }
                 }
 
@@ -1174,7 +1165,7 @@ namespace AplosConnector.Common.Services
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
 
-            return allFees;
+            return allCardholderTransactions?.SelectCardAccountFees() ?? new List<TransactionModel>();
         }
 
         private static string GetAplosAccountCategory()
@@ -1219,21 +1210,13 @@ namespace AplosConnector.Common.Services
             }
 
             var syncTimePeriod = new TimePeriod(startDate, endDate);
-            var fetchBatchSizeSource = mapping.FetchTransactionsIntervalDays.HasValue ? "business mapping" : "connector settings";
-            var fetchBatchSizeDays = mapping.FetchTransactionsIntervalDays.GetValueOrDefault(_syncSettings.FetchTransactionsIntervalDays);
-            var fetchTransactionDateBatches = syncTimePeriod.Batch(TimeSpan.FromDays(fetchBatchSizeDays));
 
             var aplosTransactions = await GetTransactions(mapping, startDate, cancellationToken);
             await SyncInvoices(_logger, mapping, aplosTransactions, cancellationToken);
 
-            var allBusinessAccountTransactions = new BusinessAccountTransactions(new List<TransactionModel>());
-            foreach (var dateRangeBatch in fetchTransactionDateBatches)
-            {
-                _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod} in batches of {fetchBatchSizeDays} day(s) (batchSizeSource={fetchBatchSizeSource}).");
+            _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod}.");
 
-                var businessAccountTransactions = await _pexApiClient.GetBusinessAccountTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
-                allBusinessAccountTransactions.AddRange(businessAccountTransactions);
-            }
+            var allBusinessAccountTransactions = await _pexApiClient.GetBusinessAccountTransactions(mapping.PEXExternalAPIToken, syncTimePeriod.Start, syncTimePeriod.End, cancelToken: cancellationToken);
 
             await SyncTransfers(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, cancellationToken);
             await SyncPexFees(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, additionalFeeTransactions, cancellationToken);
