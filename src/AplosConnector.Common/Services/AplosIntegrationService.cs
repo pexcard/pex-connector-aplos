@@ -891,6 +891,10 @@ namespace AplosConnector.Common.Services
             var fetchBatchSizeDays = mapping.FetchTransactionsIntervalDays.GetValueOrDefault(_syncSettings.FetchTransactionsIntervalDays);
             var fetchTransactionDateBatches = syncTimePeriod.Batch(TimeSpan.FromDays(fetchBatchSizeDays));
 
+            var syncCount = 0;
+            var failureCount = 0;
+            var eligibleCount = 0;
+
             foreach (var dateRangeBatch in fetchTransactionDateBatches)
             {
                 _logger.LogInformation($"Getting cardholder transactions from {dateRangeBatch.Start} to {dateRangeBatch.End} for business: {mapping.PEXBusinessAcctId}");
@@ -952,9 +956,6 @@ namespace AplosConnector.Common.Services
 
                 var allocationMapping = await _pexApiClient.GetTagAllocations(mapping.PEXExternalAPIToken, new CardholderTransactions(transactions), cancellationToken);
 
-                var syncCount = 0;
-                var failureCount = 0;
-                var eligibleCount = 0;
                 foreach (var transaction in transactions)
                 {
                     using (_logger.BeginScope(GetLoggingScopeForTransaction(transaction)))
@@ -1150,29 +1151,29 @@ namespace AplosConnector.Common.Services
                         }
                     }
                 }
-
-                var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} transactions from PEX.";
-                SyncStatus syncStatus;
-                if (syncCount == 0 && eligibleCount > 0 && failureCount > 0)
-                {
-                    syncStatus = SyncStatus.Failed;
-                }
-                else
-                {
-                    syncStatus = syncCount == eligibleCount && failureCount == 0
-                        ? SyncStatus.Success
-                        : SyncStatus.Partial;
-                }
-                var result = new SyncResultModel
-                {
-                    PEXBusinessAcctId = mapping.PEXBusinessAcctId,
-                    SyncType = "Transactions",
-                    SyncStatus = syncStatus.ToString(),
-                    SyncedRecords = syncCount,
-                    SyncNotes = syncNote
-                };
-                await _resultStorage.CreateAsync(result, cancellationToken);
             }
+
+            var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} transactions from PEX.";
+            SyncStatus syncStatus;
+            if (syncCount == 0 && eligibleCount > 0 && failureCount > 0)
+            {
+                syncStatus = SyncStatus.Failed;
+            }
+            else
+            {
+                syncStatus = syncCount == eligibleCount && failureCount == 0
+                    ? SyncStatus.Success
+                    : SyncStatus.Partial;
+            }
+            var result = new SyncResultModel
+            {
+                PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                SyncType = "Transactions",
+                SyncStatus = syncStatus.ToString(),
+                SyncedRecords = syncCount,
+                SyncNotes = syncNote
+            };
+            await _resultStorage.CreateAsync(result, cancellationToken);
 
             return allFees;
         }
