@@ -1457,6 +1457,7 @@ namespace AplosConnector.Common.Services
 
             var syncCount = 0;
             var failureCount = 0;
+
             foreach (var transaction in transactionsToSync)
             {
                 using (_logger.BeginScope(GetLoggingScopeForTransaction(transaction)))
@@ -1509,27 +1510,27 @@ namespace AplosConnector.Common.Services
                         failureCount++;
                     }
                 }
-
-                var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} transfers from PEX.";
-                SyncStatus syncStatus;
-                if (syncCount == 0 && failureCount > 0)
-                {
-                    syncStatus = SyncStatus.Failed;
-                }
-                else
-                {
-                    syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
-                }
-                var result = new SyncResultModel
-                {
-                    PEXBusinessAcctId = model.PEXBusinessAcctId,
-                    SyncType = "Transfers",
-                    SyncStatus = syncStatus.ToString(),
-                    SyncedRecords = syncCount,
-                    SyncNotes = syncNote
-                };
-                await _resultStorage.CreateAsync(result, cancellationToken);
             }
+
+            var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} transfers from PEX.";
+            SyncStatus syncStatus;
+            if (syncCount == 0 && failureCount > 0)
+            {
+                syncStatus = SyncStatus.Failed;
+            }
+            else
+            {
+                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+            }
+            var result = new SyncResultModel
+            {
+                PEXBusinessAcctId = model.PEXBusinessAcctId,
+                SyncType = "Transfers",
+                SyncStatus = syncStatus.ToString(),
+                SyncedRecords = syncCount,
+                SyncNotes = syncNote
+            };
+            await _resultStorage.CreateAsync(result, cancellationToken);
         }
 
         private async Task SyncPexFees(
