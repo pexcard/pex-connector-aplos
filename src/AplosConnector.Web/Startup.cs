@@ -7,7 +7,9 @@ using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Core.Storages;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SpaServices.AngularCli;
 using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.Services.AppAuthentication;
@@ -18,9 +20,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using PexCard.Api.Client;
 using PexCard.Api.Client.Core;
+using PexCard.Api.Client.Core.Exceptions;
 using System;
+using System.Net;
 using System.Net.Http;
 
 namespace AplosConnector.Web
@@ -148,7 +153,42 @@ namespace AplosConnector.Web
             }
             else
             {
-                app.UseExceptionHandler("/Error");
+                app.UseExceptionHandler(a => a.Run(async context =>
+                {
+                    var feature = context.Features.Get<IExceptionHandlerPathFeature>();
+                    var exception = feature.Error;
+                    if (exception != null)
+                    {
+                        string responseContent;
+                        if (exception is PexApiClientException pexException)
+                        {
+                            context.Response.StatusCode = (int)pexException.Code;
+                            responseContent = pexException.Message;
+                        }
+                        else
+                        {
+                            HttpStatusCode statusCode;
+                            if (exception.Source.Equals("Microsoft.AspNetCore.SpaServices.Extensions") &&
+                                exception.Message.Contains("no other middleware handled the request",
+                                    StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                statusCode = HttpStatusCode.NotFound;
+                            }
+                            else
+                            {
+                                statusCode = HttpStatusCode.InternalServerError;
+                            }
+
+                            context.Response.StatusCode = (int)statusCode;
+                            var error = new { Error = exception.Message };
+                            responseContent = JsonConvert.SerializeObject(error);
+                        }
+
+                        context.Response.ContentType = "application/json";
+                        await context.Response.WriteAsync(responseContent);
+                    }
+                }));
+
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
