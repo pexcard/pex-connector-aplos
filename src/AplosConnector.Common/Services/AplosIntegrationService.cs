@@ -1233,7 +1233,10 @@ namespace AplosConnector.Common.Services
             var invoices = await _pexApiClient.GetInvoices(mapping.PEXExternalAPIToken, mapping.EarliestTransactionDateToSync, cancellationToken);
 
             var invoicesToSync = invoices
-                .Where(i => i.Status == InvoiceStatus.Closed && !WasPexTransactionSyncedToAplos(aplosTransactions, i.InvoiceId.ToString()))
+                .Where(i => 
+                    i.Status == InvoiceStatus.Closed
+                    && i.InvoiceAmount > 0 
+                    && !WasPexTransactionSyncedToAplos(aplosTransactions, i.InvoiceId.ToString()))
                 .ToList();
 
             var syncCount = 0;
