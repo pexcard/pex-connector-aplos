@@ -24,10 +24,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Aplos.Api.Client.Models.Response;
+using AplosConnector.Common.VendorCards;
 
 namespace AplosConnector.Common.Services
 {
@@ -41,6 +42,7 @@ namespace AplosConnector.Common.Services
         private readonly SyncResultStorage _resultStorage;
         private readonly Pex2AplosMappingStorage _mappingStorage;
         private readonly SyncSettingsModel _syncSettings;
+        private readonly IVendorCardRepository _vendorCardRepository;
 
         public AplosIntegrationService(
             ILogger<AplosIntegrationService> logger,
@@ -50,7 +52,8 @@ namespace AplosConnector.Common.Services
             IPexApiClient pexApiClient,
             SyncResultStorage resultStorage,
             Pex2AplosMappingStorage mappingStorage,
-            SyncSettingsModel syncSettings)
+            SyncSettingsModel syncSettings, 
+            IVendorCardRepository vendorCardRepository)
         {
             _appSettings = appSettings?.Value;
             _logger = logger;
@@ -60,6 +63,7 @@ namespace AplosConnector.Common.Services
             _resultStorage = resultStorage;
             _mappingStorage = mappingStorage;
             _syncSettings = syncSettings;
+            _vendorCardRepository = vendorCardRepository;
         }
 
         public async Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session, CancellationToken cancellationToken)
@@ -301,6 +305,7 @@ namespace AplosConnector.Common.Services
             Pex2AplosMappingModel mapping,
             TransactionModel transaction,
             CardholderDetailsModel cardholderDetails,
+            List<VendorCardOrdered> vendorCardsOrdered,
             CancellationToken cancellationToken)
         {
             var lines = new List<AplosApiTransactionLineDetail>();
@@ -352,14 +357,19 @@ namespace AplosConnector.Common.Services
 
                 if (contact is null)
                 {
-                    if (mapping.SyncTransactionsCreateContact)
+                    var vendorCardOrderForTransaction = vendorCardsOrdered?.FirstOrDefault(x => x.AccountId == transaction.AcctId);
+                    if (vendorCardOrderForTransaction != null && mapping.MapVendorCards)
+                    {
+                        contact = new AplosApiContactDetail { Id = int.Parse(vendorCardOrderForTransaction.Id) };
+                    }
+                    else if (mapping.SyncTransactionsCreateContact)
                     {
                         //Specifying the name here will use the existing contact with that name, otherwise it will create a new one.
-                        contact = new AplosApiContactDetail { CompanyName = transaction.MerchantName, Type = "company", };
+                        contact = new AplosApiContactDetail { CompanyName = transaction.MerchantName, Type = "company" };
                     }
                     else
                     {
-                        contact = new AplosApiContactDetail { Id = allocationDetail.pexTagValues.AplosContactId, };
+                        contact = new AplosApiContactDetail { Id = allocationDetail.pexTagValues.AplosContactId };
                     }
                 }
             }
@@ -872,7 +882,7 @@ namespace AplosConnector.Common.Services
             DateTime utcNow,
             CancellationToken cancellationToken)
         {
-            if (!mapping.SyncTransactions) return default;
+            if (!mapping.SyncTransactions || !mapping.SyncInvoices) return default;
 
             var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
             var startDate = startDateUtc.ToEst();
@@ -901,6 +911,13 @@ namespace AplosConnector.Common.Services
             _logger.LogInformation($"Retrieved ALL funds from Aplos: {JsonConvert.SerializeObject(aplosFunds, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
             _logger.LogInformation($"Retrieved ALL {aplosAccountCategory} accounts from Aplos: {JsonConvert.SerializeObject(aplosExpenseAccounts, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
             _logger.LogInformation($"Retrieved ALL tags from Aplos: {JsonConvert.SerializeObject(aplosTags, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
+
+            var vendorCardsOrdered = new List<VendorCardOrdered>();
+            if (mapping.MapVendorCards)
+            {
+                var vendorCardOrders = await _vendorCardRepository.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
+                vendorCardsOrdered = vendorCardOrders?.SelectMany(x => x.CardOrders)?.ToList() ?? new List<VendorCardOrdered>();
+            }
 
             var allCardholderTransactions = new CardholderTransactions(new List<TransactionModel>());
             foreach (var dateRangeBatch in fetchTransactionDateBatches)
@@ -1115,6 +1132,7 @@ namespace AplosConnector.Common.Services
                                 mapping,
                                 transaction,
                                 cardholderDetails,
+                                vendorCardsOrdered,
                                 cancellationToken);
                         }
                         catch (Exception ex)
@@ -1246,87 +1264,90 @@ namespace AplosConnector.Common.Services
 
             foreach (var invoiceModel in invoicesToSync)
             {
-                var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
-
-                var totalPaymentsAmount = invoicePayments.Sum(p => p.Amount);
-
-                if (totalPaymentsAmount != invoiceModel.InvoiceAmount)
+                using (_logger.BeginScope(GetLoggingScopeForInvoice(invoiceModel)))
                 {
-                    failureCount++;
-                    continue;
-                }
+                    var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
 
-                List<InvoiceAllocationModel> invoiceAllocations;
-                try
-                {
-                    invoiceAllocations = await _pexApiClient.GetInvoiceAllocations(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
-                }
-                catch (PexApiClientException)
-                {
-                    failureCount++;
-                    continue;
-                }
+                    var totalPaymentsAmount = invoicePayments.Sum(p => p.Amount);
 
-                var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
-                var totalAllocationsAmount = 0m;
-
-                foreach (var invoiceAllocationMode in invoiceAllocations)
-                {
-                    if (aplosFunds.All(f => f.Id != invoiceAllocationMode.TagValue) || !int.TryParse(invoiceAllocationMode.TagValue, out var tagValue))
+                    if (totalPaymentsAmount != invoiceModel.InvoiceAmount)
                     {
+                        failureCount++;
                         continue;
                     }
 
-                    totalAllocationsAmount += invoiceAllocationMode.TotalAmount;
-
-                    var allocationTagValue = new AllocationTagValue
+                    List<InvoiceAllocationModel> invoiceAllocations;
+                    try
                     {
-                        Amount = invoiceAllocationMode.TotalAmount,
-                        Allocation = new List<TagValueItem>
+                        invoiceAllocations = await _pexApiClient.GetInvoiceAllocations(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+                    }
+                    catch (PexApiClientException)
+                    {
+                        failureCount++;
+                        continue;
+                    }
+
+                    var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
+                    var totalAllocationsAmount = 0m;
+
+                    foreach (var invoiceAllocationMode in invoiceAllocations)
+                    {
+                        if (aplosFunds.All(f => f.Id != invoiceAllocationMode.TagValue) || !int.TryParse(invoiceAllocationMode.TagValue, out var tagValue))
+                        {
+                            continue;
+                        }
+
+                        totalAllocationsAmount += invoiceAllocationMode.TotalAmount;
+
+                        var allocationTagValue = new AllocationTagValue
+                        {
+                            Amount = invoiceAllocationMode.TotalAmount,
+                            Allocation = new List<TagValueItem>
                         {
                             new TagValueItem
                             {
                                 Value = invoiceAllocationMode.TagValue
                             }
                         }
-                    };
+                        };
 
-                    var pexTagValues = new PexTagValuesModel
+                        var pexTagValues = new PexTagValuesModel
+                        {
+                            AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
+                            AplosContactId = mapping.TransfersAplosContactId,
+                            AplosFundId = tagValue,
+                            AplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber
+                        };
+
+                        allocationDetails.Add((allocationTagValue, pexTagValues));
+                    }
+
+                    if (totalAllocationsAmount != totalPaymentsAmount)
                     {
-                        AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
-                        AplosContactId = mapping.TransfersAplosContactId,
-                        AplosFundId = tagValue,
-                        AplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber
-                    };
+                        failureCount++;
+                        continue;
+                    }
 
-                    allocationDetails.Add((allocationTagValue, pexTagValues));
-                }
+                    _logger.LogInformation($"Starting sync for invoice {invoiceModel.InvoiceId}");
+                    var transactionSyncResult = TransactionSyncResult.Failed;
+                    try
+                    {
+                        transactionSyncResult = await SyncInvoice(allocationDetails, mapping, invoiceModel, null, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Exception syncing invoice {invoiceModel.InvoiceId}.");
+                    }
 
-                if (totalAllocationsAmount != totalPaymentsAmount)
-                {
-                    failureCount++;
-                    continue;
-                }
-
-                _logger.LogInformation($"Starting sync for invoice {invoiceModel.InvoiceId}");
-                var transactionSyncResult = TransactionSyncResult.Failed;
-                try
-                {
-                    transactionSyncResult = await SyncInvoice(allocationDetails, mapping, invoiceModel, null, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Exception syncing invoice {invoiceModel.InvoiceId}.");
-                }
-
-                if (transactionSyncResult == TransactionSyncResult.Success)
-                {
-                    syncCount++;
-                    _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
-                }
-                else if (transactionSyncResult == TransactionSyncResult.Failed)
-                {
-                    failureCount++;
+                    if (transactionSyncResult == TransactionSyncResult.Success)
+                    {
+                        syncCount++;
+                        _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
+                    }
+                    else if (transactionSyncResult == TransactionSyncResult.Failed)
+                    {
+                        failureCount++;
+                    }
                 }
             }
 
@@ -1496,6 +1517,7 @@ namespace AplosConnector.Common.Services
                             model,
                             transaction,
                             null,
+                            null,
                             cancellationToken);
                     }
                     catch (Exception ex)
@@ -1597,6 +1619,7 @@ namespace AplosConnector.Common.Services
                             model,
                             transaction,
                             null,
+                            null,
                             cancellationToken);
                     }
                     catch (Exception ex)
@@ -1690,6 +1713,14 @@ namespace AplosConnector.Common.Services
             return _aplosIntegrationMappingService.Map(aplosApiResponse);
         }
 
+        public async Task<AplosApiPayablesListResponse> GetAplosPayables(Pex2AplosMappingModel mapping, DateTime startDate, CancellationToken cancellationToken)
+        {
+            var aplosApiClient = MakeAplosApiClient(mapping);
+            var response = await aplosApiClient.GetPayables(startDate, cancellationToken);
+
+            return response;
+        }
+
         private static IDictionary<string, object> GetLoggingScopeForSync(Pex2AplosMappingModel mapping)
         {
             if (mapping is null)
@@ -1719,6 +1750,22 @@ namespace AplosConnector.Common.Services
                 ["TransactionAmount"] = transaction.TransactionAmount,
                 ["TransactionTime"] = transaction.TransactionTime,
                 ["SettlementTime"] = transaction.SettlementTime,
+            };
+        }
+
+        private static IDictionary<string, object> GetLoggingScopeForInvoice(InvoiceModel invoice)
+        {
+            if (invoice is null)
+            {
+                throw new ArgumentNullException(nameof(invoice));
+            }
+
+            return new Dictionary<string, object>
+            {
+                ["InvoiceId"] = invoice.InvoiceId,
+                ["InvoiceAmount"] = invoice.InvoiceAmount,
+                ["InvoiceDueDate"] = invoice.DueDate,
+                ["InvoiceStatus"] = invoice.Status
             };
         }
 

@@ -578,7 +578,8 @@ namespace AplosConnector.Common.Tests
                 _mockPexApiClient.Object,
                 null,
                 null,
-                _mockSettings);
+                _mockSettings,
+                null);
         }
 
         private Pex2AplosMappingModel GetMapping(

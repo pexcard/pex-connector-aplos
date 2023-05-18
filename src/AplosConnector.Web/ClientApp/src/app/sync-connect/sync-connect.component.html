@@ -1,0 +1,699 @@
+<clr-wizard
+  #wizard
+  [clrWizardOpen]="true"
+  [(clrWizardOpen)]="open"
+  [clrWizardClosable]="isAuthenticated && isAplosLinked"
+>
+  <clr-wizard-title>PEX Connector for Aplos</clr-wizard-title>
+
+  <clr-wizard-button [type]="'cancel'">Cancel</clr-wizard-button>
+  <clr-wizard-button [type]="'next'">Next</clr-wizard-button>
+  <clr-wizard-button [type]="'finish'">Finish</clr-wizard-button>
+
+  <clr-wizard-page 
+    *ngIf="!isAuthenticated"
+    [clrWizardPageNextDisabled]="true"
+  >
+    <ng-template clrPageTitle>Authenticate with PEX</ng-template>
+    <p>
+      In order to create a connection between PEX and Aplos, you must first
+      authenticate using your PEX log in credentials. Click the button
+      below to launch a PEX login window and enter your PEX username &amp; password.
+    </p>
+
+    <button class="btn btn-primary" (click)="onAuthenticateWithPex()">
+      LOG IN TO YOUR PEX ACCOUNT
+    </button>
+
+    <p>
+      If you do not currently have a PEX account, click the button below to
+      apply.
+    </p>
+    <button class="btn btn-success" (click)="onApply()">
+      APPLY FOR A PEX ACCOUNT
+    </button>
+  </clr-wizard-page>
+
+  <clr-wizard-page *ngIf="isAuthenticated && !isPexAccountLinked && !isFirstInstalation"
+    clrWizardPagePreventDefault="true"
+    [clrWizardPagePreventDefault]="true"
+    [clrWizardPageNextDisabled]="true"
+    (clrWizardPageOnCancel)="preventCancel()">
+
+    <ng-template clrPageTitle>Connect to PEX</ng-template>
+    <p>{{businessName}} is currently logged in as {{pexAdminEmailAccount}}. Click the button below to switch to your PEX credentials.</p>
+    <p></p>
+    <app-loading-placeholder [loadingState]="verifyingPexAuthentication" [errorState]="false"></app-loading-placeholder>
+    <button class="btn btn-primary" (click)="onUseCurrentPexAccount()" *ngIf="!verifyingPexAuthentication">USE MY PEX CREDENTIALS</button>
+  </clr-wizard-page>
+
+  <clr-wizard-page
+    clrWizardPagePreventDefault="true"
+    (clrWizardPageOnCommit)="onAplosCredentialsCommit()"
+    *ngIf="isAuthenticated && (settingsModel.aplosAuthenticationMode === 0 || (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl))"
+    [clrWizardPagePreventDefault]="true"
+    (clrWizardPageOnCancel)="onCloseWizard()"
+    [clrWizardPageNextDisabled]="!aplosServiceAccountForm.valid
+                   || (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl)"
+  >
+    <ng-template clrPageTitle>Connect to Aplos</ng-template>
+
+    <app-loading-placeholder
+      [loadingState]="savingAplosCredentials"
+      [errorState]="errorSavingAplosCredentials"
+      errorText="We were unable to connect to Aplos with the information you provided."
+      [allowRetry]="false"
+    ></app-loading-placeholder>
+
+    <form
+      clrForm
+      #aplosServiceAccountForm="ngForm"
+      [class.hide]="!savingAplosCredentials"
+    >
+      <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.aplosAuthenticationMode === 0">
+        <p>
+          To obtain a client id, you must have an Aplos account and a user with administrative permissions.
+
+          Assuming you have these, you can generate a client id and key pair from the <a href="https://www.aplos.com/aws/sm">settings</a> page.
+        </p>
+        <clr-input-container>
+          <label>Client ID</label>
+          <input
+            clrInput
+            required
+            placeholder=""
+            name="aplosClientId"
+            [(ngModel)]="settingsModel.aplosClientId"
+            style="width: 500px" />
+          <clr-control-error>You must enter a Client ID</clr-control-error>
+        </clr-input-container>
+
+        <clr-input-container>
+          <label>Private Key</label>
+          <input
+            clrInput
+            required
+            placeholder=""
+            name="aplosPrivateKey"
+            style="width: 500px"
+            [(ngModel)]="settingsModel.aplosPrivateKey" />
+          <clr-control-error>You must enter a Private Key</clr-control-error>
+        </clr-input-container>
+      </div>
+
+      <div *ngIf="aplosAuthenticationStatus && !aplosAuthenticationStatus.hasAplosAccountId" class="alert alert-warning" role="alert">
+        <div class="alert-items">
+          <div class="alert-item static">
+            <div class="alert-icon-wrapper">
+              <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
+            </div>
+            <span class="alert-text">
+              Sorry, we don't seem to have your Aplos customer ID on file so can't connect your PEX account to Aplos.
+              <br />
+              <br />
+              Please contact <a href="https://www.aplos.com/support/">Aplos Support</a> and ask that your customer ID be sent to PEX.  Once we have it, we'll contact you so that you know when you're able to complete the account linking process.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl">
+        <p>
+          Click the button below to connect PEX with your Aplos account.
+        </p>
+
+        <p></p>
+
+        <app-loading-placeholder
+        [loadingState]="verifyingAplosAuthentication"
+        [errorState]="false"
+        ></app-loading-placeholder>
+
+        <clr-spinner *ngIf="redirectingToAplosAuth">
+            Saving...
+        </clr-spinner>
+
+        <div class="clr-row clr-justify-content-around" *ngIf="!verifyingAplosAuthentication && !redirectingToAplosAuth">
+          <div class="clr-col-6">
+            <button type="button" class="btn btn-primary " aria-label="add" (click)="onAplosPartnerVerification()">
+              <clr-icon shape="link" size="36"></clr-icon>
+              <span>Connect to Aplos</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </clr-wizard-page>
+
+  <clr-wizard-page
+    *ngIf="isAuthenticated"
+    clrWizardPagePreventDefault="true"
+    (clrWizardPageOnCommit)="onSettingsCommit()"
+    (clrWizardPageOnCancel)="onCloseWizard()"
+    [clrWizardPageNextDisabled]="!optionsForm.valid
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices) && !settingsModel.aplosRegisterAccountNumber)
+                   || (settingsModel.syncTransactions && !settingsModel.syncTransactionsCreateContact && !settingsModel.defaultAplosContactId)
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices) && !settingsModel.earliestTransactionDateToSync)"
+  >
+
+    <ng-template clrPageTitle>Choose what to sync</ng-template>
+
+    <div class="alert alert-warning" role="alert" *ngIf="!hasTagsAvailable">
+      <div class="alert-items">
+        <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+            <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
+          </div>
+          <span class="alert-text">
+            Your PEX account does not support Tags. To enable this feature for integration with Aplos,
+            please contact <a href="email:adminsupport@pexcard.com">adminsupport@pexcard.com</a>.
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <clr-spinner *ngIf="savingSettings">
+      Saving...
+    </clr-spinner>
+
+    <form clrForm #optionsForm="ngForm" [class.hide]="!savingSettings">
+      <clr-toggle-wrapper>
+        <input
+          type="checkbox"
+          clrToggle
+          name="syncTags"
+          [(ngModel)]="settingsModel.syncTags"
+        />
+        <label>Sync Aplos Funds/Accounts to PEX Tags</label>
+      </clr-toggle-wrapper>
+
+      <clr-toggle-wrapper *ngIf="isPrepaid()">
+        <input
+          type="checkbox"
+          clrToggle
+          name="syncTransactions"
+          [(ngModel)]="settingsModel.syncTransactions"
+        />
+        <label>Automatically import
+          <span *ngIf="!settingsModel.syncTransactions">approved</span>
+          <div
+            *ngIf="settingsModel.syncTransactions"
+            class="clr-select-wrapper"
+          >
+            <select
+              id="syncApprovedOnly"
+              class="clr-select"
+              [(ngModel)]="settingsModel.syncApprovedOnly"
+              name="syncApprovedOnly"
+            >
+              <option value="true">approved</option>
+              <option value="false">all</option>
+            </select>
+          </div>
+          PEX purchases into Aplos.</label>
+      </clr-toggle-wrapper>
+
+      <clr-toggle-wrapper *ngIf="isPrepaid()">
+        <input
+          type="checkbox"
+          clrToggle
+          name="syncTransfers"
+          [(ngModel)]="settingsModel.syncTransfers"
+          />
+        <label>Automatically import PEX transfers into Aplos.</label>
+      </clr-toggle-wrapper>
+
+      <clr-toggle-wrapper  *ngIf="isPrepaid()">
+        <input
+          type="checkbox"
+          clrToggle
+          name="syncPexFees"
+          [(ngModel)]="settingsModel.syncPexFees"
+        />
+        <label>
+          Automatically import Fees into Aplos.
+        </label>
+      </clr-toggle-wrapper>
+
+      <clr-toggle-wrapper *ngIf="isCredit()">
+        <input
+          type="checkbox"
+          clrToggle
+          name="syncInvoices"
+          [(ngModel)]="settingsModel.syncInvoices"/>
+        <label>Automatically import PEX purchases with Fund and Account tags, fees and bill payments into Aplos.</label>
+      </clr-toggle-wrapper>
+
+      <clr-toggle-wrapper>
+        <input
+          type="checkbox"
+          clrToggle
+          name="syncTaxTagToPex"
+          [(ngModel)]="settingsModel.syncTaxTagToPex"
+        />
+        <label>
+          Sync 990 Tag.
+          <clr-tooltip>
+            <clr-icon clrTooltipTrigger shape="info-circle" size="20"></clr-icon>
+            <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
+                <span>Please make sure you have 990 tag enabled in Aplos. Otherwise, your transactions will not sync.</span>
+            </clr-tooltip-content>
+          </clr-tooltip>
+        </label>
+      </clr-toggle-wrapper>
+
+      <div class="card" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices">
+        <div class="card-block">
+          <app-loading-placeholder
+            [loadingState]="loadingAplosAccounts"
+            [errorState]="errorLoadingAplosAccounts"
+            (retry)="getBankAccounts()"
+          ></app-loading-placeholder>
+
+          <div class="card-text">
+            Please choose an account you have set up to represent your PEX funds:
+            <div class="clr-select-wrapper">
+              
+              <select *ngIf="isPrepaid()"
+                id="aplosRegisterAccountNumber"
+                class="clr-select"
+                [(ngModel)]="settingsModel.aplosRegisterAccountNumber"
+                name="aplosRegisterAccountNumber">
+                <option></option>
+                <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAssetAccounts">{{aplosAccount | aplosAccount}}</option>
+              </select>
+              
+              <select *ngIf="isCredit()"
+                id="aplosRegisterAccountNumber"
+                class="clr-select"
+                [(ngModel)]="settingsModel.aplosRegisterAccountNumber"
+                name="aplosRegisterAccountNumber">
+                <option></option>
+                <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosLiabilityAccounts">{{aplosAccount | aplosAccount}}</option>
+              </select>
+
+            </div>
+            <p>
+              <strong>Tip:</strong> Consider creating a new account in Aplos called 'PEX' if you would like to book all of your PEX purchases against a single account.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" *ngIf="settingsModel.syncTransactions">
+        <div class="card-header">
+          <clr-toggle-wrapper>
+            <input
+              type="checkbox"
+              clrToggle
+              name="settingsModel.syncTransactionsCreateContact"
+              [disabled]="settingsModel.defaultAplosContactId > 0"
+              [(ngModel)]="settingsModel.syncTransactionsCreateContact"
+            />
+            <label>Create a contact for each unique merchant</label>
+          </clr-toggle-wrapper>
+        </div>
+        <div class="card-block">
+          <div class="card-text" *ngIf="settingsModel.syncTransactionsCreateContact">
+            If a contact matching the merchant name does not exist in Aplos, it will be automatically created.
+          </div>
+
+          <app-loading-placeholder
+            [loadingState]="loadingAplosContacts"
+            [errorState]="errorLoadingAplosContacts"
+            (retry)="getContacts()"
+          ></app-loading-placeholder>
+
+          <div class="card-text" *ngIf="!settingsModel.syncTransactionsCreateContact">
+            <span *ngIf="isPrepaid()">Please choose a contact for your purchases:</span>
+            <span *ngIf="isCredit()">Please choose a contact for your transactions:</span>
+            <div class="clr-select-wrapper">
+              <select
+                id="select-full-vendor"
+                class="clr-select"
+                name="settingsModel.defaultAplosContactId"
+                [(ngModel)]="settingsModel.defaultAplosContactId"
+              >
+                <option value="0"></option>
+                <option [value]="vendor.id" *ngFor="let vendor of aplosContacts">{{vendor.name}}</option>
+              </select>
+            </div>
+            <p>
+              <strong>Tip:</strong> Consider creating a new contact in Aplos called 'PEX' if you would like to book all of your PEX purchases against a single contact.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <p></p>
+      <p></p>
+      <div class="clr-row" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices">
+        <div class="clr-col">
+          Please specify a start date for the sync. Transactions made prior to this date will not be imported into Aplos. All transactions after this date will be imported automatically.
+          <clr-date-container>
+            <label>Start date</label>
+            <input
+              type="date"
+              clrDate
+              name="earliestTransactionDateToSync"
+              [(ngModel)]="settingsModel.earliestTransactionDateToSync">
+          </clr-date-container>
+        </div>
+      </div>
+
+    </form>
+
+  </clr-wizard-page>
+
+  <clr-wizard-page
+    *ngIf="isAuthenticated && (settingsModel.syncTransactions || settingsModel.syncTags) && hasTagsAvailable"
+    (clrWizardPageOnCommit)="onTagMappingCommit()"
+    (clrWizardPageOnCancel)="onCloseWizard()"
+    clrWizardPagePreventDefault="true"
+    [clrWizardPageNextDisabled]="! aplosFieldMappingForm.valid
+                   || !expenseAccountForm.valid
+                   || (this.aplosTagCategories.length > 0 && !tagMappingForm.valid)">
+    <ng-template clrPageTitle>Configure tag mapping</ng-template>
+
+    <clr-spinner *ngIf="savingSettings">
+      Saving...
+    </clr-spinner>
+
+    <form clrForm #aplosFieldMappingForm="ngForm" [class.hide]="!savingSettings">
+      <p>
+        Map each field name from Aplos on the left to a corresponding PEX Tag on the right.
+        Only dropdown type Tags can be mapped.
+      </p>
+      <table class="table">
+        <caption>
+          Fund
+        </caption>
+        <thead>
+          <tr>
+            <th class="left">Aplos field</th>
+            <th class="left">PEX Tag</th>
+            <th class="left">Sync Tag options from Aplos</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td class="left">Fund</td>
+            <td class="left">
+              <div class="clr-select-wrapper">
+                <select id="pexFundsTagId"
+                        class="clr-select"
+                        name="pexFundsTagId"
+                        required
+                        [(ngModel)]="settingsModel.pexFundsTagId">
+                  <option></option>
+                  <option [value]="tag.id" *ngFor="let tag of getDropDownTags()">{{tag.name}}</option>
+                </select>
+              </div>
+            </td>
+            <td>
+              <clr-toggle-wrapper>
+                <input type="checkbox"
+                       clrToggle
+                       name="syncFundsToPex"
+                       [disabled]="! settingsModel.pexFundsTagId > 0"
+                       [(ngModel)]="settingsModel.syncFundsToPex" />
+              </clr-toggle-wrapper>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </form>
+    <form clrForm [formGroup]="expenseAccountForm" [class.hide]="!savingSettings">
+      <p>
+        Map your expense account in Aplos to the appropriate tag(s) within PEX. If you use multiple tags within PEX for accounts, click the <clr-icon shape="plus" size="18"></clr-icon> button to add additional tag(s).
+      </p>
+      <table class="table">
+        <caption>Expense Account</caption>
+        <thead>
+          <tr>
+            <th class="left">Aplos field</th>
+            <th class="left">PEX Tag</th>
+            <th class="left" *ngIf="getExpenseAccountFormElements().length == 1">Sync Tag options from Aplos</th>
+            <th>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" aria-label="add" (click)="addExpenseAccountElement()">
+                <clr-icon shape="plus" size="12"></clr-icon>
+              </button>
+            </th>
+          </tr>
+        </thead>
+
+        <tbody formArrayName="expenseAccounts">
+          <tr *ngFor="let expenseAccount of getExpenseAccountFormElements().controls; let i = index" [formGroupName]="i">
+            <td class="left">Account</td>
+            <td class="left">
+              <div class="clr-select-wrapper">
+                <select class="clr-select"
+                        required
+                        formControlName="expenseAccount">
+                  <option></option>
+                  <option [value]="tag.id" *ngFor="let tag of getDropDownTags()">{{tag.name}}</option>
+                </select>
+              </div>
+            </td>
+            <td *ngIf="getExpenseAccountFormElements().length == 1">
+              <clr-toggle-wrapper>
+                <input type="checkbox"
+                       formControlName="syncExpenseAccountToPex"
+                       clrToggle />
+              </clr-toggle-wrapper>
+            </td>
+            <td>
+              <button type="button" class="btn btn-danger btn-sm btn-icon" aria-label="add" (click)="deleteExpenseAccountElement(i)" *ngIf="this.getExpenseAccountFormElements().length > 1">
+                <clr-icon shape="trash" size="12"></clr-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </form>
+    <div *ngIf="this.aplosTagCategories.length > 0">
+      <form clrForm [formGroup]="tagMappingForm" [class.hide]="!savingSettings">
+        <table class="table">
+          <caption>Tags</caption>
+          <thead>
+            <tr>
+              <th class="left">Aplos Tag</th>
+              <th class="left">PEX Tag</th>
+              <th class="left">Sync tag options from Aplos</th>
+              <th>
+                <button type="button" class="btn btn-primary btn-sm btn-icon" aria-label="add" (click)="addTagMappingElement()">
+                  <clr-icon shape="plus" size="12"></clr-icon>
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody formArrayName="tagMappings">
+            <tr *ngFor="let tagMapping of getTagMappingFormElements().controls; let i = index" [formGroupName]="i">
+              <td class="left">
+                <div class="clr-select-wrapper">
+                  <select class="clr-select" formControlName="aplosTag">
+                    <option></option>
+                    <option [value]="tag.id" *ngFor="let tag of aplosTagCategories">{{tag.name}}</option>
+                    <option *ngIf="settingsModel.syncTaxTagToPex" value="990">990</option>
+                  </select>
+                </div>
+              </td>
+              <td class="left">
+                <div class="clr-select-wrapper">
+                  <select class="clr-select"
+                          formControlName="pexTag">
+                    <option></option>
+                    <option [value]="tag.id" *ngFor="let tag of getDropDownTags()">{{tag.name}}</option>
+                  </select>
+                </div>
+              </td>
+              <td>
+                <clr-toggle-wrapper>
+                  <input type="checkbox"
+                         formControlName="syncToPex"
+                         clrToggle />
+                </clr-toggle-wrapper>
+              </td>
+              <td>
+                <button type="button" class="btn btn-danger btn-sm btn-icon" aria-label="add" (click)="deleteTagMappingElement(i)">
+                  <clr-icon shape="trash" size="12"></clr-icon>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </form>
+    </div>
+    <p>
+      * denotes a required tag in PEX
+    </p>
+  </clr-wizard-page>
+
+  <clr-wizard-page 
+    *ngIf="isAuthenticated && (settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees)"
+    (clrWizardPageOnCommit)="onDefaultCategoryCommit()"
+    (clrWizardPageOnCancel)="onCloseWizard()"
+    clrWizardPagePreventDefault="true"
+    [clrWizardPageNextDisabled]="!defaultCategoryForm.valid"
+  >
+    <ng-template clrPageTitle>Choose default fund &amp; account</ng-template>
+
+    <h4 *ngIf="isPrepaid()" >Please choose the following items when importing Transfers and Fees into Aplos</h4>
+    <h4 *ngIf="isCredit()">Please choose the following items when importing Bill Payments and Fees into Aplos</h4>
+
+    <app-loading-placeholder
+    [loadingState]="loadingExpenseCategories"
+    [errorState]="errorLoadingExpenseCategories"
+    (retry)="getExpenseCategories()"
+    ></app-loading-placeholder>
+
+    <clr-spinner *ngIf="savingSettings">
+        Saving...
+    </clr-spinner>
+  
+    <form clrForm #defaultCategoryForm="ngForm" [class.hide]="!savingSettings">
+      <div *ngIf="!hasTagsAvailable  && settingsModel.syncTransactions">
+        <h4>Purchases:</h4>
+        <span class="selectLabel">Fund:</span>
+        <div class="clr-select-wrapper">
+            <select
+              id="defaultAplosFundId"
+              class="clr-select select"
+              name="defaultAplosFundId"
+              required
+              [(ngModel)]="settingsModel.defaultAplosFundId">
+            <option></option>
+            <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
+            </select>
+        </div>
+        <br>
+        <span class="selectLabel">Transaction Account:</span>
+        <div class="clr-select-wrapper">
+          <select
+            id="defaultAplosTransactionAccountNumber"
+            class="clr-select select"
+            name="defaultAplosTransactionAccountNumber"
+            required
+            [(ngModel)]="settingsModel.defaultAplosTransactionAccountNumber">
+            <option></option>
+            <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
+          </select>
+        </div>
+      </div>
+
+      <div *ngIf="settingsModel.syncTransfers || settingsModel.syncInvoices">
+        <span *ngIf="isPrepaid()">
+          <h4>Transfers:</h4>
+          <span class="selectLabel">Contact:</span>
+        </span>
+        <span *ngIf="isCredit()">
+          <h4>Bill Payments:</h4>
+          <span class="selectLabel">Payee:</span>
+        </span>
+        <div class="clr-select-wrapper">
+          <select
+            id="transfersAplosContactId"
+            class="clr-select select"
+            name="transfersAplosContactId"
+            required
+            [(ngModel)]="settingsModel.transfersAplosContactId">
+            <option></option>
+            <option [value]="aplosContact.id" *ngFor="let aplosContact of aplosContacts">{{aplosContact.name}}</option>
+          </select>
+        </div>
+        <br>
+        <div *ngIf="isPrepaid()">
+          <span class="selectLabel">Fund:</span>
+          <div class="clr-select-wrapper">
+              <select
+                id="transfersAplosFundId"
+                class="clr-select select"
+                name="transfersAplosFundId"
+                required
+                [(ngModel)]="settingsModel.transfersAplosFundId">
+                <option></option>
+                <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
+              </select>
+            </div>
+          <br>
+        </div>
+        <span class="selectLabel">Bank Account:</span>
+        <div class="clr-select-wrapper">
+          <select
+          id="transfersAplosTransactionAccountNumber"
+          class="clr-select select"
+          name="transfersAplosTransactionAccountNumber"
+          required
+          [(ngModel)]="settingsModel.transfersAplosTransactionAccountNumber"
+        >
+          <option></option>
+          <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAssetAccounts">{{aplosAccount | aplosAccount}}</option>
+        </select>
+        </div>
+      </div>
+      <div *ngIf="settingsModel.syncPexFees || settingsModel.syncInvoices">
+        <h4>Fees:</h4>
+        <span class="selectLabel">Contact:</span>
+        <div class="clr-select-wrapper">
+            <select
+              id="pexFeesAplosContactId"
+              class="clr-select select"
+              name="pexFeesAplosContactId"
+              required
+              [(ngModel)]="settingsModel.pexFeesAplosContactId"
+            >
+              <option></option>
+              <option [value]="aplosContact.id" *ngFor="let aplosContact of aplosContacts">{{aplosContact.name}}</option>
+            </select>
+          </div>
+          <br>
+
+        <span class="selectLabel">Fund:</span>
+        <div class="clr-select-wrapper">
+            <select
+              id="pexFeesAplosFundId"
+              class="clr-select select"
+              name="pexFeesAplosFundId"
+              required
+              [(ngModel)]="settingsModel.pexFeesAplosFundId"
+            >
+              <option></option>
+              <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
+            </select>
+          </div>
+        <br>
+          
+        <span class="selectLabel">Transaction Account:</span>
+        <div class="clr-select-wrapper">
+          <select
+            id="pexFeesAplosTransactionAccountNumber"
+            class="clr-select select"
+            name="pexFeesAplosTransactionAccountNumber"
+            required
+            [(ngModel)]="settingsModel.pexFeesAplosTransactionAccountNumber">
+            <option></option>
+            <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
+          </select>
+        </div>
+        <div *ngIf="settingsModel.syncTaxTagToPex">
+          <br/>
+          <span class="selectLabel">990 Tag Option:</span>
+          <div class="clr-select-wrapper">
+            <select
+              id="pexFeesAplosTaxTag"
+              class="clr-select select"
+              name="pexFeesAplosTaxTag"
+              required
+              [(ngModel)]="settingsModel.pexFeesAplosTaxTag">
+              <option></option>
+              <optgroup  *ngFor="let aplosTaxTagCategory of aplosTaxTagCategories" label="{{aplosTaxTagCategory.name}}">
+                <option  [value]="aplosTaxTag.id" *ngFor="let aplosTaxTag of aplosTaxTagCategory.tax_tags">{{aplosTaxTag.name}} - {{aplosTaxTag.group_name}}</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+      </div>
+    </form>
+  </clr-wizard-page>
+</clr-wizard>

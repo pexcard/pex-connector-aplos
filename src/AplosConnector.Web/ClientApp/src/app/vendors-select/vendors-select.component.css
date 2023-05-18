@@ -1,0 +1,49 @@
+.vendors {
+}
+
+.map-vendors {
+}
+
+.vendor-cards {
+  height: 24em;
+}
+.vendor-cards>table {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+  width: 100%;
+}
+.vendor-cards>table>thead {
+    flex: 0 0 auto;
+    width: calc(100% - 0.9em);
+}
+.vendor-cards>table>tbody {
+  flex: 1 1 auto;
+  display: block;
+  overflow-y: scroll;
+}
+.vendor-cards>table>tbody>tr {
+  width: 100%;
+}
+.vendor-cards>table>thead, .vendor-cards>table>tbody>tr{
+  display: table;
+  table-layout: fixed;
+}
+.confirmation-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 30em;
+}
+
+.red-star {
+  color: #E62700;
+}
+
+.text-weight-500 {
+  font-weight: 500;
+}
+
+.text-margin {
+  margin-top: 0.4rem !important ;
+}

@@ -66,5 +66,6 @@ namespace AplosConnector.Common.Entities
 
         public double? SyncTransactionsIntervalDays { get; set; }
         public double? FetchTransactionsIntervalDays { get; set; }
+        public bool MapVendorCards { get; set; }
     }
 }

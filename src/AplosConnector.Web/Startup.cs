@@ -27,6 +27,7 @@ using PexCard.Api.Client.Core.Exceptions;
 using System;
 using System.Net;
 using System.Net.Http;
+using AplosConnector.Common.VendorCards;
 
 namespace AplosConnector.Web
 {
@@ -65,22 +66,27 @@ namespace AplosConnector.Web
             })
             .UsePexRetryPolicies<PexApiClient>();
 
-            services.AddScoped<IStorageMappingService>(
+            services.AddLazyCache();
+
+            services.AddSingleton<IStorageMappingService>(
                 provider => new StorageMappingService(
                     provider.GetService<IDataProtectionProvider>()
                 ));
 
-            string storageConnectionString = _configuration.GetConnectionString("StorageConnectionString");
+            var storageConnectionString = _configuration.GetConnectionString("StorageConnectionString");
 
-            services.AddSingleton(provider => new PexOAuthSessionStorage(storageConnectionString).InitTable());
+            services.AddSingleton(_ => new PexOAuthSessionStorage(storageConnectionString).InitTable());
             services.AddSingleton(provider =>
                 new Pex2AplosMappingStorage(
                     storageConnectionString,
                     provider.GetService<IStorageMappingService>(),
                     provider.GetService<ILogger<Pex2AplosMappingStorage>>())
                 .InitTable());
-            services.AddSingleton(provider => new SyncResultStorage(storageConnectionString).InitTable());
-            services.AddSingleton(provider => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
+            services.AddSingleton(_ => new SyncResultStorage(storageConnectionString).InitTable());
+            services.AddSingleton(_ => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
+            services.AddSingleton<IVendorCardRepository>(provider => new VendorCardRepository(storageConnectionString,
+                provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardRepository>>()).InitTable());
+            services.AddScoped<IVendorCardService, VendorCardService>();
 
             services.AddScoped<IAccessTokenDecryptor>(provider => new AplosAccessTokenDecryptor());
 
@@ -98,7 +104,8 @@ namespace AplosConnector.Web
                 provider.GetService<IPexApiClient>(),
                 provider.GetService<SyncResultStorage>(),
                 provider.GetService<Pex2AplosMappingStorage>(),
-                provider.GetService<SyncSettingsModel>()));
+                provider.GetService<SyncSettingsModel>(),
+                provider.GetService<VendorCardRepository>()));
 
             services.AddCors(options =>
             {

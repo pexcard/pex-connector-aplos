@@ -1,0 +1,81 @@
+<div *ngIf="!isReady" class="page-status">
+  <clr-spinner [clrMedium]="true"></clr-spinner>
+  Loading...
+</div>
+<ng-container *ngIf="isReady">
+  <h1>Manage Vendor Cards</h1>
+  <p>
+    View PEX Vendor Cards automatically created from your Aplos vendor list. To manage a vendor card, click on it.
+  </p>
+  <button class="btn btn-primary" (click)="onCreateVendorCards()">
+    CREATE VENDOR CARDS
+  </button>
+  <div *ngIf="!connectionDetails?.syncingSetup" class="alert alert-success" role="alert">
+    <div class="alert-items">
+      <div class="alert-item static">
+        <div class="alert-icon-wrapper">
+          <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+        </div>
+        <span class="alert-text">Sync your transactions to Aplos nightly.</span>
+        <div class="alert-actions">
+          <button class="btn btn-sm alert-action no-margins" [routerLink]="['../sync-connect']">
+            GET STARTED
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="vendor-cards">
+    <table class="table">
+      <thead>
+        <tr>
+          <th class="left">Date Created</th>
+          <th class="left">Vendor Card</th>
+          <th *ngIf="connectionDetails?.isPrepaid" class="left">Auto Funding</th>
+          <th *ngIf="connectionDetails?.isPrepaid" class="left">Initial Funding</th>
+          <th *ngIf="!connectionDetails?.isPrepaid" class="left">Card Limit</th>
+          <th class="left">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let i of vendorCardsOrders">
+          <tr *ngFor="let v of i.cardOrders">
+            <td class="left">{{v.orderDate | date : 'medium'}}</td>
+            <td class="left"><a [href]="v.accountUrl" target="_blank">{{v.name | truncate : 25}}</a></td>
+            <td *ngIf="connectionDetails?.isPrepaid" class="left">
+              <input type="checkbox" clrCheckbox [ngModel]="v.autoFunding" [disabled]="true"/>
+            </td>
+            <td *ngIf="connectionDetails?.isPrepaid" class="left">
+              <span *ngIf="!v.autoFunding">
+                {{v.initialFunding | currency}}
+              </span>
+            </td>
+            <td *ngIf="!connectionDetails?.isPrepaid" class="left">
+              <span>
+                {{v.initialFunding | currency}}
+              </span>
+            </td>
+            <td class="left same-line">
+              <clr-signpost>
+                <div clrSignpostTrigger>
+                  <span class="label"
+                        [class.label-danger]="v.status === 'Unstored'"
+                        [class.label-info]="v.status === 'Processing'"
+                        [class.label-info]="v.status === 'Pending'"
+                        [class.label-success]="v.status === 'Success'"
+                        [class.label-warning]="v.status === 'NotProcessed'"
+                        [class.label-danger]="v.status === 'Failed'">
+                    {{v.status}}
+                  </span>
+                </div>
+                <clr-signpost-content *clrIfOpen [clrPosition]="'left-bottom'">
+                  <span class="p8">{{v.error}}</span>
+                </clr-signpost-content>
+              </clr-signpost>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+</ng-container>

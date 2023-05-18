@@ -26,6 +26,7 @@ namespace Aplos.Api.Client
         private const string APLOS_ENDPOINT_PARTNERS_VERIFY = APLOS_ENDPOINT_PARTNERS + "verify";
         private const string APLOS_ENDPOINT_TAGS = "tags/";
         private const string APLOS_ENDPOINT_TAX_TAGS = "taxtags/";
+        private const string APLOS_ENDPOINT_PAYABLES = "payables/";
 
         public const string APLOS_ACCOUNT_CATEGORY_ASSET = "asset";
         public const string APLOS_ACCOUNT_CATEGORY_EXPENSE = "expense";
@@ -548,6 +549,14 @@ namespace Aplos.Api.Client
             }
 
             return _auth?.AplosAccessToken;
+        }
+
+        public async Task<AplosApiPayablesListResponse> GetPayables(DateTime startDate, CancellationToken cancellationToken = default)
+        {
+            return await InvokeAplosApiWithAccessToken<AplosApiPayablesListResponse>(
+                HttpMethod.Get,
+                $"{APLOS_ENDPOINT_PAYABLES}?f_rangestart={startDate:yyyy-MM-dd}",
+                cancellationToken: cancellationToken);
         }
     }
 }

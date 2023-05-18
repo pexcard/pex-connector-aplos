@@ -12,36 +12,41 @@
       </a>
     </div>
     <div class="header-nav">
-      <a [routerLink]="['/connect']" routerLinkActive="active" class="nav-link"
-        ><span class="nav-text">
-          Connect</span></a
-      >
+      <a [routerLink]="['sync-connect']"
+         routerLinkActive="active"
+         class="nav-link">
+        <span class="nav-text">Connect</span>
+      </a>
 
-      <a
-        *ngIf="isLoggedIn"
-        [routerLink]="['/manage-connections']"
-        routerLinkActive="active"
-        class="nav-link"
-        ><span class="nav-text">Manage connector</span></a
-      >
+      <a *ngIf="isLoggedIn"
+         [routerLink]="['sync-manage']"
+         routerLinkActive="active"
+         class="nav-link">
+          <span class="nav-text">Manage sync</span>
+      </a>
 
-      <a
-        *ngIf="isLoggedIn"
-        [routerLink]="['/sync-history']"
-        routerLinkActive="active"
-        class="nav-link"
-        ><span class="nav-text">Sync history</span></a
-      >      
+      <a *ngIf="isLoggedIn"
+         [routerLink]="['vendors-manage']"
+         routerLinkActive="active"
+         class="nav-link">
+        <span class="nav-text">Manage vendor cards</span>
+      </a>
+
+      <a *ngIf="isLoggedIn"
+         [routerLink]="['sync-history']"
+         routerLinkActive="active"
+         class="nav-link">
+        <span class="nav-text">History</span>
+      </a>      
 
     </div>
     <div class="header-actions">
-      <a
-        *ngIf="!isLoggedIn"
-        [routerLink]="['/authenticate-with-pex']"
-        routerLinkActive="active"
-        class="nav-link"
-        ><span class="nav-text">Authenticate with PEX</span></a
-      >
+      <a *ngIf="!isLoggedIn"
+         [routerLink]="['/authenticate-with-pex']"
+         routerLinkActive="active"
+         class="nav-link">
+        <span class="nav-text">Authenticate with PEX</span>
+      </a>
 
       <a (click)="onLogout()" class="nav-link">
       <span *ngIf="isLoggedIn" class="nav-text" style="cursor: pointer">Logout</span>

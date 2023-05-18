@@ -10,8 +10,10 @@ import { catchError, concatMap } from "rxjs/operators";
   providedIn: "root"
 })
 export class AuthService {
-  public sessionId = new BehaviorSubject<string>(null);
-  public businessName = new BehaviorSubject<string>(null);
+
+  public isAuthenticated = new BehaviorSubject<boolean | null>(null);
+  public sessionId = new BehaviorSubject<string | null>(null);
+  public businessName = new BehaviorSubject<string | null>(null);
   private readonly CACHE_KEY_BUSINESS_NAME = 'pex.GetBusinessName';
   private readonly SESSION_ID_KEY = "SESSION_ID";
 
@@ -35,6 +37,18 @@ export class AuthService {
       );
   }
 
+  getAplosAuthURL() {
+    this.httpClient
+      .get<OAuthURLResponse>(`${this.baseUrl}api/Session/aplosAuthURL`)
+      .subscribe(
+        result => {
+          console.log('AplosAuthUrl', result);
+          window.location.href = result.oAuthUrl;
+        },
+        error => console.error(error)
+      );
+  }
+
   createAplosToken(sessionId: string, aplosClientId: string, aplosPrivateKey: string): Observable<AplosCredentialVerificationResult> {
     return this.httpClient.post<AplosCredentialVerificationResult>(this.baseUrl + `api/Session/AplosToken/?sessionId=${sessionId}`,
       {
@@ -48,6 +62,7 @@ export class AuthService {
       .pipe(
         concatMap(() => {
           localStorage.setItem(this.SESSION_ID_KEY, sessionId);
+          this.isAuthenticated.next(true);
           this.sessionId.next(sessionId);
           this.getBusinessName(sessionId);
           return of(void 0);
@@ -70,18 +85,21 @@ export class AuthService {
         .subscribe(result => {
           if (result.isValid) {
             console.log("Session Found -- Auto-Logging in")
+            this.isAuthenticated.next(true);
             this.sessionId.next(sessionId);
             this.getBusinessName(sessionId);
           } else {
             console.log("Session is invalid, cleaning up storage & cache");
             this.cache.clearAllAppCache();
             localStorage.removeItem(this.SESSION_ID_KEY);
+            this.isAuthenticated.next(false);
             this.sessionId.next(null);
             this.businessName.next(null);
           }
         });
     }
     else{
+      this.isAuthenticated.next(false);
       console.log("No prior session in storage");
     }
   }
@@ -96,12 +114,14 @@ export class AuthService {
           concatMap(() => {
             localStorage.removeItem(this.SESSION_ID_KEY);
             this.cache.clearAllAppCache();
+            this.isAuthenticated.next(false);
             this.sessionId.next(null);
             this.businessName.next(null);            
             return of(void 0);
           })
         );
     } else {
+      this.isAuthenticated.next(false);
       return of(void 0);
     }
   }

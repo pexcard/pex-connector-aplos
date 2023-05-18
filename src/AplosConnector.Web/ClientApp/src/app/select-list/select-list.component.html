@@ -1,0 +1,79 @@
+<div class="clr-row">
+
+  <div class="clr-col clr-col-md-5">
+    <div class="items-container">
+      <div class="clr-row clr-justify-content-center">
+        <div class="clr-col">
+          <h6 class="items-header">
+            <strong>{{allItemsTitle}}</strong>
+          </h6>
+        </div>
+      </div>
+      <div class="clr-row clr-justify-content-center">
+        <div class="clr-col">
+          <div class="items-filter-container">
+            <clr-icon class="search-icon" shape="search" size="18"></clr-icon>
+            <input (ngModelChange)='filterAllItems($event)' [ngModel]="allItemsFilter" class="items-filter" placeholder="Type something to filter list" type="text">
+          </div>
+        </div>
+      </div>
+      <div class="items-list">
+        <ul class="list-unstyled">
+          <li *ngFor="let item of allItemsFiltered"
+              (mouseenter)="selectMany($event, item, allItems, selectedItems, true)"
+              (mousedown)="selectOne($event, item, allItems, selectedItems, true)"
+              [ngClass]="item.selected ? 'selected-item': ''"
+              tabindex="1">
+            <span class="p3 no-top-margin">{{_displayFn(item)}}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="clr-col clr-col-md-2">
+    <div class="items-action-container">
+      <button (click)="moveSelectedToRight()" [disabled]="allItems.length === 0 || (maxSelectedItems > 0 && selectedItems.length === maxSelectedItems)" aria-label="arrow"
+              class="btn btn-icon items-btn move-to-suggested" type="button">
+        <clr-icon dir="right" shape="arrow" size="16"></clr-icon>
+      </button>
+      <button (click)="moveSelectedToLeft()" [disabled]="selectedItems.length === 0" aria-label="arrow"
+              class="btn btn-icon items-btn move-back" type="button">
+        <clr-icon dir="left" shape="arrow" size="16"></clr-icon>
+      </button>
+      <button class="btn btn-sm btn-link" (click)="reset()">RESET</button>
+    </div>
+  </div>
+
+  <div class="clr-col clr-col-md-5">
+    <div class="items-container">
+      <div class="clr-row clr-justify-content-center">
+        <div class="clr-col">
+          <h6 class="items-header">
+            <strong>{{selectedItemsTitle}}</strong>
+          </h6>
+        </div>
+      </div>
+      <div class="clr-row clr-justify-content-center">
+        <div class="clr-col">
+          <div class="items-filter-container">
+            <clr-icon class="search-icon" shape="search" size="18"></clr-icon>
+            <input (ngModelChange)='filterSelectedItems($event)' [ngModel]="selectedItemsFilter" class="items-filter" placeholder="Type something to filter list" type="text">
+          </div>
+        </div>
+      </div>
+      <div class="items-list">
+        <ul class="list-unstyled">
+          <li *ngFor="let item of selectedItemsFiltered"
+              (mouseenter)="selectMany($event, item, selectedItems, selectedItems, false)"
+              (mousedown)="selectOne($event, item, selectedItems, selectedItems, false)"
+              [ngClass]="item.selected ? 'selected-item': ''"
+              tabindex="1">
+            <span class="p3 no-top-margin">{{_displayFn(item)}}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>

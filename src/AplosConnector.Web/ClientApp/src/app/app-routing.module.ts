@@ -1,13 +1,18 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
 import { ConnectComponent } from './connect/connect.component';
-import { ManageConnectionsComponent } from './manage-connections/manage-connections.component';
 import { FinishPexLoginComponent } from './finish-pex-login/finish-pex-login.component';
 import { HealthComponent } from './health/health.component';
 import { FinishAplosLoginComponent } from './finish-aplos-login/finish-aplos-login.component';
 import { SyncHistoryComponent } from './sync-history/sync-history.component';
 import { HeadlessComponent } from './headless/headless.component';
 import { HandlePexJwtComponent } from './handle-pex-jwt/handle-pex-jwt.component';
+import { LoginComponent } from './login/login.component';
+import { AuthGuard } from './guard/auth.guard';
+import { SyncConnectComponent } from './sync-connect/sync-connect.component';
+import { SyncManageComponent } from './sync-manage/sync-manage.component';
+import { VendorsSelectComponent } from './vendors-select/vendors-select.component';
+import { VendorsManageComponent } from './vendors-manage/vendors-manage.component';
 
 const childRoutes: Routes = [  {
   path: '',
@@ -15,16 +20,39 @@ const childRoutes: Routes = [  {
   redirectTo: 'connect'
 },
 {
-  path: 'connect',
-  component: ConnectComponent
+  path: 'login',
+  component: LoginComponent
 },
 {
-  path: 'manage-connections',
-  component: ManageConnectionsComponent
+  path: 'connect',
+  component: ConnectComponent,
+  canActivate: [AuthGuard]
 },
+{
+  path: 'sync-connect',
+  component: SyncConnectComponent,
+  canActivate: [AuthGuard]
+},
+{
+  path: 'sync-manage',
+  component: SyncManageComponent,
+  canActivate: [AuthGuard]
+},
+{
+  path: 'vendors-select',
+  component: VendorsSelectComponent,
+  canActivate: [AuthGuard]
+},
+{
+  path: 'vendors-manage',
+  component: VendorsManageComponent,
+  canActivate: [AuthGuard]
+},
+
 {
   path: 'sync-history',
-  component:SyncHistoryComponent
+  component:SyncHistoryComponent,
+  canActivate: [AuthGuard]
 },
 {
   path: 'finish-pex-login/:sessionId',

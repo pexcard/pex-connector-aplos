@@ -166,5 +166,47 @@ namespace AplosConnector.Web.Controllers
             await _mappingQueue.EnqueueMapping(mapping, cancellationToken);
             return Ok();
         }
+
+        [HttpGet, Route("Settings/VendorCardMapping")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetVendorCardMapping(string sessionId, CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
+
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
+            if (session == null) return Unauthorized();
+
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
+            if (mapping == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(mapping.MapVendorCards);
+        }
+
+        [HttpPut, Route("Settings/VendorCardMapping")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> SetVendorCardMapping(string sessionId, [FromBody] bool enable, CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
+
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
+            if (session == null) return Unauthorized();
+
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
+            if (mapping == null)
+            {
+                return NotFound();
+            }
+
+            mapping.MapVendorCards = enable;
+
+            await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
+
+            return Ok();
+        }
     }
 }
