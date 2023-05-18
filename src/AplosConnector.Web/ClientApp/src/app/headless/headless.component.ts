@@ -13,8 +13,12 @@ export class HeadlessComponent implements OnInit, OnDestroy {
       routerLink: "sync-history"
     },
     {
-      navText: "Settings",
-      routerLink: "manage-connections"
+      navText: "Manage sync",
+      routerLink: "sync-manage"
+    },
+    {
+      navText: "Manage vendor cards",
+      routerLink: "vendors-manage"
     }
   ];
   constructor(private auth: AuthService) { }

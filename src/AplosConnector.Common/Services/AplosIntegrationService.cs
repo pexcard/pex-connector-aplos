@@ -24,11 +24,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Transactions;
+using Aplos.Api.Client.Models.Response;
+using AplosConnector.Common.VendorCards;
 
 namespace AplosConnector.Common.Services
 {
@@ -42,6 +42,7 @@ namespace AplosConnector.Common.Services
         private readonly SyncResultStorage _resultStorage;
         private readonly Pex2AplosMappingStorage _mappingStorage;
         private readonly SyncSettingsModel _syncSettings;
+        private readonly IVendorCardRepository _vendorCardRepository;
 
         public AplosIntegrationService(
             ILogger<AplosIntegrationService> logger,
@@ -51,7 +52,8 @@ namespace AplosConnector.Common.Services
             IPexApiClient pexApiClient,
             SyncResultStorage resultStorage,
             Pex2AplosMappingStorage mappingStorage,
-            SyncSettingsModel syncSettings)
+            SyncSettingsModel syncSettings, 
+            IVendorCardRepository vendorCardRepository)
         {
             _appSettings = appSettings?.Value;
             _logger = logger;
@@ -61,6 +63,7 @@ namespace AplosConnector.Common.Services
             _resultStorage = resultStorage;
             _mappingStorage = mappingStorage;
             _syncSettings = syncSettings;
+            _vendorCardRepository = vendorCardRepository;
         }
 
         public async Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session, CancellationToken cancellationToken)
@@ -302,6 +305,7 @@ namespace AplosConnector.Common.Services
             Pex2AplosMappingModel mapping,
             TransactionModel transaction,
             CardholderDetailsModel cardholderDetails,
+            List<VendorCardOrdered> vendorCardsOrdered,
             CancellationToken cancellationToken)
         {
             var lines = new List<AplosApiTransactionLineDetail>();
@@ -353,14 +357,19 @@ namespace AplosConnector.Common.Services
 
                 if (contact is null)
                 {
-                    if (mapping.SyncTransactionsCreateContact)
+                    var vendorCardOrderForTransaction = vendorCardsOrdered?.FirstOrDefault(x => x.AccountId == transaction.AcctId);
+                    if (vendorCardOrderForTransaction != null && mapping.MapVendorCards)
+                    {
+                        contact = new AplosApiContactDetail { Id = int.Parse(vendorCardOrderForTransaction.Id) };
+                    }
+                    else if (mapping.SyncTransactionsCreateContact)
                     {
                         //Specifying the name here will use the existing contact with that name, otherwise it will create a new one.
-                        contact = new AplosApiContactDetail { CompanyName = transaction.MerchantName, Type = "company", };
+                        contact = new AplosApiContactDetail { CompanyName = transaction.MerchantName, Type = "company" };
                     }
                     else
                     {
-                        contact = new AplosApiContactDetail { Id = allocationDetail.pexTagValues.AplosContactId, };
+                        contact = new AplosApiContactDetail { Id = allocationDetail.pexTagValues.AplosContactId };
                     }
                 }
             }
@@ -903,6 +912,13 @@ namespace AplosConnector.Common.Services
             _logger.LogInformation($"Retrieved ALL {aplosAccountCategory} accounts from Aplos: {JsonConvert.SerializeObject(aplosExpenseAccounts, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
             _logger.LogInformation($"Retrieved ALL tags from Aplos: {JsonConvert.SerializeObject(aplosTags, new JsonSerializerSettings { Error = (sender, args) => args.ErrorContext.Handled = true })}");
 
+            var vendorCardsOrdered = new List<VendorCardOrdered>();
+            if (mapping.MapVendorCards)
+            {
+                var vendorCardOrders = await _vendorCardRepository.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
+                vendorCardsOrdered = vendorCardOrders?.SelectMany(x => x.CardOrders)?.ToList() ?? new List<VendorCardOrdered>();
+            }
+
             var allCardholderTransactions = new CardholderTransactions(new List<TransactionModel>());
             foreach (var dateRangeBatch in fetchTransactionDateBatches)
             {
@@ -1116,6 +1132,7 @@ namespace AplosConnector.Common.Services
                                 mapping,
                                 transaction,
                                 cardholderDetails,
+                                vendorCardsOrdered,
                                 cancellationToken);
                         }
                         catch (Exception ex)
@@ -1500,6 +1517,7 @@ namespace AplosConnector.Common.Services
                             model,
                             transaction,
                             null,
+                            null,
                             cancellationToken);
                     }
                     catch (Exception ex)
@@ -1601,6 +1619,7 @@ namespace AplosConnector.Common.Services
                             model,
                             transaction,
                             null,
+                            null,
                             cancellationToken);
                     }
                     catch (Exception ex)
@@ -1692,6 +1711,14 @@ namespace AplosConnector.Common.Services
             var aplosApiResponse = await aplosApiClient.GetTaxTags(cancellationToken);
 
             return _aplosIntegrationMappingService.Map(aplosApiResponse);
+        }
+
+        public async Task<AplosApiPayablesListResponse> GetAplosPayables(Pex2AplosMappingModel mapping, DateTime startDate, CancellationToken cancellationToken)
+        {
+            var aplosApiClient = MakeAplosApiClient(mapping);
+            var response = await aplosApiClient.GetPayables(startDate, cancellationToken);
+
+            return response;
         }
 
         private static IDictionary<string, object> GetLoggingScopeForSync(Pex2AplosMappingModel mapping)

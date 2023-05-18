@@ -20,6 +20,7 @@ using PexCard.Api.Client;
 using PexCard.Api.Client.Core;
 using System;
 using System.Net.Http;
+using AplosConnector.Common.VendorCards;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 namespace AplosConnector.SyncWorker
@@ -39,7 +40,7 @@ namespace AplosConnector.SyncWorker
             builder.Services.AddScoped(_ => new SyncSettingsModel());
 
             builder.Services.AddHttpClient();
-            builder.Services.AddHttpClient<IPexApiClient, PexApiClient>((client) =>
+            builder.Services.AddHttpClient<IPexApiClient, PexApiClient>(client =>
             {
                 client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("PEXAPIBaseURL", EnvironmentVariableTarget.Process));
 
@@ -57,17 +58,16 @@ namespace AplosConnector.SyncWorker
                     provider.GetService<IDataProtectionProvider>()
                 ));
 
-            string storageConnectionString = Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process);
+            var storageConnectionString = Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process);
 
             builder.Services.AddSingleton(provider =>
-                new Pex2AplosMappingStorage(
-                    Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process),
-                    provider.GetService<IStorageMappingService>(),
-                    provider.GetService<ILogger<Pex2AplosMappingStorage>>())
+                new Pex2AplosMappingStorage(storageConnectionString, provider.GetService<IStorageMappingService>(), provider.GetService<ILogger<Pex2AplosMappingStorage>>())
                 .InitTable());
-            builder.Services.AddSingleton(provider => new PexOAuthSessionStorage(Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process)).InitTable());
-            builder.Services.AddSingleton(provider => new Pex2AplosMappingQueue(Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process)).InitQueue());
-            builder.Services.AddSingleton(provider => new SyncResultStorage(Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process)).InitTable());
+            builder.Services.AddSingleton(_ => new PexOAuthSessionStorage(storageConnectionString).InitTable());
+            builder.Services.AddSingleton(_ => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
+            builder.Services.AddSingleton(_ => new SyncResultStorage(storageConnectionString).InitTable());
+            builder.Services.AddSingleton<IVendorCardRepository>(provider => new VendorCardRepository(storageConnectionString,
+                    provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardRepository>>()).InitTable());
 
             builder.Services.AddScoped<IAccessTokenDecryptor>(provider => new AplosAccessTokenDecryptor());
 
@@ -101,7 +101,8 @@ namespace AplosConnector.SyncWorker
                 provider.GetService<IPexApiClient>(),
                 provider.GetService<SyncResultStorage>(),
                 provider.GetService<Pex2AplosMappingStorage>(),
-                provider.GetService<SyncSettingsModel>()));
+                provider.GetService<SyncSettingsModel>(),
+                provider.GetService<IVendorCardRepository>()));
 
             var dataProtectionApplicationName = Environment.GetEnvironmentVariable("DataProtectionApplicationName", EnvironmentVariableTarget.Process);
             var dataProtectionBlobContainer = Environment.GetEnvironmentVariable("DataProtectionBlobContainer", EnvironmentVariableTarget.Process);

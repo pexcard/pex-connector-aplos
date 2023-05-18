@@ -1,8 +1,43 @@
-.selectLabel {
-    min-width: 160px;
-    display: inline-block;
+.left-col {
+  padding-left: 10rem;
+  padding-right: 1rem;
+}
+.right-col {
+  padding-left: 1rem;
+  padding-right: 10rem;
+}
+.card.selector {
+  height: 100%;
+  position: relative;
+}
+.card.selector>.card-block {
+  height: 100%;
+  display: flex;
+  flex-flow: column;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  padding-bottom: 26px;
+}
+.card.selector>.card-block>.selector-img {
+  padding: 1rem;
 }
 
-.select {
-    min-width: 330px;
+.card.selector>.selector-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
 }
+
+.rebate-line {
+  width: 100%;
+  text-align: center;
+  height: 26px;
+  color: white;
+  position: absolute;
+  bottom: -1px;
+}
+
+.rebate-line-background {
+  background-color: #0079B8;
+} 

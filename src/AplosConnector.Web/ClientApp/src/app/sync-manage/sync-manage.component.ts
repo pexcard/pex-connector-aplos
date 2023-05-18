@@ -7,11 +7,11 @@ import { AplosService, AplosPreferences, AplosAccount, AplosObject, AplosApiTaxT
 import { PexConnectionDetailModel, PexService } from '../services/pex.service';
 
 @Component({
-  selector: 'app-manage-connections',
-  templateUrl: './manage-connections.component.html',
-  styleUrls: ['./manage-connections.component.css']
+  selector: 'app-sync-manage',
+  templateUrl: './sync-manage.component.html',
+  styleUrls: ['./sync-manage.component.css']
 })
-export class ManageConnectionsComponent implements OnInit {
+export class SyncManageComponent implements OnInit {
 
   constructor(private mapping: MappingService, private auth: AuthService, private aplos: AplosService, private pex: PexService,
     private router: Router) { }
@@ -270,3 +270,4 @@ export class ManageConnectionsComponent implements OnInit {
     );
   }
 }
+

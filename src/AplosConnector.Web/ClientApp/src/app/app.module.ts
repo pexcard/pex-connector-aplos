@@ -8,7 +8,6 @@ import { ClarityModule } from '@clr/angular';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ConnectComponent } from './connect/connect.component';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
-import { ManageConnectionsComponent } from './manage-connections/manage-connections.component';
 import { FinishPexLoginComponent } from './finish-pex-login/finish-pex-login.component';
 import { HealthComponent } from './health/health.component';
 import { FinishAplosLoginComponent } from './finish-aplos-login/finish-aplos-login.component';
@@ -17,12 +16,19 @@ import { SyncHistoryComponent } from './sync-history/sync-history.component';
 import { HeadlessComponent } from './headless/headless.component';
 import { HandlePexJwtComponent } from './handle-pex-jwt/handle-pex-jwt.component';
 import { AplosAccountPipe } from "./pipes/aplosAccount";
+import { LoginComponent } from './login/login.component';
+import { SyncConnectComponent } from './sync-connect/sync-connect.component';
+import { SyncManageComponent } from './sync-manage/sync-manage.component';
+import { VendorsManageComponent } from './vendors-manage/vendors-manage.component';
+import { VendorsSelectComponent } from './vendors-select/vendors-select.component';
+import { CommonModule, CurrencyPipe } from '@angular/common';
+import { SelectListComponent } from './select-list/select-list.component';
+import { TruncateModule } from '@yellowspot/ng-truncate';
 
 @NgModule({
   declarations: [
     AppComponent,
     ConnectComponent,
-    ManageConnectionsComponent,
     FinishPexLoginComponent,
     HealthComponent,
     FinishAplosLoginComponent,
@@ -31,6 +37,12 @@ import { AplosAccountPipe } from "./pipes/aplosAccount";
     HeadlessComponent,
     HandlePexJwtComponent,
     AplosAccountPipe,
+    LoginComponent,
+    SyncConnectComponent,
+    SyncManageComponent,
+    VendorsManageComponent,
+    VendorsSelectComponent,
+    SelectListComponent
   ],
   imports: [
     BrowserModule,
@@ -39,9 +51,11 @@ import { AplosAccountPipe } from "./pipes/aplosAccount";
     FormsModule,
     ClarityModule,
     BrowserAnimationsModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    CommonModule,
+    TruncateModule
   ],
-  providers: [],
+  providers: [CurrencyPipe],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

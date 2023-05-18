@@ -97,7 +97,8 @@ namespace AplosConnector.Common.Services
                     PEXNameAccount = model.PEXNameAccount,
 
                     SyncTransactionsIntervalDays = model.SyncTransactionsIntervalDays,
-                    FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays
+                    FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays,
+                    MapVendorCards = model.MapVendorCards
                 };
             }
 
@@ -209,7 +210,8 @@ namespace AplosConnector.Common.Services
                     PexTaxTagId = model.PexTaxTagId,
 
                     SyncTransactionsIntervalDays = model.SyncTransactionsIntervalDays,
-                    FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays
+                    FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays,
+                    MapVendorCards = model.MapVendorCards
                 };
             }
 

@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <!--Addresses CVE-2020-1045-->
+    <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.2.2" />
 
     <PackageReference Include="Azure.Identity" Version="1.8.2" />

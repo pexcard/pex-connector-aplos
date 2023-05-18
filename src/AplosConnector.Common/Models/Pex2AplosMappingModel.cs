@@ -61,6 +61,7 @@ namespace AplosConnector.Common.Models
             ExpenseAccountMappings = mapping.ExpenseAccountMappings;
             TagMappings = mapping.TagMappings;
             PEXFundingSource = mapping.PEXFundingSource;
+            MapVendorCards = mapping.MapVendorCards;
         }
 
         private static string GetPexTaxTagId(IEnumerable<TagMappingModel> tagMappings)
@@ -122,6 +123,7 @@ namespace AplosConnector.Common.Models
 
                 SyncTransactionsIntervalDays = SyncTransactionsIntervalDays,
                 FetchTransactionsIntervalDays = FetchTransactionsIntervalDays,
+                MapVendorCards = MapVendorCards
             };
         }
 
@@ -175,6 +177,7 @@ namespace AplosConnector.Common.Models
         public string PEXNameAccount { get; set; }
         public double? SyncTransactionsIntervalDays { get; set; }
         public double? FetchTransactionsIntervalDays { get; set; }
+        public bool MapVendorCards { get; set; }
 
         public DateTime GetLastRenewedDateUtc()
         {

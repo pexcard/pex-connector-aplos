@@ -62,6 +62,18 @@ export class MappingService {
     this.clearCache();
     return this.httpClient.post(this.buildUrl(sessionId, 'Sync'), null);
   }
+  
+  getVendorCardsMapped(sessionId: string): Observable<boolean> {
+    return this.httpClient
+      .get<boolean>(this.buildUrl(sessionId, 'Settings/VendorCardMapping'))
+      .pipe(retryWithBackoff());
+  }
+
+  setVendorCardsMapped(sessionId: string, enable: boolean): Observable<boolean> {
+    return this.httpClient
+      .put<void>(this.buildUrl(sessionId,'Settings/VendorCardMapping'), enable)
+      .pipe(retryWithBackoff());
+  }
 
   disconnect(sessionId: string) {
     this.clearCache();

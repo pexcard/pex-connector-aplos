@@ -1,9 +1,10 @@
 import { Injectable, Inject } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpParams } from "@angular/common/http";
 import { Observable, EMPTY } from "rxjs";
 
 import { retryWithBackoff } from "../operators/retryWithBackoff.operator";
 import { CacheRepositoryService } from './cache-repository.service';
+import { timeout } from "rxjs/operators";
 
 @Injectable({
   providedIn: "root"
@@ -76,6 +77,22 @@ export class AplosService {
       .get<AplosObject[]>(this.buildUrl(sessionId, "TaxTagCategories"))
       .pipe(retryWithBackoff()), 60);
   }
+
+  getVendorsForCards(sessionId: string, activeOnly: boolean = undefined, takeOnly: boolean = undefined): Observable<VendorForCard[]> {
+    let requestParams = new HttpParams();
+    if (activeOnly !== undefined) {
+      requestParams = requestParams.set('activeOnly', activeOnly);
+    }
+    if (takeOnly !== undefined) {
+      requestParams = requestParams.set('takeOnly', takeOnly);
+    }
+    return this.httpClient
+      .get<Vendor[]>(this.buildUrl(sessionId, "Vendors/ForCards"), { params: requestParams })
+      .pipe(
+        timeout(10000),
+        retryWithBackoff()
+      );
+  }
   
 }
 
@@ -105,4 +122,14 @@ export interface AplosApiTaxTagDetail {
   id: string;
   name: string;
   group_name: string;
+}
+
+export interface Vendor {
+  id: number;
+  name: string;
+  active: boolean;
+}
+
+export interface VendorForCard extends Vendor {
+  total: number;
 }

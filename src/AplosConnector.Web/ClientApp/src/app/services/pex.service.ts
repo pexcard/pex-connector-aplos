@@ -23,7 +23,7 @@ export class PexService {
     return this.baseUrl + `api/PEX/${endpoint}?sessionId=${sessionId}`;
   }
 
-  validatePexSetup(sessionId: string) : Observable<PexValidityModel> {
+  validatePexSetup(sessionId: string): Observable<PexValidityModel> {
     return this.cache.runAndCacheOrGetFromCache(
       this.CACHE_KEY_PEX_VALIDITY, this.httpClient
         .get(this.buildUrl(sessionId, 'Validity'))
@@ -40,15 +40,15 @@ export class PexService {
       , 60);
   }
 
-  getAuthenticationStatus(sessionId: string) {    
+  getAuthenticationStatus(sessionId: string) {
     return this.cache.runAndCacheOrGetFromCache("Pex.AuthenticationStatus", this.httpClient
       .get(this.buildUrl(sessionId, 'AuthenticationStatus'))
       .pipe(retryWithBackoff(50, 1, 500)), 5);
   }
 
-  getConnectionAccountDetail(sessionId: string) : Observable<PexConnectionDetailModel>{
+  getConnectionAccountDetail(sessionId: string): Observable<PexConnectionDetailModel> {
     return this.cache.runAndCacheOrGetFromCache("Pex.ConnectionAccountDetail", this.httpClient
-      .get<PexConnectionDetailModel>(this.buildUrl(sessionId,'ConnectionAccountDetail'))
+      .get<PexConnectionDetailModel>(this.buildUrl(sessionId, 'ConnectionAccountDetail'))
       .pipe(retryWithBackoff(50, 1, 500)), 5);
   }
 
@@ -57,12 +57,20 @@ export class PexService {
       .pipe(retryWithBackoff(50, 1, 500));
   }
 
-  disconnectPexAccountLinked(sessionId: string){
-    return this.httpClient.post(this.buildUrl(sessionId,"Disconnect"), null);
+  createVendorCards(sessionId: string, selectedVendors: CreateVendorCard[]) {
+    return this.httpClient.post<void>(this.buildUrl(sessionId, "VendorCards"), selectedVendors);
+  }
+
+  getVendorCards(sessionId: string) {
+    return this.httpClient.get<VendorCardsOrdered[]>(this.buildUrl(sessionId, "VendorCards"));
+  }
+
+  disconnectPexAccountLinked(sessionId: string) {
+    return this.httpClient.post(this.buildUrl(sessionId, "Disconnect"), null);
   }
 }
 
-export interface PexValidityModel{
+export interface PexValidityModel {
   isValid: boolean;
   useTagsEnabled: boolean;
   requestAchTransferEnabled: boolean;
@@ -80,17 +88,50 @@ export interface PexTagInfoModel {
 export interface PexConnectionDetailModel {
   name: string,
   email: string,
-  active: boolean,
-  lastSync: string
+  pexConnection: boolean,
+  aplosConnection: boolean,
+  syncingSetup: boolean,
+  vendorsSetup: boolean,
+  lastSync: string,
+  accountBalance?: number;
+  vendorCardsAvailable?: number;
+  isPrepaid: boolean;
+  isCredit: boolean;
 }
 
-export enum CustomFieldType
-{
-    Text=0,
-    YesNo=1,
-    Dropdown=2,
-    Decimal=3,
-    PercentageTax=4,
-    AbsoluteTax=5,
-    MerchantAddress=6
+export enum CustomFieldType {
+  Text = 0,
+  YesNo = 1,
+  Dropdown = 2,
+  Decimal = 3,
+  PercentageTax = 4,
+  AbsoluteTax = 5,
+  MerchantAddress = 6
+}
+
+export interface CreateVendorCard {
+  id: number;
+  name: string;
+  autoFunding: boolean;
+  initialFunding?: number;
+  groupId?: number;
+}
+
+export interface VendorCardOrdered {
+  orderId: number;
+  id: number;
+  name: string;
+  autoFunding: boolean;
+  initialFunding?: number;
+  groupId?: number;
+  orderDate: Date;
+  accountId: number;
+  accountUrl: string;
+  status?: string;
+  error?: string;
+}
+
+export interface VendorCardsOrdered {
+  id: number;
+  cardOrders: VendorCardOrdered[];
 }

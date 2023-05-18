@@ -1,0 +1,30 @@
+.vendor-cards {
+  max-height: 75%;
+}
+.vendor-cards>table {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+  width: 100%;
+}
+.vendor-cards>table>thead {
+    flex: 0 0 auto;
+    width: calc(100% - 0.9em);
+}
+.vendor-cards>table>tbody {
+  flex: 1 1 auto;
+  display: block;
+  overflow-y: scroll;
+}
+.vendor-cards>table>tbody>tr {
+  width: 100%;
+}
+.vendor-cards>table>thead, .vendor-cards>table>tbody>tr{
+  display: table;
+  table-layout: fixed;
+}
+
+tr:hover {
+  background-color: #E8E8E8;
+  ;
+}
