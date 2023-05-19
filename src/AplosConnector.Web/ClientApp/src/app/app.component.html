@@ -12,7 +12,7 @@
       </a>
     </div>
     <div class="header-nav">
-      <a [routerLink]="['sync-connect']"
+      <a [routerLink]="['connect']"
          routerLinkActive="active"
          class="nav-link">
         <span class="nav-text">Connect</span>
@@ -26,18 +26,18 @@
       </a>
 
       <a *ngIf="isLoggedIn"
+        [routerLink]="['sync-history']"
+        routerLinkActive="active"
+        class="nav-link">
+        <span class="nav-text">History</span>
+      </a> 
+
+      <a *ngIf="isLoggedIn"
          [routerLink]="['vendors-manage']"
          routerLinkActive="active"
          class="nav-link">
         <span class="nav-text">Manage vendor cards</span>
       </a>
-
-      <a *ngIf="isLoggedIn"
-         [routerLink]="['sync-history']"
-         routerLinkActive="active"
-         class="nav-link">
-        <span class="nav-text">History</span>
-      </a>      
 
     </div>
     <div class="header-actions">

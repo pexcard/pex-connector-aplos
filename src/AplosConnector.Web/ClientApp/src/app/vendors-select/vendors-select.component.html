@@ -153,8 +153,8 @@
       <ng-template clrPageNavTitle>Select Vendors</ng-template>
       <ng-template clrPageTitle>Select vendors you would like to auto create vendor cards for.</ng-template>
       <clr-spinner *ngIf="isLoadingVendors" [clrMedium]="true"></clr-spinner>
-      <div class="text-weight-500">Select vendors you would like to auto create vendor cards for. You have {{maxVendorCards | number}} cards available.</div>
-      <div class="p7 text-margin">Hold cmnd+click (mac) or ctrl/shift+click (win) for multi selection</div>
+      <div class="text-weight-500">You can create {{maxVendorCards | number}} vendor cards at a time. You have {{(connectionDetails.vendorCardsAvailable - selectedVendors.length) | number}} cards available for creation.</div>
+      <div class="p7 text-margin">Hold cmnd+click (mac) or ctrl/shift+click (win) for multi selection.</div>
       <ng-container *ngIf="!isLoadingVendors">
           <div class="alert alert-info" role="alert">
             <div class="alert-items">
@@ -162,7 +162,7 @@
                 <div class="alert-icon-wrapper">
                   <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
                 </div>
-                <div>You can save 1% of all vendor spend with a PEX Vendor Card - {{totalSaveAmount | currency}} <span class="red-star">*</span></div>
+                <div>You can save 1% of all vendor spend with a PEX Vendor Card {{totalSaveAmount | currency}} <span class="red-star">*</span></div>
               </div>
             </div>
         </div>
@@ -186,7 +186,7 @@
                          [selectedItemsTitle]="'Selected (' + selectedVendors.length + '/' + maxVendorCardsSelect + ')'">
         </app-select-list>
         <div class="p7 text-margin">
-          No results found? <a target="_blank" href="https://www.aplos.com/support/articles/creating-contacts-individuals-or-companies/">Click here</a>to add a vendor to your Aplos account first to be able to find them. Be sure to create a vendor as a contact of a company type (not individual).
+          No results found? <a target="_blank" href="https://www.aplos.com/support/articles/creating-contacts-individuals-or-companies/">Click here</a> to add a vendor to your Aplos account first to be able to find them. Be sure to create a vendor as a contact of a company type (not individual).
         </div>
         <div class="p7 text-margin">
           <span class="red-star">*</span> Disclaimer: Estimated savings are based on all your Aplos vendors spend per year. <a target="_blank" href="https://www.pexcard.com/lp/vendor-card-rebate-all-vintages/">Terms and Conditions</a> apply.

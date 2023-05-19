@@ -24,7 +24,7 @@ export class HeadlessComponent implements OnInit, OnDestroy {
   constructor(private auth: AuthService) { }
 
   ngOnInit() {
-    this.auth.setHeadlessMode(true);
+    this.auth.setHeadlessMode(false);
   }
 
   ngOnDestroy(): void {

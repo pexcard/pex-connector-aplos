@@ -72,7 +72,7 @@ export class VendorsSelectComponent implements OnInit, OnDestroy {
       if (token) {
         this.sessionId = token;
         this.loadData();
-        this.vendorDisplay = (v) => `${truncate(v.name, 20)} (${this.ccyPipe.transform(v.total)})`;
+        this.vendorDisplay = (v) => `${truncate(v.name, 20)} (${this.ccyPipe.transform(Math.abs(v.total))})`;
         this.vendorFilter = (v) => v.name;
         this.vendorSort = this._sortVendorsTotalSpend;
       }
@@ -175,7 +175,7 @@ export class VendorsSelectComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (vendors) => {
           this.vendors = vendors.map(x => new ConfigureCreateVendorCard(x));
-          this.totalSaveAmount = vendors.reduce((n, {total}) => n + total*0.01, 0)
+          this.totalSaveAmount = vendors.reduce((n, {total}) => n + Math.abs(total)*0.01, 0);
           this.isLoadingVendors = false;
           this.cd.detectChanges();  
         },
@@ -225,7 +225,7 @@ export class VendorsSelectComponent implements OnInit, OnDestroy {
           }
         })
       );
-      this.selectedSaveAmount += v.total * 0.01;
+      this.selectedSaveAmount += Math.abs(v.total) * 0.01;
     });
   }
 
