@@ -171,7 +171,8 @@ namespace AplosConnector.Web.Controllers
             {
                 Email = mapping.PEXEmailAccount,
                 Name = mapping.PEXNameAccount,
-                LastSync = mapping.LastSyncUtc
+                LastSync = mapping.LastSyncUtc,
+                SyncingSetup = mapping.SyncInvoices || mapping.SyncTransactions || mapping.SyncTransfers || mapping.SyncPexFees || mapping.SyncTags || mapping.SyncFundsToPex || mapping.SyncTaxTagToPex
             };
 
             try
