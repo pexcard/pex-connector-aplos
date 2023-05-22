@@ -882,7 +882,7 @@ namespace AplosConnector.Common.Services
             DateTime utcNow,
             CancellationToken cancellationToken)
         {
-            if (!mapping.SyncTransactions || !mapping.SyncInvoices) return default;
+            if (!mapping.SyncTransactions && !mapping.SyncInvoices) return default;
 
             var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
             var startDate = startDateUtc.ToEst();
