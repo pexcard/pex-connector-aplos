@@ -20,7 +20,7 @@ export class HandlePexJwtComponent implements OnInit {
           const session = tokenModel.token;
           this.auth.login(session).subscribe(() => {
             console.log('navigating away');
-            this.router.navigate(['headless', 'connect']);
+            this.router.navigate(['connect']);
           });
         }
       );

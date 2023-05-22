@@ -13,7 +13,6 @@ import { HealthComponent } from './health/health.component';
 import { FinishAplosLoginComponent } from './finish-aplos-login/finish-aplos-login.component';
 import { LoadingPlaceholderComponent } from './loading-placeholder/loading-placeholder.component';
 import { SyncHistoryComponent } from './sync-history/sync-history.component';
-import { HeadlessComponent } from './headless/headless.component';
 import { HandlePexJwtComponent } from './handle-pex-jwt/handle-pex-jwt.component';
 import { AplosAccountPipe } from "./pipes/aplosAccount";
 import { LoginComponent } from './login/login.component';
@@ -34,7 +33,6 @@ import { TruncateModule } from '@yellowspot/ng-truncate';
     FinishAplosLoginComponent,
     LoadingPlaceholderComponent,
     SyncHistoryComponent,
-    HeadlessComponent,
     HandlePexJwtComponent,
     AplosAccountPipe,
     LoginComponent,
