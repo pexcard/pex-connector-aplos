@@ -5,7 +5,6 @@ import { FinishPexLoginComponent } from './finish-pex-login/finish-pex-login.com
 import { HealthComponent } from './health/health.component';
 import { FinishAplosLoginComponent } from './finish-aplos-login/finish-aplos-login.component';
 import { SyncHistoryComponent } from './sync-history/sync-history.component';
-import { HeadlessComponent } from './headless/headless.component';
 import { HandlePexJwtComponent } from './handle-pex-jwt/handle-pex-jwt.component';
 import { LoginComponent } from './login/login.component';
 import { AuthGuard } from './guard/auth.guard';
@@ -14,7 +13,7 @@ import { SyncManageComponent } from './sync-manage/sync-manage.component';
 import { VendorsSelectComponent } from './vendors-select/vendors-select.component';
 import { VendorsManageComponent } from './vendors-manage/vendors-manage.component';
 
-const childRoutes: Routes = [  {
+const routes: Routes = [  {
   path: '',
   pathMatch: 'full',
   redirectTo: 'connect'
@@ -73,16 +72,7 @@ const childRoutes: Routes = [  {
 {
   path:'**',
   redirectTo: 'connect'
-}]
-
-const routes: Routes = [
-  {
-    path: 'headless',
-    component: HeadlessComponent,
-    children: [...childRoutes]
-  },
-  ...childRoutes
-];
+}];
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],

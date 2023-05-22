@@ -126,11 +126,6 @@ export class AuthService {
     }
   }
 
-  headlessMode = new BehaviorSubject<boolean>(null);
-  setHeadlessMode(mode: boolean){
-    this.headlessMode.next(mode);
-  }
-
   private getBusinessName(sessionId: string) {
     return this.cache.runAndCacheOrGetFromCache(
       this.CACHE_KEY_BUSINESS_NAME,
