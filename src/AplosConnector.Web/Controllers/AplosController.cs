@@ -203,19 +203,18 @@ namespace AplosConnector.Web.Controllers
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancelToken);
             if (mapping == null) return NotFound();
 
-            var contactsTask = _aplosIntegrationService.GetAplosContacts(mapping, cancelToken);
-            var payablesTask = _aplosIntegrationService.GetAplosPayables(mapping, DateTime.Today.AddYears(-1), cancelToken);
+            var transactionsTask = _aplosIntegrationService.GetTransactions(mapping, DateTime.Today.AddDays(-180), cancelToken);
             var vendorCardOrdersTask = _vendorCardRepository.GetAllVendorCardsOrderedAsync(mapping, cancelToken);
 
-            await Task.WhenAll(contactsTask, payablesTask, vendorCardOrdersTask);
+            await Task.WhenAll(transactionsTask, vendorCardOrdersTask);
 
-            var payablesResponse = payablesTask.Result ?? new AplosApiPayablesListResponse();
-            var payables = payablesResponse.Data.Payables.Where(p => p.Contact.Type.Equals("company")).ToList();
-            var vendorCards = vendorCardOrdersTask.Result?.SelectMany(x => x.CardOrders) ?? new List<VendorCardOrdered>();
+            var transactionsResponse = transactionsTask.Result ?? new List<AplosApiTransactionDetail>();
+            var transactions = transactionsResponse.Where(p => p.Contact is not null && p.Contact.Type.Equals("company")).ToList();
+            var vendorCards = vendorCardOrdersTask.Result.SelectMany(x => x.CardOrders) ?? new List<VendorCardOrdered>();
 
 
-            var vendorExpenses = from payable in payables
-                group payable by payable.Contact.Id
+            var vendorExpenses = from transactionDetail in transactions
+                group transactionDetail by transactionDetail.Contact.Id
                 into g
                 select new AplosVendorExpenseTotalModel
                 {

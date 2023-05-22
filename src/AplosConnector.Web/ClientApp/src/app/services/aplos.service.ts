@@ -86,12 +86,12 @@ export class AplosService {
     if (takeOnly !== undefined) {
       requestParams = requestParams.set('takeOnly', takeOnly);
     }
-    return this.httpClient
-      .get<Vendor[]>(this.buildUrl(sessionId, "Vendors/ForCards"), { params: requestParams })
-      .pipe(
-        timeout(10000),
-        retryWithBackoff()
-      );
+
+    return this.cache.runAndCacheOrGetFromCache("Aplos.getVendorsForCards", this.httpClient
+    .get<Vendor[]>(this.buildUrl(sessionId, "Vendors/ForCards"), { params: requestParams })
+    .pipe(
+      timeout(180000),
+      retryWithBackoff()), 60);
   }
   
 }
