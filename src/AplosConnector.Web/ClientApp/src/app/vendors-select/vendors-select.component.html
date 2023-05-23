@@ -207,7 +207,7 @@
               <div class="alert-icon-wrapper">
                 <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
               </div>
-              <span *ngIf="connectionDetails.isPrepaid" class="alert-text">Add optional initial funding or use auto funding for your vendor cards. <span *ngIf="availableBalance >= 0">You have {{availableBalance | currency}} available for funding.</span></span>
+              <span *ngIf="connectionDetails.isPrepaid" class="alert-text">Add optional initial funding<span *ngIf="connectionDetails.useBusinessBalanceEnabled">, or use auto funding,</span> for your vendor cards. <span *ngIf="availableBalance >= 0">You have {{availableBalance | currency}} available for funding.</span></span>
               <span *ngIf="connectionDetails.isCredit" class="alert-text">Add an optional card limit for each vendor card.</span>
             </div>
           </div>
@@ -225,7 +225,7 @@
             <thead>
               <tr>
                 <th class="left">Vendor Name</th>
-                <th *ngIf="connectionDetails.isPrepaid" class="left">Auto Funding</th>
+                <th *ngIf="connectionDetails.isPrepaid && connectionDetails.useBusinessBalanceEnabled" class="left">Auto Funding</th>
                 <th *ngIf="connectionDetails.isPrepaid" class="left">Initial Funding</th>
                 <th *ngIf="connectionDetails.isCredit" class="left">Card Limit</th>
               </tr>
@@ -233,7 +233,7 @@
             <tbody>
               <tr *ngFor="let v of selectedVendors">
                 <td class="left">{{v.name | truncate : 25}}</td>
-                <td *ngIf="connectionDetails.isPrepaid" class="left">
+                <td *ngIf="connectionDetails.isPrepaid && connectionDetails.useBusinessBalanceEnabled" class="left">
                   <input type="checkbox" clrCheckbox [disabled]="isConfiguringSettings" [(ngModel)]="v.autoFunding" (ngModelChange)="v.autoFundingChanged()" />
                 </td>
                 <td *ngIf="connectionDetails.isPrepaid" class="left">
@@ -244,7 +244,7 @@
                 </td>
                 <td *ngIf="connectionDetails.isCredit" class="left">
                   <span>$</span>
-                  <input type="text" class="clr-input" placeholder="0.00" [disabled]="v.autoFunding || isConfiguringSettings" [allowNegativeNumbers]="false" thousandSeparator="," mask="separator.2" [(ngModel)]="v.initialFunding" (ngModelChange)="v.initialFundingChanged()" />
+                  <input type="text" class="clr-input" placeholder="0.00" [disabled]="isConfiguringSettings" [allowNegativeNumbers]="false" thousandSeparator="," mask="separator.2" [(ngModel)]="v.initialFunding" (ngModelChange)="v.initialFundingChanged()" />
                 </td>
               </tr>
             </tbody>

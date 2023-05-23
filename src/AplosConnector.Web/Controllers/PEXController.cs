@@ -193,6 +193,7 @@ namespace AplosConnector.Web.Controllers
                     var businessDetails = businessDetailsTask.Result;
 
                     connectionDetail.AccountBalance = businessDetails.BusinessAccountBalance;
+                    connectionDetail.UseBusinessBalanceEnabled = businessSettings.UseBusinessBalance;
                     connectionDetail.VendorCardsAvailable = businessSettings.VendorLimit - businessDetails.OpenVendorCardsCount;
                     connectionDetail.IsPrepaid = businessSettings.FundingSource == FundingSource.Prepaid;
                     connectionDetail.IsCredit = businessSettings.FundingSource == FundingSource.Credit;

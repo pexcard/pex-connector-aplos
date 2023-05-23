@@ -215,6 +215,8 @@ export class VendorsSelectComponent implements OnInit, OnDestroy {
     this.selectedSaveAmount = 0;
     this._fundingSubscriptions = [];
     this.selectedVendors.forEach((v) => {
+      // auto funding on by default
+      v.autoFunding = this.connectionDetails.isPrepaid && this.connectionDetails.useBusinessBalanceEnabled;
       this._fundingSubscriptions.push(
         v.fundingChanged$.subscribe({
           next: () => {
