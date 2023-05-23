@@ -94,6 +94,7 @@ export interface PexConnectionDetailModel {
   vendorsSetup: boolean,
   lastSync: string,
   accountBalance?: number;
+  useBusinessBalanceEnabled: boolean;
   vendorCardsAvailable?: number;
   isPrepaid: boolean;
   isCredit: boolean;

@@ -19,6 +19,8 @@ namespace AplosConnector.Common.VendorCards
         private readonly int MaxVendorName = 15;
         private readonly decimal DefaultDailyFundingLimit = 5_000;
 
+        // updated vendcard api doesn't require spend ruleset anymore
+        private readonly bool CreateSpendingRuleSet = false;
         private readonly string SpendingRulesetName = "Aplos Vendor Auto Funding";
         private readonly SpendingRulesetCategoriesModel AllSpendingCategoriesAllowed = new SpendingRulesetCategoriesModel
         {
@@ -62,7 +64,9 @@ namespace AplosConnector.Common.VendorCards
             }
 
             var adminProfileTask = _pexApiClient.GetMyAdminProfile(mapping.PEXExternalAPIToken, cancelToken);
-            var autoFundingRulesetTask = cardOrders.Any(x => x.AutoFunding) ? GetOrCreateAplosAutoFundingRuleset(mapping, cancelToken) : Task.FromResult<SpendingRulesetModel>(null);
+            var autoFundingRulesetTask = CreateSpendingRuleSet && cardOrders.Any(x => x.AutoFunding) 
+                ? GetOrCreateAplosAutoFundingRuleset(mapping, cancelToken) 
+                : Task.FromResult<SpendingRulesetModel>(null);
 
             await Task.WhenAll(adminProfileTask, autoFundingRulesetTask);
 
@@ -79,6 +83,7 @@ namespace AplosConnector.Common.VendorCards
                 orderRequest.VendorCards.Add(new VendorCardOrderItemRequest
                 {
                     AutoActivation = true,
+                    FundingType = cardOrder.AutoFunding ? FundingType.AutoCardFunding : FundingType.InitialFunding,
                     RulesetId = cardOrder.AutoFunding ? autoFundingRuleset?.RulesetId : default,
                     FundCardAmount = cardOrder.InitialFunding.HasValue ? Convert.ToDecimal(cardOrder.InitialFunding) : default,
                     GroupId = cardOrder.GroupId,
@@ -88,9 +93,9 @@ namespace AplosConnector.Common.VendorCards
                 });
             }
 
-            _logger.LogInformation("Requesting creation of {VendorCardsCount} vendor cards...", orderRequest.VendorCards.Count);
+            _logger.LogDebug("Requesting creation of {VendorCardsCount} vendor cards...", orderRequest.VendorCards.Count);
             var vendorCardsOrderResult = await _pexApiClient.CreateVendorCardOrder(mapping.PEXExternalAPIToken, orderRequest, cancelToken);
-            _logger.LogInformation("{VendorCardsRequested} vendor cards were requested to create. OrderId={VendorCardsOrderId}.", vendorCardsOrderResult.NumberOfCardsRequested, vendorCardsOrderResult.VendorCardOrderId);
+            _logger.LogInformation("{VendorCardsRequested} vendor cards were requested. OrderId={VendorCardsOrderId}.", vendorCardsOrderResult.NumberOfCardsRequested, vendorCardsOrderResult.VendorCardOrderId);
 
             var vendorCardsOrdered = new VendorCardsOrdered(vendorCardsOrderResult.VendorCardOrderId)
             {
@@ -134,11 +139,11 @@ namespace AplosConnector.Common.VendorCards
                     SpendingRulesetCategories = AllSpendingCategoriesAllowed
                 };
 
-                _logger.LogInformation("A spend ruleset with name '{SpendingRulesetName}' doesn't exist. Creating RuleSet:\n{@SpendRuleSet}", SpendingRulesetName, createRuleset);
+                _logger.LogDebug("A spend ruleset with name '{SpendingRulesetName}' doesn't exist. Creating RuleSet:\n{@SpendRuleSet}", SpendingRulesetName, createRuleset);
 
                 var createResult = await _pexApiClient.CreateSpendingRuleset(mapping.PEXExternalAPIToken, createRuleset, cancelToken);
 
-                _logger.LogInformation("Created an auto funding rule set for vendor cards with name '{SpendingRulesetName}' doesn't exist. Created RuleSet:\n{@SpendRuleSet}.", SpendingRulesetName, createRuleset);
+                _logger.LogInformation("Created an auto funding rule set for vendor cards with name '{SpendingRulesetName}'. Created RuleSet:\n{@SpendRuleSet}.", SpendingRulesetName, createRuleset);
 
                 ruleset = (await _pexApiClient.GetSpendingRuleset(mapping.PEXExternalAPIToken, createResult.RulesetId, cancelToken))?.SpendingRuleset;
             }

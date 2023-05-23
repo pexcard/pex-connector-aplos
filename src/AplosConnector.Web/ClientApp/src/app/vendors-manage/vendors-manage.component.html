@@ -7,7 +7,7 @@
   <p>
     View PEX Vendor Cards automatically created from your Aplos vendor list. To manage a vendor card, click on it.
   </p>
-  <div *ngIf="!connectionDetails?.syncingSetup" class="alert alert-success" role="alert">
+  <div *ngIf="!connectionDetails?.syncingSetup && hasVendorCards" class="alert alert-success" role="alert">
     <div class="alert-items">
       <div class="alert-item static">
         <div class="alert-icon-wrapper">

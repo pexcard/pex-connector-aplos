@@ -12,6 +12,7 @@ namespace AplosConnector.Common.Models
         public bool VendorsSetup { get; set; }
         public DateTime? LastSync { get; set; }
         public decimal? AccountBalance { get; set; }
+        public bool UseBusinessBalanceEnabled { get; set; }
         public int? VendorCardsAvailable { get; set; }
         public bool IsPrepaid { get; set; }
         public bool IsCredit { get; set; }
