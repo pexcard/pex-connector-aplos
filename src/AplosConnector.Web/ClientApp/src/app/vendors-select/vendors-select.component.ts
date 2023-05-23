@@ -20,7 +20,6 @@ export class VendorsSelectComponent implements OnInit, OnDestroy {
   vendors: ConfigureCreateVendorCard[] = [];
   selectedVendors: ConfigureCreateVendorCard[] = [];
   selectedSaveAmount: number = 0;
-  totalSaveAmount: number = 0;
 
   maxVendorCards = 25;
   maxVendorCardsSelect = this.maxVendorCards;
@@ -175,7 +174,6 @@ export class VendorsSelectComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (vendors) => {
           this.vendors = vendors.map(x => new ConfigureCreateVendorCard(x));
-          this.totalSaveAmount = vendors.reduce((n, {total}) => n + total*0.01, 0);
           this.isLoadingVendors = false;
           this.cd.detectChanges();  
         },
