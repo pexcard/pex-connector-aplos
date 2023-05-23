@@ -235,7 +235,7 @@ namespace AplosConnector.Web.Controllers
                     Total = vendorExpense.Total,
                 };
 
-            return results.ToList();
+            return results.Take(50).ToList();
         }
     }
 }

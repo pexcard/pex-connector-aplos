@@ -11,7 +11,8 @@ import { PexConnectionDetailModel, PexService, VendorCardsOrdered } from "../ser
 export class VendorsManageComponent implements OnInit {
   
   sessionId: string;
-  isReady = false;
+  isReady:boolean = false;
+  hasVendorCards:boolean = false;
   vendorCardsOrders: VendorCardsOrdered[] = [];
   connectionDetails: PexConnectionDetailModel;
 
@@ -54,6 +55,7 @@ export class VendorsManageComponent implements OnInit {
       this.pex.getVendorCards(this.sessionId).subscribe({
         next: (result) => {
           this.vendorCardsOrders = result;
+          this.hasVendorCards = result.length > 0;
           this.isReady = true;
           this.cd.detectChanges();
         },
@@ -62,9 +64,5 @@ export class VendorsManageComponent implements OnInit {
           this.cd.detectChanges();
         }
       })
-  }
-
-  onCreateVendorCards() {
-    this.router.navigate(['/vendors-select']);
-  }
+  };
 }

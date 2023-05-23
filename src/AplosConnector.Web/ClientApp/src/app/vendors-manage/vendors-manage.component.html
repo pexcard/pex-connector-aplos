@@ -7,9 +7,6 @@
   <p>
     View PEX Vendor Cards automatically created from your Aplos vendor list. To manage a vendor card, click on it.
   </p>
-  <button class="btn btn-primary" (click)="onCreateVendorCards()">
-    CREATE VENDOR CARDS
-  </button>
   <div *ngIf="!connectionDetails?.syncingSetup" class="alert alert-success" role="alert">
     <div class="alert-items">
       <div class="alert-item static">
@@ -25,7 +22,22 @@
       </div>
     </div>
   </div>
-  <div class="vendor-cards">
+  <div *ngIf="!hasVendorCards" class="alert alert-success" role="alert">
+    <div class="alert-items">
+      <div class="alert-item static">
+        <div class="alert-icon-wrapper">
+          <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+        </div>
+        <span class="alert-text">Earn 1% rebates on all eligible Vendor card payments.</span>
+        <div class="alert-actions">
+          <button class="btn btn-sm alert-action no-margins" [routerLink]="['../vendors-select']">
+            GET STARTED
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div *ngIf="hasVendorCards" class="vendor-cards">
     <table class="table">
       <thead>
         <tr>
