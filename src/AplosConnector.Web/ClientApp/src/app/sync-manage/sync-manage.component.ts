@@ -16,17 +16,18 @@ export class SyncManageComponent implements OnInit {
   constructor(private mapping: MappingService, private auth: AuthService, private aplos: AplosService, private pex: PexService,
     private router: Router) { }
 
-  sessionId = '';
+  sessionId: string = '';
   settings: SettingsModel;
   vendorName: string;
   pexConnectionDetail: PexConnectionDetailModel | {} = {};
-  refreshingPexAccount = false;
+  refreshingPexAccount: boolean = false;
   paymentMethod: string;
   paymentAccount: string;
   bankAccount: string;
-  disconnectModal = false;
-  hasTagsAvailable = true;
-  tagNameFund = '';
+  disconnectModal: boolean = false;
+  hasTagsAvailable: boolean = true;
+  showRebatesInfoBox: boolean = false;
+  tagNameFund: string = '';
   tagNameAccount: ExpenseAccountMappingModel[] = [];
   tagMappings: TagMappingModel[] = [];
   taxTagCategories: AplosApiTaxTagCategoryDetail[] = [];
@@ -53,6 +54,7 @@ export class SyncManageComponent implements OnInit {
       if (sessionId) {
         this.getSettings();
         this.getPexConnectionDetail();
+        this.getVendorCards();
       }
     });
   }
@@ -253,6 +255,14 @@ export class SyncManageComponent implements OnInit {
       );
     }
   }
+
+  getVendorCards() {
+      this.pex.getVendorCards(this.sessionId).subscribe({
+        next: (result) => {
+          this.showRebatesInfoBox = !(result.length > 0 && result.some(i => i.cardOrders.some(o => o.status == "Success")));
+        }
+      })
+  };
 
   isPrepaid() : boolean {
     return this.settings.pexFundingSource == FundingSource.Prepaid;

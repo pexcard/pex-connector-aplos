@@ -1,3 +1,22 @@
+<div class="clr-row" *ngIf="settings && showRebatesInfoBox">
+  <div class="clr-col clr-col-sm-8 clr-col-m-6 clr-col-xl-6">
+    <div class="alert alert-success" role="alert">
+      <div class="alert-items">
+        <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+            <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+          </div>
+          <span class="alert-text">Earn 1% rebates on all eligible Vendor card payments.</span>
+          <div class="alert-actions">
+            <button class="btn btn-sm alert-action no-margins" [routerLink]="['../vendors-select']">
+              GET STARTED
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>   
+  </div>
+</div>
 <div class="clr-row" *ngIf="settings">
     <div class="clr-col clr-col-sm-6 clr-col-m-4 clr-col-xl-4">
       <div>
@@ -5,13 +24,13 @@
          <hr />
          <div class="clr-row">
            <div class="clr-col-1" style="padding-right:0; display: flex; justify-content: flex-end; padding-top: 4px;">
-             <clr-icon *ngIf="pexConnectionDetail.active" shape="check" size="md" role="img" class="is-success"></clr-icon> 
-             <clr-icon *ngIf="!pexConnectionDetail.active" shape="times-circle" size="md" role="img" class="is-error"></clr-icon>
+             <clr-icon *ngIf="pexConnectionDetail.pexConnection" shape="check" size="md" role="img" class="is-success"></clr-icon> 
+             <clr-icon *ngIf="!pexConnectionDetail.pexConnection" shape="times-circle" size="md" role="img" class="is-error"></clr-icon>
            </div>
            <div class="clr-col-11">
              <strong>
-               <span *ngIf="pexConnectionDetail.active">Valid connection</span>
-               <span *ngIf="!pexConnectionDetail.active">Invalid connection</span>
+               <span *ngIf="pexConnectionDetail.pexConnection">Valid connection</span>
+               <span *ngIf="!pexConnectionDetail.pexConnection">Invalid connection</span>
              </strong>
              <ul>
                <li><strong>Name:</strong> {{pexConnectionDetail.name ? pexConnectionDetail.name : "Unknown"}}</li>
@@ -22,8 +41,8 @@
          <hr />
          <div class="clr-row">
            <div class="clr-col-11 clr-offset-1">
-             <strong>Status:</strong> <span *ngIf="!pexConnectionDetail.active"> Idle</span> 
-                                     <span *ngIf="pexConnectionDetail.active"> Active</span><br />
+             <strong>Status:</strong> <span *ngIf="!pexConnectionDetail.pexConnection"> Idle</span> 
+                                     <span *ngIf="pexConnectionDetail.pexConnection"> Active</span><br />
              <strong>Latest Sync: </strong> {{ pexConnectionDetail.lastSync | date:"d MMM y, hh:mm a" }}
            </div>
          </div>

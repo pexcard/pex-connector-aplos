@@ -55,7 +55,7 @@ export class VendorsManageComponent implements OnInit {
       this.pex.getVendorCards(this.sessionId).subscribe({
         next: (result) => {
           this.vendorCardsOrders = result;
-          this.hasVendorCards = result.length > 0;
+          this.hasVendorCards = result.length > 0 && result.some(i => i.cardOrders.some(o => o.status == "Success"));
           this.isReady = true;
           this.cd.detectChanges();
         },

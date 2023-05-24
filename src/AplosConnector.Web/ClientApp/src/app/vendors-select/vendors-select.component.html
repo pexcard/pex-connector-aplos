@@ -260,37 +260,38 @@
       </ng-container>
     </clr-wizard-page>
 
-    <clr-wizard-page *ngIf="connectionDetails?.pexConnection && connectionDetails?.aplosConnection">
+    <clr-wizard-page *ngIf="connectionDetails?.pexConnection && connectionDetails?.aplosConnection" class="height-percent-100">
       <ng-template clrPageNavTitle>Confirm Order</ng-template>
       <ng-template clrPageTitle>Confirm creating vendor cards.</ng-template>
-      <div>
-        <p>
-          <span>Are you sure you want to create <code>{{selectedVendors.length}}</code> vendor cards?</span>
-        </p>
-        <ng-container *ngIf="connectionDetails.isPrepaid">
-          <p *ngIf="countCardsInitialFunding > 0">
-            <span><code>{{countCardsInitialFunding}}</code> card<span *ngIf="countCardsInitialFunding > 1">s</span> will be funded <code>{{fundingBalance | currency}}</code> out of your account balance of <code>{{connectionDetails.accountBalance | currency}}</code>, leaving <code>{{availableBalance | currency}}</code>.</span>
-          </p>
-          <p *ngIf="countCardsAutoFunding > 0">
-            <span><code>{{countCardsAutoFunding}}</code> card<span *ngIf="countCardsAutoFunding > 1">s</span> will be auto funded out of your remaining account balance of <code>{{availableBalance | currency}}</code>.</span>
-          </p>
-        </ng-container>
-
-        <div class="alert alert-info" role="alert">
-          <div class="alert-items">
-            <div class="alert-item static">
-              <div class="alert-icon-wrapper">
-                <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+      <div class="confirm-page-content height-percent-100">
+        <div>
+          <div>
+            <span>Are you sure you want to create <code>{{selectedVendors.length}}</code> vendor cards?</span>
+          </div>
+          <ng-container *ngIf="connectionDetails.isPrepaid">
+            <p *ngIf="countCardsInitialFunding > 0">
+              <span><code>{{countCardsInitialFunding}}</code> card<span *ngIf="countCardsInitialFunding > 1">s</span> will be funded <code>{{fundingBalance | currency}}</code> out of your account balance of <code>{{connectionDetails.accountBalance | currency}}</code>, leaving <code>{{availableBalance | currency}}</code>.</span>
+            </p>
+            <p *ngIf="countCardsAutoFunding > 0">
+              <span><code>{{countCardsAutoFunding}}</code> card<span *ngIf="countCardsAutoFunding > 1">s</span> will be auto funded out of your remaining account balance of <code>{{availableBalance | currency}}</code>.</span>
+            </p>
+          </ng-container>
+  
+          <div class="alert alert-info" role="alert">
+            <div class="alert-items">
+              <div class="alert-item static">
+                <div class="alert-icon-wrapper">
+                  <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+                </div>
+                <span class="alert-text">You can save {{selectedSaveAmount | currency}} of your vendor spend with a PEX vendor card(s) <span class="red-star">*</span></span>
               </div>
-              <span class="alert-text">You can save {{selectedSaveAmount | currency}} of your vendor spend with a PEX vendor card(s)</span>
             </div>
           </div>
         </div>
+        <div class="p7">
+          <span class="red-star">*</span> Disclaimer: Estimated savings are based on all your Aplos vendors spend per last 180 days. <a target="_blank" href="https://www.pexcard.com/lp/vendor-card-rebate-all-vintages/">Terms and Conditions</a> apply.
+        </div>
       </div>
-      <div class="p7">
-        <span class="red-star">*</span> Disclaimer: Estimated savings are based on all your Aplos vendors spend per last 180 days. <a target="_blank" href="https://www.pexcard.com/lp/vendor-card-rebate-all-vintages/">Terms and Conditions</a> apply.
-      </div>
-
     </clr-wizard-page>
 
   </clr-wizard>
