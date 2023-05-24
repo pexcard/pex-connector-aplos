@@ -1,7 +1,6 @@
 import { ChangeDetectorRef, Component, OnInit } from "@angular/core";
-import { Router } from "@angular/router";
 import { AuthService } from "../services/auth.service";
-import { PexConnectionDetailModel, PexService, VendorCardsOrdered } from "../services/pex.service";
+import { PexConnectionDetailModel, PexService, VendorCardOrdered } from "../services/pex.service";
 
 @Component({
   selector: "app-vendors-manage",
@@ -13,12 +12,11 @@ export class VendorsManageComponent implements OnInit {
   sessionId: string;
   isReady:boolean = false;
   hasVendorCards:boolean = false;
-  vendorCardsOrders: VendorCardsOrdered[] = [];
+  vendorCardOrders: VendorCardOrdered[] = [];
   connectionDetails: PexConnectionDetailModel;
 
   constructor(
     private cd: ChangeDetectorRef,
-    private router: Router,
     private pex: PexService,
     private auth: AuthService) {
   }
@@ -54,7 +52,11 @@ export class VendorsManageComponent implements OnInit {
     this.cd.detectChanges();
       this.pex.getVendorCards(this.sessionId).subscribe({
         next: (result) => {
-          this.vendorCardsOrders = result;
+          this.vendorCardOrders = result
+            .flatMap(o => o.cardOrders)
+            .sort((a,b) => {
+              return new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime();
+            });
           this.hasVendorCards = result.length > 0 && result.some(i => i.cardOrders.some(o => o.status == "Success"));
           this.isReady = true;
           this.cd.detectChanges();
