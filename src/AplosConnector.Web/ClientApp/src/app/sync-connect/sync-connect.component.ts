@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild } from "@angular/core";
 import { Router, ActivatedRoute } from "@angular/router";
 import { ClrWizard } from "@clr/angular";
-import { FormGroup, FormArray, FormControl, Validators } from "@angular/forms";
+import { UntypedFormGroup, UntypedFormArray, UntypedFormControl, Validators } from "@angular/forms";
 
 import { AuthService } from "../services/auth.service";
 import {
@@ -35,21 +35,21 @@ export class SyncConnectComponent implements OnInit {
 
   private _open = true;
   @ViewChild('wizard', { static: true }) wizard: ClrWizard;
-  expenseAccountForm: FormGroup = new FormGroup({
-    expenseAccounts: new FormArray([
-      new FormGroup({
-        expenseAccount: new FormControl(),
-        syncExpenseAccountToPex: new FormControl(false)
+  expenseAccountForm: UntypedFormGroup = new UntypedFormGroup({
+    expenseAccounts: new UntypedFormArray([
+      new UntypedFormGroup({
+        expenseAccount: new UntypedFormControl(),
+        syncExpenseAccountToPex: new UntypedFormControl(false)
       })
     ])
   });
 
-  tagMappingForm: FormGroup = new FormGroup({
-    tagMappings: new FormArray([
-      new FormGroup({
-        aplosTag: new FormControl(),
-        pexTag: new FormControl(),
-        syncToPex: new FormControl(false)
+  tagMappingForm: UntypedFormGroup = new UntypedFormGroup({
+    tagMappings: new UntypedFormArray([
+      new UntypedFormGroup({
+        aplosTag: new UntypedFormControl(),
+        pexTag: new UntypedFormControl(),
+        syncToPex: new UntypedFormControl(false)
       })
     ])
   });
@@ -62,7 +62,7 @@ export class SyncConnectComponent implements OnInit {
   pexAdminEmailAccount: string = 'unknown';
   businessName:string = null;
   savingSettings = false;
-  projectForm: FormGroup;
+  projectForm: UntypedFormGroup;
   savingProjects = false;
   aplosContacts: AplosObject[] = [];
   aplosAssetAccounts: AplosAccount[] = [];
@@ -114,7 +114,7 @@ export class SyncConnectComponent implements OnInit {
   };
 
   getExpenseAccountFormElements() {
-    return this.expenseAccountForm.get('expenseAccounts') as FormArray;
+    return this.expenseAccountForm.get('expenseAccounts') as UntypedFormArray;
   }
 
   deleteExpenseAccountElement(idx: number) {
@@ -124,17 +124,17 @@ export class SyncConnectComponent implements OnInit {
   addExpenseAccountElement(expenseAccountMapping: ExpenseAccountMappingModel = { expenseAccountsPexTagId: null, /*quickBooksExpenseCategoryIdFilter: 0,*/ syncExpenseAccounts: false }) {
     console.log('adding expense account element');
     this.getExpenseAccountFormElements().push(
-      new FormGroup(
+      new UntypedFormGroup(
         {
-          expenseAccount: new FormControl(expenseAccountMapping.expenseAccountsPexTagId, Validators.required),
-          syncExpenseAccountToPex: new FormControl(expenseAccountMapping.syncExpenseAccounts)
+          expenseAccount: new UntypedFormControl(expenseAccountMapping.expenseAccountsPexTagId, Validators.required),
+          syncExpenseAccountToPex: new UntypedFormControl(expenseAccountMapping.syncExpenseAccounts)
         }
       )
     );
   }
 
   getTagMappingFormElements() {
-    return this.tagMappingForm.get('tagMappings') as FormArray;
+    return this.tagMappingForm.get('tagMappings') as UntypedFormArray;
   }
 
   deleteTagMappingElement(idx: number) {
@@ -144,11 +144,11 @@ export class SyncConnectComponent implements OnInit {
   addTagMappingElement(tagMapping: TagMappingModel = { aplosTagId: null, pexTagId: null, syncToPex: false }) {
     console.log('adding tag mapping element');
     this.getTagMappingFormElements().push(
-      new FormGroup(
+      new UntypedFormGroup(
         {
-          aplosTag: new FormControl(tagMapping.aplosTagId, Validators.required),
-          pexTag: new FormControl(tagMapping.pexTagId, Validators.required),
-          syncToPex: new FormControl(tagMapping.syncToPex)
+          aplosTag: new UntypedFormControl(tagMapping.aplosTagId, Validators.required),
+          pexTag: new UntypedFormControl(tagMapping.pexTagId, Validators.required),
+          syncToPex: new UntypedFormControl(tagMapping.syncToPex)
         }
       )
     );
