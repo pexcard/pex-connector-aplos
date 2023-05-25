@@ -45,6 +45,7 @@ export class SyncManageComponent implements OnInit {
   feesContact: AplosObject;
   feesFund: AplosObject;
   feesAccount: AplosObject;
+  aplosTagCategories: AplosObject[];
 
   AplosPreferences: AplosPreferences = { isClassEnabled: false, isLocationEnabled: false, locationFieldName: '' };
 
@@ -134,13 +135,15 @@ export class SyncManageComponent implements OnInit {
         if (this.settings.tagMappings && this.settings.tagMappings.length > 0) {
           console.log('using tagMappings');
           this.aplos.getTagCategories(this.sessionId).subscribe(
-            aplosTags => {
+            aplosTagCategories => {
+              this.aplosTagCategories = [... aplosTagCategories];
+
               if (this.settings.syncTaxTagToPex) {
-                aplosTags.push( {id: 990, "name": "990"});
+                this.aplosTagCategories.push( {id: 990, "name": "990"});
               }
               this.settings.tagMappings.forEach(tagMapping => {
                 if (tagMapping.aplosTagId && tagMapping.pexTagId) {
-                  const aplosTagName = aplosTags.find(tag => { return tag.id.toString() === tagMapping.aplosTagId }).name;
+                  const aplosTagName = this.aplosTagCategories.find(tag => { return tag.id.toString() === tagMapping.aplosTagId }).name;
                   const pexTagName = pexTags.find(tag => { return tag.id === tagMapping.pexTagId }).name;
                   this.tagMappings.push({ aplosTagId: aplosTagName, pexTagId: pexTagName, syncToPex: tagMapping.syncToPex, });
                 }
