@@ -21,7 +21,7 @@
   </div>
   <div *ngIf="isReady" class="clr-row">
     <div class="clr-col-6 left-col">
-      <a class="card clickable selector" [routerLink]="[vendorCardsRoute]">
+      <div class="card clickable selector" [routerLink]="[vendorCardsRoute]">
         <div class="card-block">
           <div class="card-img selector-img">
             <clr-icon shape="credit-card" size="96" class="pex-color"></clr-icon>
@@ -32,10 +32,10 @@
           <div class="rebate-line rebate-line-background">Earn 1% rebates on all eligible Vendor card payments</div>
         </div>
         <clr-icon *ngIf="connectionDetails?.aplosConnection && connectionDetails?.vendorsSetup" shape="success-standard" size="32" class="is-solid is-success selector-badge"></clr-icon>
-      </a>
+      </div>
     </div>
     <div class="clr-col-6 right-col">
-      <a class="card clickable selector" [routerLink]="[syncingRoute]">
+      <div class="card clickable selector" [routerLink]="[syncingRoute]">
         <div class="card-block">
           <div class="card-img selector-img">
             <clr-icon shape="sync" size="96" class="pex-color"></clr-icon>
@@ -46,7 +46,7 @@
           <div class="rebate-line"></div>
         </div>
         <clr-icon *ngIf="connectionDetails?.aplosConnection && connectionDetails?.syncingSetup" shape="success-standard" size="32" class="is-solid is-success selector-badge"></clr-icon>
-      </a>
+      </div>
     </div>
   </div>
 </ng-container>

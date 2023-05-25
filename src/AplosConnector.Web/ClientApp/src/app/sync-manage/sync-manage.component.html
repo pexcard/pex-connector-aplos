@@ -48,17 +48,24 @@
          </div>
          <hr />
          <div>
-           <button type="button" class="btn btn-icon btn-danger-outline" aria-label="Disconnect" (click)="disconnectModal=true">
-             <clr-icon shape="disconnect"></clr-icon> DISCONNECT
-           </button>
+          <button
+            type="button"
+            [routerLink]="['../sync-connect']"
+            class="btn btn-icon btn-primary-outline"
+            aria-label="edit">
+            <clr-icon shape="cog"></clr-icon> EDIT
+          </button>
            <button
-           type="button"
-           class="btn btn-icon btn-primary-outline"
-           [clrLoading]="refreshingPexAccount"
-           aria-label="Refresh"
-           (click)="refreshPexAccount()">
-           <clr-icon shape="refresh"></clr-icon> REFRESH
-           </button>        
+            type="button"
+            class="btn btn-icon btn-primary-outline"
+            [clrLoading]="refreshingPexAccount"
+            aria-label="Refresh"
+            (click)="refreshPexAccount()">
+            <clr-icon shape="refresh"></clr-icon> REFRESH
+           </button>
+           <button type="button" class="btn btn-icon btn-danger-outline" aria-label="Disconnect" (click)="disconnectModal=true">
+            <clr-icon shape="disconnect"></clr-icon> DISCONNECT
+          </button>       
          </div>
        </div>
     </div>
@@ -326,11 +333,4 @@
             <button type="button" class="btn btn-primary" (click)="onDisconnect()">Yes, Disconnect</button>
         </div>
     </clr-modal>
-    <button
-        type="button"
-        [routerLink]="['../sync-connect']"
-        class="btn btn-icon btn-primary-outline"
-        aria-label="edit">
-        <clr-icon shape="cog"></clr-icon> EDIT
-    </button>
-  
+ 
