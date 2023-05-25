@@ -495,6 +495,7 @@
                   <select class="clr-select" formControlName="aplosTag">
                     <option></option>
                     <option [value]="tag.id" *ngFor="let tag of aplosTagCategories">{{tag.name}}</option>
+                    <option *ngIf="settingsModel.syncTaxTagToPex" value="990">990</option>
                   </select>
                 </div>
               </td>
