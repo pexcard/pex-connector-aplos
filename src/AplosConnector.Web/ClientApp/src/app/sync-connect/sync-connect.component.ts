@@ -354,9 +354,6 @@ export class SyncConnectComponent implements OnInit {
       aplosTagCategories => {
         console.log('getting TagCategories', aplosTagCategories);
         this.aplosTagCategories = [ ...aplosTagCategories];
-        if (this.settingsModel.syncTaxTagToPex) {
-          this.aplosTagCategories.push( {id: 990, "name": "990"});
-        }
         this.loadingAplosTagCategories = false;
         console.log('got TagCategories', this.aplosTagCategories);
       },
