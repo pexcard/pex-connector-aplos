@@ -1230,7 +1230,7 @@ namespace AplosConnector.Common.Services
             var syncTimePeriod = new TimePeriod(startDate, endDate);
 
             var aplosTransactions = await GetTransactions(mapping, startDate, cancellationToken);
-            await SyncInvoices(_logger, mapping, aplosTransactions, cancellationToken);
+           await SyncInvoices(_logger, mapping, aplosTransactions, startDate, cancellationToken);
 
             _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod}.");
 
@@ -1244,11 +1244,12 @@ namespace AplosConnector.Common.Services
             ILogger _logger,
             Pex2AplosMappingModel mapping,
             List<AplosApiTransactionDetail> aplosTransactions,
+            DateTime startDate,
             CancellationToken cancellationToken)
         {
             if (!mapping.SyncInvoices) return;
 
-            var invoices = await _pexApiClient.GetInvoices(mapping.PEXExternalAPIToken, mapping.EarliestTransactionDateToSync, cancellationToken);
+            var invoices = await _pexApiClient.GetInvoices(mapping.PEXExternalAPIToken, startDate, cancellationToken);
 
             var invoicesToSync = invoices
                 .Where(i => 
