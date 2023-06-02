@@ -5,6 +5,7 @@ import { retryWithBackoff } from '../operators/retryWithBackoff.operator';
 import { CacheRepositoryService } from './cache-repository.service';
 import { Router } from '@angular/router';
 import { catchError, concatMap } from "rxjs/operators";
+import { FundingSource } from "./mapping.service";
 
 @Injectable({
   providedIn: "root"
@@ -14,6 +15,7 @@ export class AuthService {
   public isAuthenticated = new BehaviorSubject<boolean | null>(null);
   public sessionId = new BehaviorSubject<string | null>(null);
   public businessName = new BehaviorSubject<string | null>(null);
+  public fundingSource = new BehaviorSubject<FundingSource | 0>(0);
   private readonly CACHE_KEY_BUSINESS_NAME = 'pex.GetBusinessName';
   private readonly SESSION_ID_KEY = "SESSION_ID";
 
@@ -64,7 +66,7 @@ export class AuthService {
           localStorage.setItem(this.SESSION_ID_KEY, sessionId);
           this.isAuthenticated.next(true);
           this.sessionId.next(sessionId);
-          this.getBusinessName(sessionId);
+          this.getBusinessInfo(sessionId);
           return of(void 0);
         })
       );
@@ -87,7 +89,7 @@ export class AuthService {
             console.log("Session Found -- Auto-Logging in")
             this.isAuthenticated.next(true);
             this.sessionId.next(sessionId);
-            this.getBusinessName(sessionId);
+            this.getBusinessInfo(sessionId);
           } else {
             console.log("Session is invalid, cleaning up storage & cache");
             this.cache.clearAllAppCache();
@@ -95,6 +97,7 @@ export class AuthService {
             this.isAuthenticated.next(false);
             this.sessionId.next(null);
             this.businessName.next(null);
+            this.fundingSource.next(0);
           }
         });
     }
@@ -116,7 +119,8 @@ export class AuthService {
             this.cache.clearAllAppCache();
             this.isAuthenticated.next(false);
             this.sessionId.next(null);
-            this.businessName.next(null);            
+            this.businessName.next(null);
+            this.fundingSource.next(0);
             return of(void 0);
           })
         );
@@ -126,14 +130,15 @@ export class AuthService {
     }
   }
 
-  private getBusinessName(sessionId: string) {
+  private getBusinessInfo(sessionId: string) {
     return this.cache.runAndCacheOrGetFromCache(
       this.CACHE_KEY_BUSINESS_NAME,
       this.httpClient
-        .get<BusinessNameModel>(`${this.baseUrl}api/Session/PEXBusinessName?sessionId=${sessionId}`)
+        .get<BusinessInfoModel>(`${this.baseUrl}api/Session/BusinessInfo?sessionId=${sessionId}`)
         .pipe(retryWithBackoff())
       , 60).subscribe(result => {
         this.businessName.next(result.businessName);
+        this.fundingSource.next(result.fundingSource);
       });
   }
 }
@@ -156,6 +161,7 @@ interface AplosCredentialVerificationResult {
   partnerVerificationUrl: string;
 }
 
-interface BusinessNameModel {
+interface BusinessInfoModel {
   businessName: string;
+  fundingSource: FundingSource;
 }

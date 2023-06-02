@@ -160,15 +160,23 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<BusinessNameModel>> PEXBusinessName(string sessionId, CancellationToken cancellationToken)
+        public async Task<ActionResult<BusinessInfo>> BusinessInfo(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
             var modelResult = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (modelResult == null) return Unauthorized();
 
-            var businessDetails = await _pexApiClient.GetBusinessDetails(modelResult.ExternalToken, cancellationToken);
-            return new BusinessNameModel { BusinessName = businessDetails.BusinessName };
+            var businessDetailsTask = _pexApiClient.GetBusinessDetails(modelResult.ExternalToken, cancellationToken);
+            var businessSettingsTask = _pexApiClient.GetBusinessSettings(modelResult.ExternalToken, cancellationToken);
+
+            await Task.WhenAll(businessDetailsTask, businessSettingsTask);
+
+            return new BusinessInfo
+            {
+                BusinessName = businessDetailsTask.Result.BusinessName,
+                FundingSource = businessSettingsTask.Result.FundingSource
+            };
         }
 
         [HttpGet, Route("Validity")]

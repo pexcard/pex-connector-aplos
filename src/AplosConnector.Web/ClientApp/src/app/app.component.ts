@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { AuthService } from './services/auth.service';
 import { Subscription, BehaviorSubject } from 'rxjs';
 import { Router } from '@angular/router';
+import { FundingSource } from './services/mapping.service';
 
 @Component({
   selector: 'app-root',
@@ -12,6 +13,8 @@ export class AppComponent implements OnInit, OnDestroy {
   title = 'PEX Connector for Aplos';
   isLoggedIn = false;
   businessName: string = null;
+  isPrepaid:boolean = false;
+  isCredit:boolean = false;
 
   constructor(private auth: AuthService, private router: Router) {
   }
@@ -31,8 +34,13 @@ export class AppComponent implements OnInit, OnDestroy {
     );
 
     this.auth.businessName.subscribe(
-      name => {
-        this.businessName = name;
+      name => this.businessName = name
+    );
+
+    this.auth.fundingSource.subscribe(
+      fundingSource => {
+        this.isPrepaid = fundingSource == FundingSource.Prepaid;
+        this.isCredit = fundingSource == FundingSource.Credit;
       }
     );
 
@@ -48,6 +56,5 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.loginSubscription$.unsubscribe();
   }
-
 
 }
