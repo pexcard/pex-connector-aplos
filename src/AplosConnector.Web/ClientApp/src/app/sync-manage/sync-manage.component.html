@@ -43,7 +43,9 @@
            <div class="clr-col-11 clr-offset-1">
              <strong>Status:</strong> <span *ngIf="!pexConnectionDetail.pexConnection"> Idle</span> 
                                      <span *ngIf="pexConnectionDetail.pexConnection"> Active</span><br />
-             <strong>Latest Sync: </strong> {{ pexConnectionDetail.lastSync | date:"d MMM y, hh:mm a" }}
+             <strong>Latest Sync: </strong>
+             <span  *ngIf="pexConnectionDetail.lastSync">{{ pexConnectionDetail.lastSync | date:"d MMM y, hh:mm a" }}</span>
+             <span  *ngIf="!pexConnectionDetail.lastSync">Never</span>
            </div>
          </div>
          <hr />
