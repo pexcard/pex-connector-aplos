@@ -109,6 +109,7 @@ export interface SettingsModel {
   syncTransfers: boolean;
   syncInvoices: boolean,
   syncPexFees: boolean;
+  syncRebates: boolean;
 
   transfersAplosContactId: number;
   transfersAplosFundId: number;
@@ -119,6 +120,10 @@ export interface SettingsModel {
   pexFeesAplosFundId: number;
   pexFeesAplosTransactionAccountNumber: number;
   pexFeesAplosTaxTag: number;
+
+  pexRebatesAplosContactId: number;
+  pexRebatesAplosFundId: number;
+  pexRebatesAplosTransactionAccountNumber: number;
 
   aplosRegisterAccountNumber: number;
 

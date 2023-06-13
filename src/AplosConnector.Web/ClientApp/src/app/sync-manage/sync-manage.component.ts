@@ -47,6 +47,8 @@ export class SyncManageComponent implements OnInit {
   aplosTagCategories: AplosObject[];
 
   AplosPreferences: AplosPreferences = { isClassEnabled: false, isLocationEnabled: false, locationFieldName: '' };
+  isPrepaid: boolean = false;
+  isCredit: boolean = false;
 
   ngOnInit() {
     this.auth.sessionId.subscribe(sessionId => {
@@ -81,6 +83,8 @@ export class SyncManageComponent implements OnInit {
       if (settings) {
         this.settings = { ...settings };
         console.log('got settings', this.settings);
+        this.isPrepaid = this.settings.pexFundingSource == FundingSource.Prepaid;
+        this.isCredit = this.settings.pexFundingSource == FundingSource.Credit;
 
         this.validatePexSetup();
         this.getTransferInfo();
@@ -90,27 +94,27 @@ export class SyncManageComponent implements OnInit {
     );
   }
 
-  private getPexConnectionDetail() {
+  private getPexConnectionDetail(){
     this.pex.getConnectionAccountDetail(this.sessionId)
-      .subscribe(result => {
+    .subscribe(result => {
         this.connection = result;
-      });
+    });
   }
 
   onAutomaticSyncToggled(): void {
     this.mapping.saveSettings(this.sessionId, this.settings).subscribe();
   }
 
-  refreshPexAccount() {
+  refreshPexAccount(){
     this.refreshingPexAccount = true;
     this.pex.updatePexAccountLinked(this.sessionId)
-      .subscribe(() => {
-        this.getPexConnectionDetail();
-        this.refreshingPexAccount = false;
-      },
-        () => {
-          this.refreshingPexAccount = false;
-        });
+    .subscribe(() => {
+      this.getPexConnectionDetail();
+      this.refreshingPexAccount = false;
+    },
+    () => {
+      this.refreshingPexAccount = false;
+    });
   }
 
   getTagNames() {
@@ -138,10 +142,10 @@ export class SyncManageComponent implements OnInit {
           console.log('using tagMappings');
           this.aplos.getTagCategories(this.sessionId).subscribe(
             aplosTagCategories => {
-              this.aplosTagCategories = [...aplosTagCategories];
+              this.aplosTagCategories = [... aplosTagCategories];
 
               if (this.settings.syncTaxTagToPex) {
-                this.aplosTagCategories.push({ id: 990, "name": "990" });
+                this.aplosTagCategories.push( {id: 990, "name": "990"});
               }
               this.settings.tagMappings.forEach(tagMapping => {
                 if (tagMapping.aplosTagId && tagMapping.pexTagId) {
@@ -268,14 +272,6 @@ export class SyncManageComponent implements OnInit {
       }
     })
   };
-
-  isPrepaid(): boolean {
-    return this.settings.pexFundingSource == FundingSource.Prepaid;
-  }
-
-  isCredit(): boolean {
-    return this.settings.pexFundingSource == FundingSource.Credit;
-  }
 
   onDisconnect() {
     this.mapping.disconnect(this.sessionId).subscribe(

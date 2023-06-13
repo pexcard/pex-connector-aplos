@@ -418,7 +418,7 @@ namespace AplosConnector.Common.Services
             await aplosApiClient.CreateTransaction(aplosTransaction, cancellationToken);
 
             return TransactionSyncResult.Success;
-        }
+            }
 
         public async Task<string> GetAplosAccessToken(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
@@ -1231,7 +1231,7 @@ namespace AplosConnector.Common.Services
             List<TransactionModel> additionalFeeTransactions,
             CancellationToken cancellationToken)
         {
-            if (!mapping.SyncTransfers && !mapping.SyncPexFees && !mapping.SyncInvoices) return;
+            if (!mapping.SyncTransfers && !mapping.SyncPexFees && !mapping.SyncRebates && !mapping.SyncInvoices) return;
 
             var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
             var startDate = startDateUtc.ToEst();
@@ -1254,6 +1254,113 @@ namespace AplosConnector.Common.Services
 
             await SyncTransfers(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, cancellationToken);
             await SyncPexFees(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, additionalFeeTransactions, cancellationToken);
+
+            await SyncRebates(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, cancellationToken);
+        }
+
+        private async Task SyncRebates(
+            ILogger _logger,
+            Pex2AplosMappingModel mapping, 
+            BusinessAccountTransactions allBusinessAccountTransactions,
+            List<AplosApiTransactionDetail> aplosTransactions,
+            CancellationToken cancellationToken)
+        {
+            if (!mapping.SyncInvoices && !mapping.SyncRebates) return;
+
+            if (!(mapping.PexRebatesAplosContactId > 0 
+                && mapping.PexRebatesAplosFundId > 0
+                && mapping.PexRebatesAplosTransactionAccountNumber > 0))
+            {
+                _logger.LogInformation($"Skipping sync rebate for business {mapping.PEXBusinessAcctId}. Rebates are not configured.");
+            }
+
+            var rebates = allBusinessAccountTransactions.Where(t =>
+                t.Description.Contains("Rebate Credit") ||
+                t.Description.StartsWith("Prepaid customer rebate payout to business"));
+
+            var rebatesToSync = rebates
+                .Where(r => !WasPexTransactionSyncedToAplos(aplosTransactions, r.TransactionId.ToString()))
+            .ToList();
+
+            var allocationMapping = await _pexApiClient.GetTagAllocations(mapping.PEXExternalAPIToken, rebatesToSync, cancellationToken);
+
+            var syncCount = 0;
+            var failureCount = 0;
+
+            foreach (var transaction in rebatesToSync)
+            {
+                using (_logger.BeginScope(GetLoggingScopeForRebate(transaction)))
+                {
+                    if (!allocationMapping.TryGetValue(transaction.TransactionId, out var allocations))
+                    {
+                        _logger.LogWarning($"Rebate {transaction.TransactionId} doesn't have an associated allocation. Skipping");
+                        continue;
+                    }
+
+                    var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
+                    foreach (var allocation in allocations)
+                    {
+                        //We currently don't support tags on business transactions.
+                        //If we add support, we just need to create a setting for mapping and find the value from the allocations based on the tagId.
+                        var pexTagValues = new PexTagValuesModel
+                        {
+                            AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
+                            AplosContactId = mapping.PexRebatesAplosContactId,
+                            AplosFundId = mapping.PexRebatesAplosFundId,
+                            AplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber
+                        };
+
+                        allocationDetails.Add((allocation, pexTagValues));
+                    }
+
+                    _logger.LogInformation($"Starting sync for rebate {transaction.TransactionId}");
+                    var transactionSyncResult = TransactionSyncResult.Failed;
+                    try
+                    {
+                        transactionSyncResult = await SyncTransaction(
+                        allocationDetails,
+                            mapping,
+                            transaction,
+                            null,
+                            null,
+                            cancellationToken); 
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Exception syncing rebate {transaction.TransactionId}.");
+                    }
+
+                    if (transactionSyncResult == TransactionSyncResult.Success)
+                    {
+                        syncCount++;
+                        _logger.LogInformation($"Synced rebate {transaction.TransactionId} with Aplos");
+                    }
+                    else if (transactionSyncResult == TransactionSyncResult.Failed)
+                    {
+                        failureCount++;
+                    }
+                }
+            }
+
+            var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} rebates from PEX.";
+            SyncStatus syncStatus;
+            if (syncCount == 0 && failureCount > 0)
+            {
+                syncStatus = SyncStatus.Failed;
+            }
+            else
+            {
+                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+            }
+            var result = new SyncResultModel
+            {
+                PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                SyncType = "Rebates",
+                SyncStatus = syncStatus.ToString(),
+                SyncedRecords = syncCount,
+                SyncNotes = syncNote
+            };
+            await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
         private async Task SyncInvoices(
@@ -1783,6 +1890,25 @@ namespace AplosConnector.Common.Services
                 ["InvoiceAmount"] = invoice.InvoiceAmount,
                 ["InvoiceDueDate"] = invoice.DueDate,
                 ["InvoiceStatus"] = invoice.Status
+            };
+        }
+
+
+        private static IDictionary<string, object> GetLoggingScopeForRebate(TransactionModel transaction)
+        {
+            if (transaction is null)
+            {
+                throw new ArgumentNullException(nameof(transaction));
+            }
+
+            return new Dictionary<string, object>
+            {
+                ["BusinessAccountId"] = transaction.AcctId,
+                ["TransactionId"] = transaction.TransactionId,
+                ["TransactionDescription"] = transaction.Description,
+                ["TransactionAmount"] = transaction.TransactionAmount,
+                ["TransactionTime"] = transaction.TransactionTime,
+                ["SettlementTime"] = transaction.SettlementTime,
             };
         }
 
