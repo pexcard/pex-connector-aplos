@@ -1,37 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using AplosConnector.Common.Models;
-using AplosConnector.Common.Entities;
-using Microsoft.Azure.Cosmos.Table;
 using System.Threading;
+using System.Threading.Tasks;
+using AplosConnector.Common.Entities;
+using AplosConnector.Common.Models;
+using Azure.Data.Tables;
 
-namespace AplosConnector.Core.Storages
+namespace AplosConnector.Common.Storage
 {
     public class PexOAuthSessionStorage : AzureTableStorageAbstract
     {
-        public PexOAuthSessionStorage(string connectionString)
-            : base(connectionString, "PexOAuthSession", "PexOauth") { }
+        public const string TABLE_NAME = "PexOAuthSession";
+        public const string PARTITION_KEY = "PexOauth";
+
+
+        public PexOAuthSessionStorage(TableClient tableClient) : base(tableClient) { }
 
         public async Task CreateAsync(PexOAuthSessionModel model, CancellationToken cancellationToken)
         {
-            var entity = new PexOAuthSessionEntity(model, PartitionKey);
-            var operation = TableOperation.Insert(entity);
-            await Table.ExecuteAsync(operation);
-        }
-
-        public async Task UpdateAsync(PexOAuthSessionModel model, CancellationToken cancellationToken)
-        {
-            if (model.SessionGuid == Guid.Empty)
-            {
-                throw new ArgumentException("session.SessionGuid is not specified");
-            }
-            var entity = await GetEntityBySessionGuidAsync(model.SessionGuid, cancellationToken);
-            entity.ExternalToken = model.ExternalToken;
-            entity.RevokedUtc = model.RevokedUtc;
-            entity.LastRenewedUtc = model.LastRenewedUtc;
-            var operation = TableOperation.InsertOrReplace(entity);
-            await Table.ExecuteAsync(operation);
+            var entity = new PexOAuthSessionEntity(model, PARTITION_KEY);
+            await TableClient.AddEntityAsync(entity, cancellationToken);
         }
 
         public async Task DeleteBySessionGuidAsync(Guid sessionGuid, CancellationToken cancellationToken)
@@ -39,8 +27,7 @@ namespace AplosConnector.Core.Storages
             var entity = await GetEntityBySessionGuidAsync(sessionGuid, cancellationToken);
             if (entity != null)
             {
-                var operation = TableOperation.Delete(entity);
-                await Table.ExecuteAsync(operation);
+                await TableClient.DeleteEntityAsync(entity.PartitionKey, entity.RowKey, default, cancellationToken);
             }
         }
 
@@ -53,24 +40,26 @@ namespace AplosConnector.Core.Storages
 
         private async Task<PexOAuthSessionEntity> GetEntityBySessionGuidAsync(Guid sessionGuid, CancellationToken cancellationToken)
         {
-            var operation = TableOperation.Retrieve<PexOAuthSessionEntity>(PartitionKey, sessionGuid.ToString());
-            var result = await Table.ExecuteAsync(operation, cancellationToken);
-            return (PexOAuthSessionEntity) result.Result;
+            var tableEntity = await TableClient.GetEntityAsync<PexOAuthSessionEntity>(PARTITION_KEY,
+                sessionGuid.ToString(), null, cancellationToken);
+
+            return tableEntity;
         }
 
         public async Task<List<PexOAuthSessionModel>> GetAllSessions(CancellationToken cancellationToken)
         {
-            TableContinuationToken token = null;
-            var entities = new List<PexOAuthSessionEntity>();
-            do
+            var tableEntities = TableClient.QueryAsync<PexOAuthSessionEntity>();
+
+            var results = new List<PexOAuthSessionEntity>();
+            await foreach (var tableEntity in tableEntities)
             {
-                var queryResult = await Table.ExecuteQuerySegmentedAsync(new TableQuery<PexOAuthSessionEntity>(), token, cancellationToken);
-                entities.AddRange(queryResult.Results);
-                token = queryResult.ContinuationToken;
-            } while (token != null);
+                if (tableEntity != null)
+                {
+                    results.Add(tableEntity);
+                }
+            }
 
-            return entities.ConvertAll(entity => entity.ToModel());
-
+            return results.ConvertAll(entity => entity.ToModel());
         }
     }
 }

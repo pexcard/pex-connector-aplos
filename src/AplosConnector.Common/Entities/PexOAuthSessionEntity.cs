@@ -1,10 +1,11 @@
 ﻿using System;
 using AplosConnector.Common.Models;
-using Microsoft.Azure.Cosmos.Table;
+using Azure;
+using Azure.Data.Tables;
 
 namespace AplosConnector.Common.Entities
 {
-    public class PexOAuthSessionEntity : TableEntity
+    public class PexOAuthSessionEntity : ITableEntity
     {
         public PexOAuthSessionEntity()
         {
@@ -42,5 +43,10 @@ namespace AplosConnector.Common.Entities
                 SessionGuid = SessionGuid
             };
         }
+
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
+        public ETag ETag { get; set; }
     }
 }

@@ -1,25 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using AplosConnector.Common.Models;
-using AplosConnector.Common.Entities;
-using AplosConnector.Common.Services.Abstractions;
-using Microsoft.Azure.Cosmos.Table;
 using System.Threading;
+using System.Threading.Tasks;
+using AplosConnector.Common.Entities;
+using AplosConnector.Common.Models;
+using AplosConnector.Common.Services.Abstractions;
+using Azure;
+using Azure.Data.Tables;
+using Microsoft.Extensions.Logging;
 
-namespace AplosConnector.Core.Storages
+namespace AplosConnector.Common.Storage
 {
     public class Pex2AplosMappingStorage : AzureTableStorageAbstract
     {
+        public const string TABLE_NAME = "Pex2AplosMapping";
+        public const string PARTITION_KEY = "Pex2Aplos";
+
         private readonly IStorageMappingService _storageMappingService;
         private readonly ILogger _logger;
 
-        public Pex2AplosMappingStorage(
-            string connectionString,
-            IStorageMappingService storageMappingService,
-            ILogger logger)
-            : base(connectionString, "Pex2AplosMapping", "Pex2Aplos")
+
+        public Pex2AplosMappingStorage(TableClient tableClient, IStorageMappingService storageMappingService, ILogger logger) : base(tableClient)
         {
             _storageMappingService = storageMappingService;
             _logger = logger;
@@ -28,26 +29,28 @@ namespace AplosConnector.Core.Storages
         public async Task CreateAsync(Pex2AplosMappingModel model, CancellationToken cancellationToken)
         {
             var entity = _storageMappingService.Map(model);
-            entity.PartitionKey = PartitionKey;
+            entity.PartitionKey = PARTITION_KEY;
             entity.RowKey = model.PEXBusinessAcctId.ToString();
-            var operation = TableOperation.Insert(entity);
+
             try
             {
-                await Table.ExecuteAsync(operation, cancellationToken);
+                await TableClient.AddEntityAsync(entity, cancellationToken);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, ex.Message);
                 throw;
             }
-
         }
 
         public async Task DeleteAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
         {
             var entity = await GetEntityByBusinessAcctId(pexBusinessAcctId, cancellationToken);
-            var operation = TableOperation.Delete(entity);
-            await Table.ExecuteAsync(operation, cancellationToken);
+
+            if (entity != null)
+            {
+                await TableClient.DeleteEntityAsync(entity.PartitionKey, entity.RowKey, default, cancellationToken);
+            }
         }
 
         public async Task UpdateAsync(Pex2AplosMappingModel model, CancellationToken cancellationToken)
@@ -55,12 +58,11 @@ namespace AplosConnector.Core.Storages
             model.IsManualSync = false; // always reset to false when saving
 
             var entity = _storageMappingService.Map(model);
-            entity.PartitionKey = PartitionKey;
+            entity.PartitionKey = PARTITION_KEY;
             entity.RowKey = model.PEXBusinessAcctId.ToString();
-            entity.ETag = "*";
+            entity.ETag = new ETag();
 
-            var operation = TableOperation.Merge(entity);
-            await Table.ExecuteAsync(operation, cancellationToken);
+            await TableClient.UpdateEntityAsync(entity, ETag.All, TableUpdateMode.Merge, cancellationToken);
         }
 
         public async Task<Pex2AplosMappingModel> GetByBusinessAcctIdAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
@@ -71,21 +73,22 @@ namespace AplosConnector.Core.Storages
 
         private async Task<Pex2AplosMappingEntity> GetEntityByBusinessAcctId(int pexBusinessAcctId, CancellationToken cancellationToken)
         {
-            var operation = TableOperation.Retrieve<Pex2AplosMappingEntity>(PartitionKey, pexBusinessAcctId.ToString());
-            var result = await Table.ExecuteAsync(operation, cancellationToken);
-            return (Pex2AplosMappingEntity) result?.Result;
+            var entity = await TableClient
+                .GetEntityAsync<Pex2AplosMappingEntity>(PARTITION_KEY, pexBusinessAcctId.ToString(), null, cancellationToken);
+
+            return entity?.Value;
         }
 
         public async Task<IEnumerable<Pex2AplosMappingModel>> GetAllMappings(CancellationToken cancellationToken)
         {
-            TableContinuationToken token = null;
+            var tableEntities = TableClient.QueryAsync<Pex2AplosMappingEntity>((string)null, null, null, cancellationToken);
+
             var entities = new List<Pex2AplosMappingEntity>();
-            do
+
+            await foreach (var page in tableEntities.AsPages().WithCancellation(cancellationToken))
             {
-                var queryResult = await Table.ExecuteQuerySegmentedAsync(new TableQuery<Pex2AplosMappingEntity>(), token, cancellationToken);
-                entities.AddRange(queryResult.Results);
-                token = queryResult.ContinuationToken;
-            } while (token != null && !cancellationToken.IsCancellationRequested);
+                entities.AddRange(page.Values);
+            }
 
             return _storageMappingService.Map(entities);
         }

@@ -10,7 +10,6 @@ using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services.Abstractions;
-using AplosConnector.Core.Storages;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -28,6 +27,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Aplos.Api.Client.Models.Response;
+using AplosConnector.Common.Storage;
 using AplosConnector.Common.VendorCards;
 
 namespace AplosConnector.Common.Services
@@ -42,7 +42,7 @@ namespace AplosConnector.Common.Services
         private readonly SyncResultStorage _resultStorage;
         private readonly Pex2AplosMappingStorage _mappingStorage;
         private readonly SyncSettingsModel _syncSettings;
-        private readonly IVendorCardRepository _vendorCardRepository;
+        private readonly IVendorCardStorage _vendorCardStorage;
 
         public AplosIntegrationService(
             ILogger<AplosIntegrationService> logger,
@@ -53,7 +53,7 @@ namespace AplosConnector.Common.Services
             SyncResultStorage resultStorage,
             Pex2AplosMappingStorage mappingStorage,
             SyncSettingsModel syncSettings, 
-            IVendorCardRepository vendorCardRepository)
+            IVendorCardStorage vendorCardStorage)
         {
             _appSettings = appSettings?.Value;
             _logger = logger;
@@ -63,7 +63,7 @@ namespace AplosConnector.Common.Services
             _resultStorage = resultStorage;
             _mappingStorage = mappingStorage;
             _syncSettings = syncSettings;
-            _vendorCardRepository = vendorCardRepository;
+            _vendorCardStorage = vendorCardStorage;
         }
 
         public async Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session, CancellationToken cancellationToken)
@@ -915,7 +915,7 @@ namespace AplosConnector.Common.Services
             var vendorCardsOrdered = new List<VendorCardOrdered>();
             if (mapping.MapVendorCards)
             {
-                var vendorCardOrders = await _vendorCardRepository.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
+                var vendorCardOrders = await _vendorCardStorage.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
                 vendorCardsOrdered = vendorCardOrders?.SelectMany(x => x.CardOrders)?.ToList() ?? new List<VendorCardOrdered>();
             }
 

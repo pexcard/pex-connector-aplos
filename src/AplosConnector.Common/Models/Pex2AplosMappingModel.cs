@@ -24,8 +24,12 @@ namespace AplosConnector.Common.Models
             SyncPexFees = mapping.SyncPexFees;
             SyncInvoices = mapping.SyncInvoices;
             LastSyncUtc = mapping.LastSync;
-            EarliestTransactionDateToSync = mapping.EarliestTransactionDateToSync;
-            EndDateUtc = mapping.EndDateUtc;
+            EarliestTransactionDateToSync = DateTime.SpecifyKind(mapping.EarliestTransactionDateToSync, DateTimeKind.Utc);
+
+            if (mapping.EndDateUtc != null)
+            {
+                EndDateUtc = DateTime.SpecifyKind(mapping.EndDateUtc.Value, DateTimeKind.Utc);
+            }
 
             AplosAccountId = mapping.AplosAccountId;
             AplosPartnerVerified = mapping.AplosPartnerVerified;

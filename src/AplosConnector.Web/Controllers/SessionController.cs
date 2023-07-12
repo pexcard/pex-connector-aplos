@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using AplosConnector.Common.Models;
-using AplosConnector.Core.Storages;
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -13,6 +12,7 @@ using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Models;
 using AplosConnector.Common.Services.Abstractions;
 using System.Threading;
+using AplosConnector.Common.Storage;
 
 namespace AplosConnector.Web.Controllers
 {

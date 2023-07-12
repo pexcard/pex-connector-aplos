@@ -2,9 +2,9 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
-using AplosConnector.Core.Storages;
 using System.Linq;
 using System.Threading;
+using AplosConnector.Common.Storage;
 
 namespace AplosConnector.SyncWorker
 {

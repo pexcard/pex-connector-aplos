@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using AplosConnector.Core.Storages;
 using System;
 using System.Threading.Tasks;
 using PexCard.Api.Client.Core;
 using System.Threading;
+using AplosConnector.Common.Storage;
 
 namespace AplosConnector.Web.Controllers
 {

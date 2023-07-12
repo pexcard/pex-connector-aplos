@@ -1,9 +1,10 @@
 ﻿using System;
-using Microsoft.Azure.Cosmos.Table;
+using Azure;
+using Azure.Data.Tables;
 
 namespace AplosConnector.Common.Entities
 {
-    public class VendorCardsOrderedEntity : TableEntity
+    public class VendorCardsOrderedEntity : ITableEntity
     {
         public int OrderId { get; set; }
 
@@ -18,5 +19,9 @@ namespace AplosConnector.Common.Entities
         public int? GroupId { get; internal set; }
 
         public DateTimeOffset Created { get; set; }
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
+        public ETag ETag { get; set; }
     }
 }

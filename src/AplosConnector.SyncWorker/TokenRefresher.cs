@@ -4,11 +4,11 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using AplosConnector.Common.Models;
-using AplosConnector.Core.Storages;
 using PexCard.Api.Client.Core;
 using System.Threading;
 using PexCard.Api.Client.Core.Exceptions;
 using System.Net;
+using AplosConnector.Common.Storage;
 
 namespace AplosConnector.SyncWorker
 {

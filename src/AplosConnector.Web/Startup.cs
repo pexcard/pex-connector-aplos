@@ -4,7 +4,6 @@ using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services;
 using AplosConnector.Common.Services.Abstractions;
-using AplosConnector.Core.Storages;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics;
@@ -27,7 +26,10 @@ using PexCard.Api.Client.Core.Exceptions;
 using System;
 using System.Net;
 using System.Net.Http;
+using AplosConnector.Common.Storage;
 using AplosConnector.Common.VendorCards;
+using Azure.Data.Tables;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AplosConnector.Web
 {
@@ -74,28 +76,40 @@ namespace AplosConnector.Web
                 ));
 
             var storageConnectionString = _configuration.GetConnectionString("StorageConnectionString");
+            
+            var tableServiceClient = new TableServiceClient(storageConnectionString);
+            services.TryAddSingleton(tableServiceClient);
 
-            services.AddSingleton(_ => new PexOAuthSessionStorage(storageConnectionString).InitTable());
-            services.AddSingleton(provider =>
-                new Pex2AplosMappingStorage(
-                    storageConnectionString,
-                    provider.GetService<IStorageMappingService>(),
-                    provider.GetService<ILogger<Pex2AplosMappingStorage>>())
-                .InitTable());
-            services.AddSingleton(_ => new SyncResultStorage(storageConnectionString).InitTable());
+            var pexOAuthSessionTableClient = tableServiceClient.GetTableClient(PexOAuthSessionStorage.TABLE_NAME);
+            pexOAuthSessionTableClient.CreateIfNotExistsAsync();
+            services.AddSingleton(_ => new PexOAuthSessionStorage(pexOAuthSessionTableClient));
+
+            var pex2AplosMappingTableClient = tableServiceClient.GetTableClient(Pex2AplosMappingStorage.TABLE_NAME);
+            pex2AplosMappingTableClient.CreateIfNotExistsAsync();
+            services.AddSingleton(provider => new Pex2AplosMappingStorage(pex2AplosMappingTableClient, 
+                provider.GetService<IStorageMappingService>(), provider.GetService<ILogger<Pex2AplosMappingStorage>>()));
+
+            var syncResultTableClient = tableServiceClient.GetTableClient(SyncResultStorage.TABLE_NAME);
+            syncResultTableClient.CreateIfNotExistsAsync();
+            services.AddSingleton(_ => new SyncResultStorage(syncResultTableClient));
+
+            var vendorCardTableClient = tableServiceClient.GetTableClient(VendorCardStorage.TABLE_NAME);
+            vendorCardTableClient.CreateIfNotExistsAsync();
+            services.AddSingleton<IVendorCardStorage>(provider => new VendorCardStorage(vendorCardTableClient,
+                provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardStorage>>()));
+
             services.AddSingleton(_ => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
-            services.AddSingleton<IVendorCardRepository>(provider => new VendorCardRepository(storageConnectionString,
-                provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardRepository>>()).InitTable());
+            
             services.AddScoped<IVendorCardService, VendorCardService>();
-
-            services.AddScoped<IAccessTokenDecryptor>(provider => new AplosAccessTokenDecryptor());
+            
+            services.AddScoped<IAccessTokenDecryptor>(_ => new AplosAccessTokenDecryptor());
 
             services.AddScoped<IAplosApiClientFactory>(provider => new AplosApiClientFactory(
                 provider.GetService<IHttpClientFactory>(),
                 provider.GetService<IAccessTokenDecryptor>(),
                 provider.GetService<ILogger<AplosApiClientFactory>>()));
 
-            services.AddScoped<IAplosIntegrationMappingService>(provider => new AplosIntegrationMappingService());
+            services.AddScoped<IAplosIntegrationMappingService>(_ => new AplosIntegrationMappingService());
             services.AddScoped<IAplosIntegrationService>(provider => new AplosIntegrationService(
                 provider.GetService<ILogger<AplosIntegrationService>>(),
                 provider.GetService<IOptions<AppSettingsModel>>(),
@@ -105,7 +119,7 @@ namespace AplosConnector.Web
                 provider.GetService<SyncResultStorage>(),
                 provider.GetService<Pex2AplosMappingStorage>(),
                 provider.GetService<SyncSettingsModel>(),
-                provider.GetService<VendorCardRepository>()));
+                provider.GetService<VendorCardStorage>()));
 
             services.AddCors(options =>
             {

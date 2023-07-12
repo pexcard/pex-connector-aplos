@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using AplosConnector.Core.Storages;
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -11,6 +10,7 @@ using Aplos.Api.Client.Models.Response;
 using System.Threading;
 using Aplos.Api.Client.Models.Detail;
 using AplosConnector.Common.Models;
+using AplosConnector.Common.Storage;
 using AplosConnector.Common.VendorCards;
 using AplosConnector.Web.Models;
 
@@ -22,18 +22,18 @@ namespace AplosConnector.Web.Controllers
         private readonly PexOAuthSessionStorage _pexOAuthSessionStorage;
         private readonly Pex2AplosMappingStorage _pex2AplosMappingStorage;
         private readonly IAplosIntegrationService _aplosIntegrationService;
-        private readonly IVendorCardRepository _vendorCardRepository;
+        private readonly IVendorCardStorage _vendorCardStorage;
 
         public AplosController(
             PexOAuthSessionStorage pexOAuthSessionStorage,
             Pex2AplosMappingStorage pex2AplosMappingStorage,
             IAplosIntegrationService aplosIntegrationService,
-            IVendorCardRepository vendorCardRepository)
+            IVendorCardStorage vendorCardStorage)
         {
             _pex2AplosMappingStorage = pex2AplosMappingStorage;
             _pexOAuthSessionStorage = pexOAuthSessionStorage;
             _aplosIntegrationService = aplosIntegrationService;
-            _vendorCardRepository = vendorCardRepository;
+            _vendorCardStorage = vendorCardStorage;
         }
 
         [HttpGet, Route("Accounts")]
@@ -204,7 +204,7 @@ namespace AplosConnector.Web.Controllers
             if (mapping == null) return NotFound();
 
             var transactionsTask = _aplosIntegrationService.GetTransactions(mapping, DateTime.Today.AddDays(-180), cancelToken);
-            var vendorCardOrdersTask = _vendorCardRepository.GetAllVendorCardsOrderedAsync(mapping, cancelToken);
+            var vendorCardOrdersTask = _vendorCardStorage.GetAllVendorCardsOrderedAsync(mapping, cancelToken);
 
             await Task.WhenAll(transactionsTask, vendorCardOrdersTask);
 

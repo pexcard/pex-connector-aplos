@@ -539,7 +539,7 @@ namespace Aplos.Api.Client
                 _auth = new AplosAuthModel
                 {
                     AplosAccessToken = decryptedAplosAccessToken,
-                    AplosAccessTokenExpiresAt = authResponse.Data.Expires
+                    AplosAccessTokenExpiresAt = DateTime.SpecifyKind(authResponse.Data.Expires, DateTimeKind.Utc)
                 };
 
                 if (_onAuthRefreshed != null)

@@ -4,7 +4,6 @@ using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services;
 using AplosConnector.Common.Services.Abstractions;
-using AplosConnector.Core.Storages;
 using AplosConnector.SyncWorker;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
@@ -20,7 +19,10 @@ using PexCard.Api.Client;
 using PexCard.Api.Client.Core;
 using System;
 using System.Net.Http;
+using AplosConnector.Common.Storage;
 using AplosConnector.Common.VendorCards;
+using Azure.Data.Tables;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 namespace AplosConnector.SyncWorker
@@ -60,15 +62,29 @@ namespace AplosConnector.SyncWorker
 
             var storageConnectionString = Environment.GetEnvironmentVariable("StorageConnectionString", EnvironmentVariableTarget.Process);
 
-            builder.Services.AddSingleton(provider =>
-                new Pex2AplosMappingStorage(storageConnectionString, provider.GetService<IStorageMappingService>(), provider.GetService<ILogger<Pex2AplosMappingStorage>>())
-                .InitTable());
-            builder.Services.AddSingleton(_ => new PexOAuthSessionStorage(storageConnectionString).InitTable());
-            builder.Services.AddSingleton(_ => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
-            builder.Services.AddSingleton(_ => new SyncResultStorage(storageConnectionString).InitTable());
-            builder.Services.AddSingleton<IVendorCardRepository>(provider => new VendorCardRepository(storageConnectionString,
-                    provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardRepository>>()).InitTable());
+            var tableServiceClient = new TableServiceClient(storageConnectionString);
+            builder.Services.TryAddSingleton(tableServiceClient);
 
+            var pexOAuthSessionTableClient = tableServiceClient.GetTableClient(PexOAuthSessionStorage.TABLE_NAME);
+            pexOAuthSessionTableClient.CreateIfNotExistsAsync();
+            builder.Services.AddSingleton(_ => new PexOAuthSessionStorage(pexOAuthSessionTableClient));
+
+            var pex2AplosMappingTableClient = tableServiceClient.GetTableClient(Pex2AplosMappingStorage.TABLE_NAME);
+            pex2AplosMappingTableClient.CreateIfNotExistsAsync();
+            builder.Services.AddSingleton(provider => new Pex2AplosMappingStorage(pex2AplosMappingTableClient,
+                provider.GetService<IStorageMappingService>(), provider.GetService<ILogger<Pex2AplosMappingStorage>>()));
+
+            var syncResultTableClient = tableServiceClient.GetTableClient(SyncResultStorage.TABLE_NAME);
+            syncResultTableClient.CreateIfNotExistsAsync();
+            builder.Services.AddSingleton(_ => new SyncResultStorage(syncResultTableClient));
+
+            var vendorCardTableClient = tableServiceClient.GetTableClient(VendorCardStorage.TABLE_NAME);
+            vendorCardTableClient.CreateIfNotExistsAsync();
+            builder.Services.AddSingleton<IVendorCardStorage>(provider => new VendorCardStorage(vendorCardTableClient,
+                provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardStorage>>()));
+
+            builder.Services.AddSingleton(_ => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
+            
             builder.Services.AddScoped<IAccessTokenDecryptor>(provider => new AplosAccessTokenDecryptor());
 
             builder.Services.AddSingleton(provider =>
@@ -102,7 +118,7 @@ namespace AplosConnector.SyncWorker
                 provider.GetService<SyncResultStorage>(),
                 provider.GetService<Pex2AplosMappingStorage>(),
                 provider.GetService<SyncSettingsModel>(),
-                provider.GetService<IVendorCardRepository>()));
+                provider.GetService<IVendorCardStorage>()));
 
             var dataProtectionApplicationName = Environment.GetEnvironmentVariable("DataProtectionApplicationName", EnvironmentVariableTarget.Process);
             var dataProtectionBlobContainer = Environment.GetEnvironmentVariable("DataProtectionBlobContainer", EnvironmentVariableTarget.Process);
