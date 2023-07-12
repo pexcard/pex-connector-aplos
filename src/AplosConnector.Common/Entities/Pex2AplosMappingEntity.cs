@@ -1,9 +1,10 @@
-﻿using Microsoft.Azure.Cosmos.Table;
-using System;
+﻿using System;
+using Azure;
+using Azure.Data.Tables;
 
 namespace AplosConnector.Common.Entities
 {
-    public class Pex2AplosMappingEntity : TableEntity
+    public class Pex2AplosMappingEntity : ITableEntity
     {
         public Pex2AplosMappingEntity()
         {
@@ -67,5 +68,10 @@ namespace AplosConnector.Common.Entities
         public double? SyncTransactionsIntervalDays { get; set; }
         public double? FetchTransactionsIntervalDays { get; set; }
         public bool MapVendorCards { get; set; }
+        
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
+        public ETag ETag { get; set; }
     }
 }

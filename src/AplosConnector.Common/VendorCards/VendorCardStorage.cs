@@ -1,5 +1,4 @@
-﻿using Microsoft.Azure.Cosmos.Table;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using PexCard.Api.Client.Core;
 using System;
 using System.Collections.Generic;
@@ -8,46 +7,24 @@ using System.Threading.Tasks;
 using System.Threading;
 using AplosConnector.Common.Entities;
 using AplosConnector.Common.Models;
-using Microsoft.Azure.Cosmos.Table.Queryable;
-using AplosConnector.Core.Storages;
+using AplosConnector.Common.Storage;
+using Azure;
+using Azure.Data.Tables;
 
 namespace AplosConnector.Common.VendorCards
 {
-    public class VendorCardRepository : AzureTableStorageAbstract, IVendorCardRepository
+    public class VendorCardStorage : AzureTableStorageAbstract, IVendorCardStorage
     {
-        private CloudTable _table;
-        private const string _tableName = "VendorCardsCreated";
+        public const string TABLE_NAME = "VendorCardsCreated";
 
         private readonly IPexApiClient _pexApiClient;
         private readonly ILogger _logger;
 
-        public VendorCardRepository(string connectionString, IPexApiClient pexApiClient, ILogger<VendorCardRepository> logger)
-            : base(connectionString, _tableName, null)
+        public VendorCardStorage(TableClient tableClient, IPexApiClient pexApiClient,
+            ILogger<VendorCardStorage> logger) : base(tableClient)
         {
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                throw new ArgumentException($"'{nameof(connectionString)}' cannot be null or empty.", nameof(connectionString));
-            }
-            if (pexApiClient is null)
-            {
-                throw new ArgumentNullException(nameof(pexApiClient));
-            }
-            if (logger is null)
-            {
-                throw new ArgumentNullException(nameof(logger));
-            }
-
-            var storageAccount = CloudStorageAccount.Parse(connectionString);
-            var tableClient = storageAccount.CreateCloudTableClient();
-
-            tableClient.DefaultRequestOptions = new TableRequestOptions
-            {
-                RetryPolicy = new LinearRetry(TimeSpan.FromMilliseconds(500), 3)
-            };
-
-            _table = tableClient.GetTableReference(_tableName);
-            _pexApiClient = pexApiClient;
-            _logger = logger;
+            _pexApiClient = pexApiClient ?? throw new ArgumentNullException(nameof(pexApiClient));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<VendorCardsOrdered> GetVendorCardsOrderedAsync(Pex2AplosMappingModel mapping, int orderId, CancellationToken cancelToken = default)
@@ -59,20 +36,18 @@ namespace AplosConnector.Common.VendorCards
 
             var cardOrdersEntries = new List<VendorCardOrdered>();
 
-            TableContinuationToken continuationToken = null;
-            do
+            var tableEntities = TableClient.QueryAsync<VendorCardsOrderedEntity>(
+                x => x.PartitionKey == mapping.PEXBusinessAcctId.ToString() && x.RowKey == orderId.ToString());
+
+            await foreach (var page in tableEntities.AsPages().WithCancellation(cancelToken))
             {
-                var segmentData = await _table.CreateQuery<VendorCardsOrderedEntity>()
-                                  .Where(x => x.PartitionKey == mapping.PEXBusinessAcctId.ToString() && x.RowKey == orderId.ToString())
-                                  .AsTableQuery()
-                                  .ExecuteSegmentedAsync(continuationToken, cancelToken);
-                foreach (var item in segmentData)
+                foreach (var item in page.Values)
                 {
-                    var cardOrdersEntry = new VendorCardOrdered(item.OrderId, item.Id, item.Name, item.AutoFunding, item.InitialFunding, item.GroupId, orderDate: item.Created.UtcDateTime);
+                    var cardOrdersEntry = new VendorCardOrdered(item.OrderId, item.Id, item.Name, item.AutoFunding,
+                        item.InitialFunding, item.GroupId, orderDate: item.Created.UtcDateTime);
                     cardOrdersEntries.Add(cardOrdersEntry);
                 }
             }
-            while (continuationToken != null);
 
             var cardsOrderedData = await _pexApiClient.GetVendorCardOrder(mapping.PEXExternalAPIToken, orderId, cancelToken);
 
@@ -104,20 +79,18 @@ namespace AplosConnector.Common.VendorCards
 
             var cardOrdersEntries = new List<VendorCardOrdered>();
 
-            TableContinuationToken continuationToken = null;
-            do
+            var tableEntities = TableClient.QueryAsync<VendorCardsOrderedEntity>(
+                x => x.PartitionKey == mapping.PEXBusinessAcctId.ToString());
+
+            await foreach (var page in tableEntities.AsPages().WithCancellation(cancelToken))
             {
-                var segmentData = await _table.CreateQuery<VendorCardsOrderedEntity>()
-                                  .Where(x => x.PartitionKey == mapping.PEXBusinessAcctId.ToString())
-                                  .AsTableQuery()
-                                  .ExecuteSegmentedAsync(continuationToken, cancelToken);
-                foreach (var item in segmentData)
+                foreach (var item in page.Values)
                 {
-                    var cardOrdersEntry = new VendorCardOrdered(item.OrderId, item.Id, item.Name, item.AutoFunding, item.InitialFunding, item.GroupId, orderDate: item.Created.UtcDateTime);
+                    var cardOrdersEntry = new VendorCardOrdered(item.OrderId, item.Id, item.Name, item.AutoFunding,
+                        item.InitialFunding, item.GroupId, orderDate: item.Created.UtcDateTime);
                     cardOrdersEntries.Add(cardOrdersEntry);
                 }
             }
-            while (continuationToken != null);
 
             var cardsOrders = new List<VendorCardsOrdered>();
 
@@ -171,7 +144,7 @@ namespace AplosConnector.Common.VendorCards
                     {
                         PartitionKey = mapping.PEXBusinessAcctId.ToString(),
                         RowKey = $"{vendorCardOrdered.OrderId}_{vendorCardOrdered.Id}",
-                        ETag = "*",
+                        ETag = new ETag(),
                         OrderId = vendorCardOrdered.OrderId,
                         Id = vendorCardOrdered.Id,
                         Name = vendorCardOrdered.Name,
@@ -181,9 +154,7 @@ namespace AplosConnector.Common.VendorCards
                         Created = DateTimeOffset.UtcNow,
                     };
 
-                    var operation = TableOperation.Insert(vendorCardOrderEntity);
-
-                    await _table.ExecuteAsync(operation, null, null, cancelToken);
+                    await TableClient.AddEntityAsync(vendorCardOrderEntity, cancelToken);
                 }
                 catch (Exception ex)
                 {

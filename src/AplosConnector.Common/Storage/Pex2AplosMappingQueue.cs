@@ -1,10 +1,10 @@
-﻿using Newtonsoft.Json;
-using AplosConnector.Common.Models;
+﻿using System.Threading;
 using System.Threading.Tasks;
+using AplosConnector.Common.Models;
 using Microsoft.Azure.Storage.Queue;
-using System.Threading;
+using Newtonsoft.Json;
 
-namespace AplosConnector.Core.Storages
+namespace AplosConnector.Common.Storage
 {
     public class Pex2AplosMappingQueue : AzureQueueAbstract
     {

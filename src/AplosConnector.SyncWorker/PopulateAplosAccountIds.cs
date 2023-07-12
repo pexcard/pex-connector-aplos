@@ -5,13 +5,13 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using AplosConnector.Core.Storages;
 using System.Collections.Generic;
 using AplosConnector.Common.Models;
 using System.Linq;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Models;
 using System.Threading;
+using AplosConnector.Common.Storage;
 
 namespace AplosConnector.SyncWorker
 {

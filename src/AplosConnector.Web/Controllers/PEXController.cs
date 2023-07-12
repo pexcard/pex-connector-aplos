@@ -5,11 +5,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using AplosConnector.Common.Models.Response;
-using AplosConnector.Core.Storages;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Models;
 using System.Threading;
 using AplosConnector.Common.Models;
+using AplosConnector.Common.Storage;
 using Microsoft.Extensions.Logging;
 using LazyCache;
 using AplosConnector.Common.VendorCards;
@@ -22,14 +22,14 @@ namespace AplosConnector.Web.Controllers
         private readonly IPexApiClient _pexApiClient;
         private readonly PexOAuthSessionStorage _pexOAuthSessionStorage;
         private readonly Pex2AplosMappingStorage _pex2AplosMappingStorage;
-        private readonly IVendorCardRepository _vendorCardRepository;
+        private readonly IVendorCardStorage _vendorCardStorage;
         private readonly IVendorCardService _vendorCardService;
         private readonly ILogger<PexController> _logger;
         private readonly IAppCache _cache;
 
         public PexController(
             IPexApiClient pexApiClient,
-            IVendorCardRepository vendorCardRepository,
+            IVendorCardStorage vendorCardStorage,
             IVendorCardService vendorCardService,
             PexOAuthSessionStorage pexOAuthSessionStorage,
             Pex2AplosMappingStorage pex2AplosMappingStorage,
@@ -37,7 +37,7 @@ namespace AplosConnector.Web.Controllers
             IAppCache cache)
         {
             _pexApiClient = pexApiClient;
-            _vendorCardRepository = vendorCardRepository;
+            _vendorCardStorage = vendorCardStorage;
             _vendorCardService = vendorCardService;
             _pexOAuthSessionStorage = pexOAuthSessionStorage;
             _pex2AplosMappingStorage = pex2AplosMappingStorage;
@@ -220,7 +220,7 @@ namespace AplosConnector.Web.Controllers
 
                     try
                     {
-                        var aplosVendorCardOrders = await _vendorCardRepository.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
+                        var aplosVendorCardOrders = await _vendorCardStorage.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
                         connectionDetail.VendorsSetup = aplosVendorCardOrders?.Count > 0;
                     }
                     catch (Exception)
@@ -252,7 +252,7 @@ namespace AplosConnector.Web.Controllers
 
             var vendorCardsOrdered = await _vendorCardService.OrderVendorCardsAsync(mapping, orders, CancellationToken.None);
 
-            await _vendorCardRepository.SaveVendorCardsOrderedAsync(mapping, vendorCardsOrdered, CancellationToken.None);
+            await _vendorCardStorage.SaveVendorCardsOrderedAsync(mapping, vendorCardsOrdered, CancellationToken.None);
 
             return Ok();
         }
@@ -276,7 +276,7 @@ namespace AplosConnector.Web.Controllers
             mapping.PEXEmailAccount = userProfile?.Admin?.Email;
             mapping.PEXNameAccount = $"{userProfile?.Admin?.FirstName} {userProfile?.Admin?.LastName}";
 
-            var order = await _vendorCardRepository.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
+            var order = await _vendorCardStorage.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
 
             return Ok(order);
         }

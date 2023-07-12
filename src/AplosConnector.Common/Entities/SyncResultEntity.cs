@@ -1,10 +1,11 @@
 ﻿using AplosConnector.Common.Models;
-using Microsoft.Azure.Cosmos.Table;
 using System;
+using Azure;
+using Azure.Data.Tables;
 
 namespace AplosConnector.Common.Entities
 {
-    public class SyncResultEntity : TableEntity
+    public class SyncResultEntity : ITableEntity
     {
         public SyncResultEntity()
         {
@@ -42,5 +43,10 @@ namespace AplosConnector.Common.Entities
                 PEXBusinessAcctId = PEXBusinessAcctId
             };
         }
+
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
+        public ETag ETag { get; set; }
     }
 }

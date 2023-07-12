@@ -5,7 +5,6 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using AplosConnector.Core.Storages;
 using System.Collections.Generic;
 using AplosConnector.Common.Models;
 using System.Linq;
@@ -15,6 +14,7 @@ using Newtonsoft.Json;
 using AplosConnector.Common.Services.Abstractions;
 using Aplos.Api.Client.Exceptions;
 using System.Threading;
+using AplosConnector.Common.Storage;
 
 namespace AplosConnector.SyncWorker
 {

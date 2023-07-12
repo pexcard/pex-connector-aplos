@@ -1,12 +1,11 @@
-﻿using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Queue;
-using Microsoft.Azure.Storage.RetryPolicies;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Queue;
+using Microsoft.Azure.Storage.RetryPolicies;
 
-
-namespace AplosConnector.Core.Storages
+namespace AplosConnector.Common.Storage
 {
     public class AzureQueueAbstract
     {

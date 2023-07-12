@@ -5,7 +5,7 @@ using AplosConnector.Common.Models;
 
 namespace AplosConnector.Common.VendorCards
 {
-    public interface IVendorCardRepository
+    public interface IVendorCardStorage
     {
         Task<VendorCardsOrdered> GetVendorCardsOrderedAsync(Pex2AplosMappingModel mapping, int orderId, CancellationToken cancelToken = default);
 
