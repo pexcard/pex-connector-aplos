@@ -31,6 +31,7 @@ export class VendorsSelectComponent implements OnInit, OnDestroy {
   countCardsAutoFunding = 0;
 
   mapVendorCardsToVendors = false;
+  isConfiguringVendorCards = false;
 
   verifyingPexAuth = false;
   verifyingAplosAuth = false;
@@ -212,6 +213,7 @@ export class VendorsSelectComponent implements OnInit, OnDestroy {
     this.fundingBalance = 0;
     this.selectedSaveAmount = 0;
     this._fundingSubscriptions = [];
+    this.checkInitialCardFunding();
     this.selectedVendors.forEach((v) => {
       // auto funding on by default
       v.autoFunding = this.connectionDetails.isPrepaid && this.connectionDetails.useBusinessBalanceEnabled;
@@ -222,11 +224,17 @@ export class VendorsSelectComponent implements OnInit, OnDestroy {
             this.availableBalance = this.connectionDetails.accountBalance > 0 ? this.connectionDetails.accountBalance - this.fundingBalance : 0;
             this.countCardsInitialFunding = this.selectedVendors.filter(x => x.initialFunding > 0).length;
             this.countCardsAutoFunding = this.selectedVendors.filter(x => x.autoFunding === true).length;
+            this.checkInitialCardFunding();
           }
         })
       );
       this.selectedSaveAmount += v.total * 0.01;
     });
+  }
+
+  checkInitialCardFunding() {
+    if (this.connectionDetails.isCredit) {
+      this.isConfiguringVendorCards = !this.selectedVendors.every(v => v.initialFunding > 0)}
   }
 
   onMapCardsToVendors() {
