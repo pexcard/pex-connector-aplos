@@ -193,7 +193,7 @@
 
     <clr-wizard-page *ngIf="connectionDetails?.pexConnection && connectionDetails?.aplosConnection"
                      (clrWizardPageOnLoad)="onConfigureVendorCardsWizardPageLoad()"
-                     [clrWizardPageNextDisabled]="connectionDetails.isPrepaid && availableBalance < 0">
+                     [clrWizardPageNextDisabled]="connectionDetails.isPrepaid && (availableBalance < 0) || isConfiguringVendorCards">
       <ng-template clrPageNavTitle>Configure Options</ng-template>
       <ng-template clrPageTitle>Configure how your vendors cards are setup and used.</ng-template>
       <clr-spinner *ngIf="isLoadingSettings" [clrMedium]="true"></clr-spinner>
