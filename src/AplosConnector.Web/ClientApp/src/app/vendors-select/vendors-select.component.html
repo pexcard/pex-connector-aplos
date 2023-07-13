@@ -162,7 +162,7 @@
                 <div class="alert-icon-wrapper">
                   <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
                 </div>
-                <div>You can save 1% of all vendor spend with a PEX Vendor Card</div>
+                <div>You can save 1% of all vendor spend with a PEX Vendor Card.</div>
               </div>
             </div>
         </div>
@@ -205,7 +205,7 @@
                 <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
               </div>
               <span *ngIf="connectionDetails.isPrepaid" class="alert-text">Add optional initial funding<span *ngIf="connectionDetails.useBusinessBalanceEnabled">, or use auto funding,</span> for your vendor cards. <span *ngIf="availableBalance >= 0">You have {{availableBalance | currency}} available for funding.</span></span>
-              <span *ngIf="connectionDetails.isCredit" class="alert-text">Add an optional card limit for each vendor card.</span>
+              <span *ngIf="connectionDetails.isCredit" class="alert-text">Add a required card limit for each vendor card.</span>
             </div>
           </div>
         </div>
