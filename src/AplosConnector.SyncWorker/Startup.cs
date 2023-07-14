@@ -78,6 +78,10 @@ namespace AplosConnector.SyncWorker
             syncResultTableClient.CreateIfNotExistsAsync();
             builder.Services.AddSingleton(_ => new SyncResultStorage(syncResultTableClient));
 
+            var syncHistoryTableClient = tableServiceClient.GetTableClient(SyncHistoryStorage.TABLE_NAME);
+            syncHistoryTableClient.CreateIfNotExistsAsync();
+            builder.Services.AddSingleton(_ => new SyncHistoryStorage(syncHistoryTableClient));
+
             var vendorCardTableClient = tableServiceClient.GetTableClient(VendorCardStorage.TABLE_NAME);
             vendorCardTableClient.CreateIfNotExistsAsync();
             builder.Services.AddSingleton<IVendorCardStorage>(provider => new VendorCardStorage(vendorCardTableClient,
@@ -116,6 +120,7 @@ namespace AplosConnector.SyncWorker
                 provider.GetService<IAplosIntegrationMappingService>(),
                 provider.GetService<IPexApiClient>(),
                 provider.GetService<SyncResultStorage>(),
+                provider.GetService<SyncHistoryStorage>(),
                 provider.GetService<Pex2AplosMappingStorage>(),
                 provider.GetService<SyncSettingsModel>(),
                 provider.GetService<IVendorCardStorage>()));

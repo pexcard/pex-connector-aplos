@@ -40,6 +40,7 @@ namespace AplosConnector.Common.Services
         private readonly IAplosIntegrationMappingService _aplosIntegrationMappingService;
         private readonly IPexApiClient _pexApiClient;
         private readonly SyncResultStorage _resultStorage;
+        private readonly SyncHistoryStorage _historyStorage;
         private readonly Pex2AplosMappingStorage _mappingStorage;
         private readonly SyncSettingsModel _syncSettings;
         private readonly IVendorCardStorage _vendorCardStorage;
@@ -51,6 +52,7 @@ namespace AplosConnector.Common.Services
             IAplosIntegrationMappingService aplosIntegrationMappingService,
             IPexApiClient pexApiClient,
             SyncResultStorage resultStorage,
+            SyncHistoryStorage historyStorage,
             Pex2AplosMappingStorage mappingStorage,
             SyncSettingsModel syncSettings, 
             IVendorCardStorage vendorCardStorage)
@@ -61,6 +63,7 @@ namespace AplosConnector.Common.Services
             _aplosIntegrationMappingService = aplosIntegrationMappingService;
             _pexApiClient = pexApiClient;
             _resultStorage = resultStorage;
+            _historyStorage = historyStorage;
             _mappingStorage = mappingStorage;
             _syncSettings = syncSettings;
             _vendorCardStorage = vendorCardStorage;
@@ -594,6 +597,7 @@ namespace AplosConnector.Common.Services
                     SyncNotes = syncNotes
                 };
                 await _resultStorage.CreateAsync(result, cancellationToken);
+                await _historyStorage.CreateAsync(result, cancellationToken);
             }
         }
 
@@ -641,6 +645,7 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
+            await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
         private async Task<IEnumerable<PexAplosApiObject>> GetFlattenedAplosTaxTagValues(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
@@ -795,6 +800,7 @@ namespace AplosConnector.Common.Services
                 SyncNotes = syncNotes
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
+            await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
         private async Task SyncExpenseAccountsToPex(
@@ -874,6 +880,7 @@ namespace AplosConnector.Common.Services
                 SyncNotes = syncNotes
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
+            await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
         private async Task<List<TransactionModel>> SyncTransactions(
@@ -1182,6 +1189,7 @@ namespace AplosConnector.Common.Services
                 SyncNotes = syncNote
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
+            await _historyStorage.CreateAsync(result, cancellationToken);
 
             return allCardholderTransactions?.SelectCardAccountFees() ?? new List<TransactionModel>();
         }
@@ -1371,6 +1379,7 @@ namespace AplosConnector.Common.Services
                 SyncNotes = syncNote
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
+            await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
         public async Task<TransactionSyncResult> SyncInvoice(
@@ -1557,6 +1566,7 @@ namespace AplosConnector.Common.Services
                 SyncNotes = syncNote
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
+            await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
         private async Task SyncPexFees(
@@ -1659,6 +1669,7 @@ namespace AplosConnector.Common.Services
                 SyncNotes = syncNote
             };
             await _resultStorage.CreateAsync(result, cancellationToken);
+            await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
         public bool WasPexTransactionSyncedToAplos(IEnumerable<AplosApiTransactionDetail> aplosTransactions, string pexTransactionId)

@@ -13,7 +13,6 @@ namespace AplosConnector.Common.Storage
         public const string TABLE_NAME = "PexOAuthSession";
         public const string PARTITION_KEY = "PexOauth";
 
-
         public PexOAuthSessionStorage(TableClient tableClient) : base(tableClient) { }
 
         public async Task CreateAsync(PexOAuthSessionModel model, CancellationToken cancellationToken)
