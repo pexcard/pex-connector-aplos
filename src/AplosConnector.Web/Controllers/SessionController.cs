@@ -186,11 +186,19 @@ namespace AplosConnector.Web.Controllers
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
-            return new SessionValidityModel
+            var sessionValidityModel = new SessionValidityModel();
+
+            try
             {
-                IsValid = session != null
-            };
+                var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
+                sessionValidityModel.IsValid = session != null;
+            }
+            catch (Exception)
+            {
+                sessionValidityModel.IsValid = false;
+            }
+
+            return sessionValidityModel;
         }
     }
 }

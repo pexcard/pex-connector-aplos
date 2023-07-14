@@ -578,6 +578,7 @@ namespace AplosConnector.Common.Tests
                 _mockPexApiClient.Object,
                 null,
                 null,
+                null,
                 _mockSettings,
                 null);
         }

@@ -60,6 +60,7 @@ namespace AplosConnector.SyncWorker
                         mapping.PEXExternalAPIToken = externalToken;
                         mapping.LastRenewedUtc = DateTime.UtcNow;
                         await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                        _log.LogInformation($"Token for business {mapping.PEXBusinessAcctId} is refreshed.");
                     }
                     if (!_inUseExternalApiTokens.Contains(mapping.PEXExternalAPIToken))
                     {
