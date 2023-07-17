@@ -54,7 +54,7 @@ export class SyncHistoryComponent implements OnInit {
         this.loadingHistory = true;
         setTimeout(() => {
           this.getSyncResults();
-        }, 30000);
+        }, 60000);
       }
     );
   }

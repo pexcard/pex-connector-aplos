@@ -4,7 +4,8 @@ namespace AplosConnector.Common.Storage
 {
     public abstract class AzureTableStorageAbstract
     {
-        protected readonly TableClient TableClient;
+        //TODO set back to protected after migration
+        public readonly TableClient TableClient;
 
         protected AzureTableStorageAbstract(TableClient tableClient)
         {

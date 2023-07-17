@@ -3,7 +3,7 @@
   "aggregator": {
     "batchSize": 1
   },
-  "functionTimeout": "00:10:00",
+  "functionTimeout": "5:00:10:00",
   "queues": {
     "maxDequeueCount": 1,
     "batchSize": 1
