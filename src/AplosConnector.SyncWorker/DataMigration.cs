@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AplosConnector.Common.Entities;
 using AplosConnector.Common.Storage;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
@@ -23,20 +24,23 @@ namespace AplosConnector.SyncWorker
         }
 
         [FunctionName("DataMigration")]
-        public async Task Run([HttpTrigger(AuthorizationLevel.Function)] CancellationToken cancellationToken)
+        public async Task Run([HttpTrigger(AuthorizationLevel.Function, Route = "ticks/{ticks:long}")] HttpRequest request,
+            long ticks, CancellationToken cancellationToken)
         {
+            _log.LogInformation($"Ticks: {ticks}");
+
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            await MigrateSyncResults(cancellationToken);
+            await MigrateSyncResults(ticks, cancellationToken);
             watch.Stop();
             _log.LogInformation($"Execution time: {watch.ElapsedMilliseconds} ms");
         }
 
-        private async Task MigrateSyncResults(CancellationToken cancellationToken)
+        private async Task MigrateSyncResults(long ticks, CancellationToken cancellationToken)
         {
             _log.LogInformation("Sync Results Migration started.");
 
-            var copyToDate = new DateTime(638251843621189201, DateTimeKind.Utc);
+            var copyToDate = new DateTime(ticks, DateTimeKind.Utc);
 
             var syncResultsEntitiesToCopy = _resultStorage.TableClient.QueryAsync<SyncResultEntity>(r => r.CreatedUtc < copyToDate, 500, null, cancellationToken);
 
