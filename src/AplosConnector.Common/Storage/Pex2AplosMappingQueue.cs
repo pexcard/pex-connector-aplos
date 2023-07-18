@@ -8,8 +8,9 @@ namespace AplosConnector.Common.Storage
 {
     public class Pex2AplosMappingQueue : AzureQueueAbstract
     {
-        public Pex2AplosMappingQueue(string connectionString)
-            : base(connectionString, "pex-aplos-mapping") { }
+        public const string QUEUE_NAME = "pex-aplos-mapping";
+
+        public Pex2AplosMappingQueue(string connectionString) : base(connectionString, QUEUE_NAME) { }
 
         public async Task EnqueueMapping(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {

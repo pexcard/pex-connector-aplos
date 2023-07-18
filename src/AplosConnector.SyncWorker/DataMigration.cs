@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AplosConnector.Common.Entities;
+using AplosConnector.Common.Models;
 using AplosConnector.Common.Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs;
@@ -24,25 +25,24 @@ namespace AplosConnector.SyncWorker
         }
 
         [FunctionName("DataMigration")]
-        public async Task Run([HttpTrigger(AuthorizationLevel.Function, Route = "ticks/{ticks:long}")] HttpRequest request,
-            long ticks, CancellationToken cancellationToken)
+        public async Task Run([QueueTrigger(DataMigrationQueue.QUEUE_NAME, Connection = "StorageConnectionString")] DataMigrationModel model, CancellationToken cancellationToken)
         {
-            _log.LogInformation($"Ticks: {ticks}");
+            _log.LogInformation($"Ticks: {model.Ticks}, BatchSize: {model.BatchSize}");
 
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            await MigrateSyncResults(ticks, cancellationToken);
+            await MigrateSyncResults(model, cancellationToken);
             watch.Stop();
             _log.LogInformation($"Execution time: {watch.ElapsedMilliseconds} ms");
         }
 
-        private async Task MigrateSyncResults(long ticks, CancellationToken cancellationToken)
+        private async Task MigrateSyncResults(DataMigrationModel model, CancellationToken cancellationToken)
         {
             _log.LogInformation("Sync Results Migration started.");
 
-            var copyToDate = new DateTime(ticks, DateTimeKind.Utc);
+            var copyToDate = new DateTime(model.Ticks, DateTimeKind.Utc);
 
-            var syncResultsEntitiesToCopy = _resultStorage.TableClient.QueryAsync<SyncResultEntity>(r => r.CreatedUtc < copyToDate, 500, null, cancellationToken);
+            var syncResultsEntitiesToCopy = _resultStorage.TableClient.QueryAsync<SyncResultEntity>(r => r.CreatedUtc < copyToDate, model.BatchSize, null, cancellationToken);
 
             var totalCount = 0;
             var createdCount = 0;
