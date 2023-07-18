@@ -9,7 +9,6 @@ using System.Threading;
 using PexCard.Api.Client.Core.Exceptions;
 using System.Net;
 using AplosConnector.Common.Storage;
-using AplosConnector.Common.Entities;
 
 namespace AplosConnector.SyncWorker
 {
@@ -20,22 +19,19 @@ namespace AplosConnector.SyncWorker
         private readonly IPexApiClient _pexApiClient;
         private readonly List<string> _inUseExternalApiTokens = new List<string>();
         private readonly SyncResultStorage _resultStorage;
-        private readonly SyncHistoryStorage _historyStorage;
         private readonly ILogger<TokenRefresher> _log;
 
         public TokenRefresher(Pex2AplosMappingStorage mappingStorage, 
             PexOAuthSessionStorage sessionStorage, 
             IPexApiClient pexApiClient, 
             SyncResultStorage resultStorage, 
-            ILogger<TokenRefresher> log,
-            SyncHistoryStorage historyStorage)
+            ILogger<TokenRefresher> log)
         {
             _mappingStorage = mappingStorage;
             _sessionStorage = sessionStorage;
             _pexApiClient = pexApiClient;
             _resultStorage = resultStorage;
             _log = log;
-            _historyStorage = historyStorage;
         }
 
         [FunctionName("TokenRefresher")]
@@ -44,50 +40,10 @@ namespace AplosConnector.SyncWorker
             CancellationToken cancellationToken,
             ILogger log)
         {
-            //log.LogInformation($"Running function to refresh tokens and clean up sessions executed at: {DateTime.UtcNow}");
-            //await RefreshTokens(cancellationToken);
-            //await CleanupSessions(cancellationToken);
-            //await CleanupSyncResults(cancellationToken);
-
-            var watch = System.Diagnostics.Stopwatch.StartNew();
-
-            await MigrateSyncResults(cancellationToken);
-            watch.Stop();
-            _log.LogInformation($"Execution time: {watch.ElapsedMilliseconds} ms");
-        }
-
-        private async Task MigrateSyncResults(CancellationToken cancellationToken)
-        {
-            _log.LogInformation("Sync Results Migration started.");
-
-            var copyToDate = new DateTime(638251843621189201, DateTimeKind.Utc);
-            
-            var syncResultsEntitiesToCopy = _resultStorage.TableClient.QueryAsync<SyncResultEntity>( r => r.CreatedUtc < copyToDate, 500, null, cancellationToken);
-
-            var totalCount = 0;
-            var createdCount = 0;
-            var errorCount = 0;
-
-            await foreach (var page in syncResultsEntitiesToCopy.AsPages().WithCancellation(cancellationToken))
-            {
-                foreach (var syncResultEntity in page.Values)
-                {
-                    totalCount ++;
-
-                    try
-                    {
-                        await _historyStorage.CreateAsync(syncResultEntity.ToModel(), cancellationToken);
-                        createdCount++;
-                    }
-                    catch (Exception e)
-                    {
-                        _log.LogError($"Failed to add entity with RowKey: '{syncResultEntity.RowKey}'");
-                        errorCount++;
-                    }
-                }
-            }
-
-            _log.LogInformation($"Sync Results Migration completed. Total records: {totalCount}, Created records: {createdCount}, Errors: {errorCount}");
+            log.LogInformation($"Running function to refresh tokens and clean up sessions executed at: {DateTime.UtcNow}");
+            await RefreshTokens(cancellationToken);
+            await CleanupSessions(cancellationToken);
+            await CleanupSyncResults(cancellationToken);
         }
 
         private async Task RefreshTokens(CancellationToken cancellationToken)
