@@ -82,6 +82,10 @@ namespace AplosConnector.Common.Services
                     LastRenewedUtc = session.LastRenewedUtc,
                     EarliestTransactionDateToSync = DateTime.UtcNow,
                     AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication,
+                    SyncApprovedOnly = true,
+                    SyncTransactionsCreateContact = true,
+                    MapVendorCards = true,
+                    UseNormalizedMerchantNames = true
                 };
 
                 await _mappingStorage.CreateAsync(mapping, cancellationToken);
