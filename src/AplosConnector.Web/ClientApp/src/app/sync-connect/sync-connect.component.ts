@@ -110,7 +110,9 @@ export class SyncConnectComponent implements OnInit {
     expenseAccountMappings: [],
     tagMappings: [],
     taxTagCategoryDetails: [],
-    pexFundingSource: 0
+    pexFundingSource: FundingSource.Unknown,
+    mapVendorCards: true,
+    useNormalizedMerchantNames: true,
   };
 
   getExpenseAccountFormElements() {
@@ -176,8 +178,8 @@ export class SyncConnectComponent implements OnInit {
   }
 
   verifyingAplosAuthentication = false;
-  verifyingPexAuthentication = false; 
-  
+  verifyingPexAuthentication = false;
+
   aplosAuthenticationStatus: AplosAuthenticationStatusModel;
   ngOnInit() {
     this.validateConnections();
@@ -194,7 +196,7 @@ export class SyncConnectComponent implements OnInit {
         this.sessionId = token;
         this.verifyingAplosAuthentication = true;
         this.verifyingPexAuthentication = true;
-        
+
         this.pex.getAuthenticationStatus(this.sessionId)
           .pipe(
             tap(() => {
@@ -207,12 +209,12 @@ export class SyncConnectComponent implements OnInit {
               if(err.status === 404){
                 this.isFirstInstalation = true;
                 console.log(err);
-                return of(err); 
+                return of(err);
               }
-              
+
               this.isPexAccountLinked = false;
               this.getConnectionDetail();
-              return throwError(err);  
+              return throwError(err);
             }),
             switchMap(() => this.mapping.getAplosAuthenticationStatus(this.sessionId)))
           .subscribe(
@@ -239,8 +241,8 @@ export class SyncConnectComponent implements OnInit {
   getConnectionDetail(){
     this.pex.getConnectionAccountDetail(this.sessionId)
     .subscribe(result => {
-       this.pexAdminEmailAccount = 
-                    result.email === '' || result.email === undefined || result.email === null ? 'unknown' : result.email; 
+       this.pexAdminEmailAccount =
+                    result.email === '' || result.email === undefined || result.email === null ? 'unknown' : result.email;
     });
   }
 
@@ -419,7 +421,7 @@ export class SyncConnectComponent implements OnInit {
       this.getContacts();
       this.getAssetAccounts();
       this.getExpenseAccounts();
-      
+
       if (this.isCredit()) {
         this.getLiabilityAccounts();
       }
@@ -474,6 +476,10 @@ export class SyncConnectComponent implements OnInit {
         console.log("not valid");
       }
     );
+  }
+
+  onVendorCommit() {
+    this.saveSettings();
   }
 
   onSettingsCommit() {
