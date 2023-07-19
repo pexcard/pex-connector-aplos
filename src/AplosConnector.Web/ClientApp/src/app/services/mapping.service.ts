@@ -62,7 +62,7 @@ export class MappingService {
     this.clearCache();
     return this.httpClient.post(this.buildUrl(sessionId, 'Sync'), null);
   }
-  
+
   getVendorCardsMapped(sessionId: string): Observable<boolean> {
     return this.httpClient
       .get<boolean>(this.buildUrl(sessionId, 'Settings/VendorCardMapping'))
@@ -101,7 +101,7 @@ export interface SettingsModel {
   syncTransactions: boolean;
   syncTags: boolean;
   syncTaxTagToPex: boolean;
-  
+
   syncApprovedOnly: boolean;
   earliestTransactionDateToSync: string;
   syncTransfers: boolean;
@@ -143,6 +143,8 @@ export interface SettingsModel {
   taxTagCategoryDetails: AplosApiTaxTagCategoryDetail[];
   pexFundingSource: FundingSource;
 
+  mapVendorCards: boolean;
+  useNormalizedMerchantNames: boolean;
 }
 
 export interface ExpenseAccountMappingModel {
@@ -163,6 +165,7 @@ export enum AplosAuthenticationMode {
 }
 
 export enum FundingSource {
+  Unknown = 0,
   Prepaid = 1,
   Credit = 2
 }
