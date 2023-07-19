@@ -60,7 +60,7 @@ export class SyncConnectComponent implements OnInit {
   isPexAccountLinked = false;
   isFirstInstalation = false;
   pexAdminEmailAccount: string = 'unknown';
-  businessName:string = null;
+  businessName: string = null;
   savingSettings = false;
   projectForm: UntypedFormGroup;
   savingProjects = false;
@@ -206,7 +206,7 @@ export class SyncConnectComponent implements OnInit {
             catchError(err => {
               this.isPexAccountLinked = false;
               this.verifyingPexAuthentication = false;
-              if(err.status === 404){
+              if (err.status === 404) {
                 this.isFirstInstalation = true;
                 console.log(err);
                 return of(err);
@@ -238,12 +238,12 @@ export class SyncConnectComponent implements OnInit {
     });
   }
 
-  getConnectionDetail(){
+  getConnectionDetail() {
     this.pex.getConnectionAccountDetail(this.sessionId)
-    .subscribe(result => {
-       this.pexAdminEmailAccount =
-                    result.email === '' || result.email === undefined || result.email === null ? 'unknown' : result.email;
-    });
+      .subscribe(result => {
+        this.pexAdminEmailAccount =
+          result.email === '' || result.email === undefined || result.email === null ? 'unknown' : result.email;
+      });
   }
 
   loadingAplosAccounts = false;
@@ -255,7 +255,7 @@ export class SyncConnectComponent implements OnInit {
     return this.aplos.getAccounts(this.sessionId, "asset").subscribe(
       aplosAccounts => {
         console.log('getting asset accounts', aplosAccounts);
-        this.aplosAssetAccounts = [ ...aplosAccounts ];
+        this.aplosAssetAccounts = [...aplosAccounts];
         this.loadingAplosAccounts = false;
         console.log('got asset accounts', this.aplosAssetAccounts);
       },
@@ -315,7 +315,7 @@ export class SyncConnectComponent implements OnInit {
     return this.aplos.getContacts(this.sessionId).subscribe(
       aplosContacts => {
         console.log('getting contacts', aplosContacts);
-        this.aplosContacts = [ ...aplosContacts ];
+        this.aplosContacts = [...aplosContacts];
         this.loadingAplosContacts = false;
         console.log('got contacts', this.aplosContacts);
       },
@@ -335,7 +335,7 @@ export class SyncConnectComponent implements OnInit {
     return this.aplos.getFunds(this.sessionId).subscribe(
       aplosFunds => {
         console.log('getting funds', aplosFunds);
-        this.aplosFunds = [ ...aplosFunds];
+        this.aplosFunds = [...aplosFunds];
         this.loadingAplosFunds = false;
         console.log('got funds', this.aplosFunds);
       },
@@ -355,7 +355,7 @@ export class SyncConnectComponent implements OnInit {
     return this.aplos.getTagCategories(this.sessionId).subscribe(
       aplosTagCategories => {
         console.log('getting TagCategories', aplosTagCategories);
-        this.aplosTagCategories = [ ...aplosTagCategories];
+        this.aplosTagCategories = [...aplosTagCategories];
         this.loadingAplosTagCategories = false;
         console.log('got TagCategories', this.aplosTagCategories);
       },
@@ -375,7 +375,7 @@ export class SyncConnectComponent implements OnInit {
     return this.aplos.getTaxTagCategories(this.sessionId).subscribe(
       aplosTaxTagCategories => {
         console.log('getting TaxTags', aplosTaxTagCategories);
-        this.aplosTaxTagCategories = [ ...aplosTaxTagCategories];
+        this.aplosTaxTagCategories = [...aplosTaxTagCategories];
         this.loadingAplosTaxTags = false;
         console.log('got TaxTags', this.aplosTaxTagCategories);
       },
@@ -479,7 +479,10 @@ export class SyncConnectComponent implements OnInit {
   }
 
   onVendorCommit() {
-    this.saveSettings();
+    this.saveSettings(false).subscribe(() => {
+      this.savingSettings = false;
+      this.handleStepCompleted();
+    });
   }
 
   onSettingsCommit() {
@@ -611,12 +614,12 @@ export class SyncConnectComponent implements OnInit {
 
   getDropDownTags(): PexTagInfoModel[] {
     const tags = this.availablePexTags.filter(t => t.type == CustomFieldType.Dropdown);
-    return [ ...tags ];
+    return [...tags];
   }
 
   getYesNoTags(): PexTagInfoModel[] {
     const tags = this.availablePexTags.filter(t => t.type == CustomFieldType.YesNo);
-    return [ ...tags ];
+    return [...tags];
   }
 
   onCloseWizard() {
@@ -627,11 +630,11 @@ export class SyncConnectComponent implements OnInit {
     this.open = false;
   }
 
-  isPrepaid() : boolean {
+  isPrepaid(): boolean {
     return this.settingsModel.pexFundingSource == FundingSource.Prepaid;
   }
 
-  isCredit() : boolean {
+  isCredit(): boolean {
     return this.settingsModel.pexFundingSource == FundingSource.Credit;
   }
 
