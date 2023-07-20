@@ -311,8 +311,8 @@
                    [clrWizardPageNextDisabled]="!settingsModel.syncTransactionsCreateContact && !(settingsModel.defaultAplosContactId > 0)"
                    (clrWizardPageOnCommit)="onVendorCommit()">
 
-    <ng-template clrPageNavTitle>Vendor Options</ng-template>
-    <ng-template clrPageTitle>Configure vendor sync options</ng-template>
+    <ng-template clrPageNavTitle>Contact Options</ng-template>
+    <ng-template clrPageTitle>Configure contact sync options</ng-template>
 
     <app-loading-placeholder *ngIf="loadingAplosContacts" [loadingState]="loadingAplosContacts" [errorState]="errorLoadingAplosContacts" (retry)="getContacts()"></app-loading-placeholder>
 
@@ -334,9 +334,9 @@
         </clr-radio-wrapper>
         <clr-radio-wrapper>
           <input type="radio" clrRadio required name="syncTransactionsCreateContact" [value]="true" [(ngModel)]="settingsModel.syncTransactionsCreateContact" />
-          <label>Create a vendor for each unique merchant</label>
+          <label>Create a contact for each unique merchant</label>
         </clr-radio-wrapper>
-        <clr-control-helper *ngIf="!settingsModel.syncTransactionsCreateContact" class="single-vendor-help"><strong>Tip:</strong> Consider creating a new vendor in QuickBooks called 'PEX' to book PEX purchases with a single vendor</clr-control-helper>
+        <clr-control-helper *ngIf="!settingsModel.syncTransactionsCreateContact" class="single-vendor-help"><strong>Tip:</strong> Consider creating a new contact in Aplos called 'PEX' to book PEX purchases with a single contact</clr-control-helper>
       </clr-radio-container>
       <clr-checkbox-container *ngIf="settingsModel.syncTransactionsCreateContact" class="normalized-vendors">
         <clr-checkbox-wrapper>
