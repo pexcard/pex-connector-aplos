@@ -28,7 +28,7 @@ namespace AplosConnector.Common.Storage
         public async Task<List<SyncResultModel>> GetByBusiness(int businessAcctId, CancellationToken cancellationToken)
         {
             var tableEntities = TableClient
-                .QueryAsync<SyncHistoryEntity>(f => f.PartitionKey == businessAcctId.ToString(), 500, null, cancellationToken);
+                .QueryAsync<SyncHistoryEntity>(f => f.PartitionKey == businessAcctId.ToString(), 1000, null, cancellationToken);
 
             var entities = new List<SyncHistoryEntity>();
 
@@ -37,7 +37,7 @@ namespace AplosConnector.Common.Storage
                 entities.AddRange(page.Values);
             }
 
-            entities = entities.OrderByDescending(e => e.CreatedUtc).ToList();
+            entities = entities.OrderByDescending(e => e.CreatedUtc).Take(1000).ToList();
 
             return entities.ConvertAll(entity => entity.ToModel());
         }
@@ -45,7 +45,7 @@ namespace AplosConnector.Common.Storage
         public async Task<List<SyncResultModel>> GetOldResults(DateTime cutoffDate, CancellationToken cancellationToken)
         {
             var tableEntities = TableClient
-                .QueryAsync<SyncHistoryEntity>($"CreatedUtc lt datetime'{cutoffDate:yyyy-MM-dd}'", 500, null, cancellationToken);
+                .QueryAsync<SyncHistoryEntity>($"CreatedUtc lt datetime'{cutoffDate:yyyy-MM-dd}'", 1000, null, cancellationToken);
 
             var entities = new List<SyncHistoryEntity>();
 
