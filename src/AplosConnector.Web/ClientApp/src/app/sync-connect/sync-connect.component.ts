@@ -538,6 +538,11 @@ export class SyncConnectComponent implements OnInit {
 
   saveSettings(closeWizard: boolean = false) {
     this.savingSettings = true;
+    if (this.settingsModel.syncTransactionsCreateContact) {
+      this.settingsModel.defaultAplosContactId = 0;
+    } else {
+      this.settingsModel.useNormalizedMerchantNames = false;
+    }
     console.log('saving settings', this.settingsModel);
     return this.mapping.saveSettings(this.sessionId, this.settingsModel);
   }
