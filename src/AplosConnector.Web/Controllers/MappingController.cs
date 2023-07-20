@@ -18,7 +18,7 @@ namespace AplosConnector.Web.Controllers
     {
         private readonly PexOAuthSessionStorage _pexOAuthSessionStorage;
         private readonly Pex2AplosMappingStorage _pex2AplosMappingStorage;
-        private readonly SyncResultStorage _syncResultStorage;
+        private readonly SyncHistoryStorage _syncHistoryStorage;
         private readonly Pex2AplosMappingQueue _mappingQueue;
         private readonly IAplosIntegrationService _aplosIntegrationService;
         private readonly AppSettingsModel _appSettings;
@@ -26,14 +26,14 @@ namespace AplosConnector.Web.Controllers
         public MappingController(
             PexOAuthSessionStorage pexOAuthSessionStorage,
             Pex2AplosMappingStorage pex2AplosMappingStorage,
-            SyncResultStorage syncResultStorage,
+            SyncHistoryStorage syncHistoryStorage,
             Pex2AplosMappingQueue mappingQueue,
             IAplosIntegrationService aplosIntegrationService,
             IOptions<AppSettingsModel> appSettings)
         {
             _pexOAuthSessionStorage = pexOAuthSessionStorage;
             _pex2AplosMappingStorage = pex2AplosMappingStorage;
-            _syncResultStorage = syncResultStorage;
+            _syncHistoryStorage = syncHistoryStorage;
             _mappingQueue = mappingQueue;
             _aplosIntegrationService = aplosIntegrationService;
             _appSettings = appSettings?.Value;
@@ -142,7 +142,7 @@ namespace AplosConnector.Web.Controllers
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
             if (mapping == null) return NotFound();
 
-            var result = await _syncResultStorage.GetByBusiness(mapping.PEXBusinessAcctId, cancellationToken);
+            var result = await _syncHistoryStorage.GetByBusiness(mapping.PEXBusinessAcctId, cancellationToken);
             return result;
         }
 
