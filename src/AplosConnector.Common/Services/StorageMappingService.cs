@@ -98,8 +98,7 @@ namespace AplosConnector.Common.Services
 
                     SyncTransactionsIntervalDays = model.SyncTransactionsIntervalDays,
                     FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays,
-                    MapVendorCards = model.MapVendorCards,
-                    UseNormalizedMerchantNames = model.UseNormalizedMerchantNames
+                    MapVendorCards = model.MapVendorCards
                 };
             }
 
@@ -212,8 +211,7 @@ namespace AplosConnector.Common.Services
 
                     SyncTransactionsIntervalDays = model.SyncTransactionsIntervalDays,
                     FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays,
-                    MapVendorCards = model.MapVendorCards,
-                    UseNormalizedMerchantNames = model.UseNormalizedMerchantNames,
+                    MapVendorCards = model.MapVendorCards
                 };
             }
 
