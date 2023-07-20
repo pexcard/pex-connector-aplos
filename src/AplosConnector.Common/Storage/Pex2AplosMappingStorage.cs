@@ -74,9 +74,9 @@ namespace AplosConnector.Common.Storage
         private async Task<Pex2AplosMappingEntity> GetEntityByBusinessAcctId(int pexBusinessAcctId, CancellationToken cancellationToken)
         {
             var entity = await TableClient
-                .GetEntityAsync<Pex2AplosMappingEntity>(PARTITION_KEY, pexBusinessAcctId.ToString(), null, cancellationToken);
+                .GetEntityIfExistsAsync<Pex2AplosMappingEntity>(PARTITION_KEY, pexBusinessAcctId.ToString(), null, cancellationToken);
 
-            return entity?.Value;
+            return entity.HasValue ? entity.Value : null;
         }
 
         public async Task<IEnumerable<Pex2AplosMappingModel>> GetAllMappings(CancellationToken cancellationToken)
