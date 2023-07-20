@@ -34,8 +34,6 @@
   </clr-wizard-page>
 
   <clr-wizard-page *ngIf="isAuthenticated && !isPexAccountLinked && !isFirstInstalation"
-                   clrWizardPagePreventDefault="true"
-                   [clrWizardPagePreventDefault]="true"
                    [clrWizardPageNextDisabled]="true"
                    (clrWizardPageOnCancel)="preventCancel()">
 
@@ -48,10 +46,8 @@
     <button class="btn btn-primary" (click)="onUseCurrentPexAccount()" *ngIf="!verifyingPexAuthentication">USE MY PEX CREDENTIALS</button>
   </clr-wizard-page>
 
-  <clr-wizard-page clrWizardPagePreventDefault="true"
-                   (clrWizardPageOnCommit)="onAplosCredentialsCommit()"
+  <clr-wizard-page (clrWizardPageOnCommit)="onAplosCredentialsCommit()"
                    *ngIf="isAuthenticated && (settingsModel.aplosAuthenticationMode === 0 || (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl))"
-                   [clrWizardPagePreventDefault]="true"
                    (clrWizardPageOnCancel)="onCloseWizard()"
                    [clrWizardPageNextDisabled]="!aplosServiceAccountForm.valid
                    || (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl)">
@@ -141,7 +137,6 @@
 
   <clr-wizard-page
                    *ngIf="isAuthenticated"
-                   clrWizardPagePreventDefault="true"
                    (clrWizardPageOnCommit)="onSettingsCommit()"
                    (clrWizardPageOnCancel)="onCloseWizard()"
                    [clrWizardPageNextDisabled]="!optionsForm.valid
@@ -321,7 +316,7 @@
         <clr-radio-wrapper>
           <input type="radio" clrRadio required name="syncTransactionsCreateContact" [value]="false" [(ngModel)]="settingsModel.syncTransactionsCreateContact" />
           <label>
-            <span>Use a single vendor for your expenses </span>
+            <span>Use a single contact for your expenses </span>
             <div *ngIf="!settingsModel.syncTransactionsCreateContact" class="clr-select-wrapper">
               <select id="select-full-vendor"
                       class="clr-select"
@@ -357,7 +352,6 @@
                    *ngIf="isAuthenticated && (settingsModel.syncTransactions || settingsModel.syncTags) && hasTagsAvailable"
                    (clrWizardPageOnCommit)="onTagMappingCommit()"
                    (clrWizardPageOnCancel)="onCloseWizard()"
-                   clrWizardPagePreventDefault="true"
                    [clrWizardPageNextDisabled]="! aplosFieldMappingForm.valid
                    || !expenseAccountForm.valid
                    || (this.aplosTagCategories.length > 0 && !tagMappingForm.valid)">
@@ -524,7 +518,6 @@
                    *ngIf="isAuthenticated && (settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees)"
                    (clrWizardPageOnCommit)="onDefaultCategoryCommit()"
                    (clrWizardPageOnCancel)="onCloseWizard()"
-                   clrWizardPagePreventDefault="true"
                    [clrWizardPageNextDisabled]="!defaultCategoryForm.valid">
 
     <ng-template clrPageNavTitle>Transaction Options</ng-template>
