@@ -302,7 +302,7 @@
 
   </clr-wizard-page>
 
-  <clr-wizard-page *ngIf="isPexAccountLinked && aplosAuthenticationStatus?.hasAplosAccountId && settingsModel?.syncTransactions"
+  <clr-wizard-page *ngIf="isPexAccountLinked && aplosAuthenticationStatus?.hasAplosAccountId && (settingsModel?.syncTransactions || settingsModel?.syncInvoices)"
                    [clrWizardPageNextDisabled]="!settingsModel.syncTransactionsCreateContact && !(settingsModel.defaultAplosContactId > 0)"
                    (clrWizardPageOnCommit)="onVendorCommit()">
 
