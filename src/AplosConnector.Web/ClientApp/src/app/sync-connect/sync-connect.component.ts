@@ -481,14 +481,12 @@ export class SyncConnectComponent implements OnInit {
   onVendorCommit() {
     this.saveSettings(false).subscribe(() => {
       this.savingSettings = false;
-      this.handleStepCompleted();
     });
   }
 
   onSettingsCommit() {
     this.saveSettings(false).subscribe(() => {
       this.savingSettings = false;
-      this.handleStepCompleted();
     });
   }
 
@@ -520,7 +518,6 @@ export class SyncConnectComponent implements OnInit {
 
                 if (result.isAuthenticated) {
                   this.getSettings();
-                  this.handleStepCompleted();
                 }
               }
             );
@@ -575,7 +572,6 @@ export class SyncConnectComponent implements OnInit {
 
       this.saveSettings(false).subscribe(() => {
         this.savingSettings = false;
-        this.handleStepCompleted();
       });
     }
   }
@@ -583,17 +579,7 @@ export class SyncConnectComponent implements OnInit {
   onDefaultCategoryCommit() {
     this.saveSettings(true).subscribe(() => {
       this.savingSettings = false;
-      this.handleStepCompleted();
     });
-  }
-
-  handleStepCompleted(): void {
-    if (this.wizard.isLast) {
-      this.wizard.close();
-    }
-    else {
-      this.wizard.forceNext();
-    }
   }
 
   getAvailableTags() {
