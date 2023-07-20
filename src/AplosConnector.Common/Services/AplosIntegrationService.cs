@@ -54,7 +54,7 @@ namespace AplosConnector.Common.Services
             SyncResultStorage resultStorage,
             SyncHistoryStorage historyStorage,
             Pex2AplosMappingStorage mappingStorage,
-            SyncSettingsModel syncSettings,
+            SyncSettingsModel syncSettings, 
             IVendorCardStorage vendorCardStorage)
         {
             _appSettings = appSettings?.Value;
@@ -82,10 +82,6 @@ namespace AplosConnector.Common.Services
                     LastRenewedUtc = session.LastRenewedUtc,
                     EarliestTransactionDateToSync = DateTime.UtcNow,
                     AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication,
-                    SyncApprovedOnly = true,
-                    SyncTransactionsCreateContact = true,
-                    MapVendorCards = true,
-                    UseNormalizedMerchantNames = true
                 };
 
                 await _mappingStorage.CreateAsync(mapping, cancellationToken);
@@ -371,13 +367,8 @@ namespace AplosConnector.Common.Services
                     }
                     else if (mapping.SyncTransactionsCreateContact)
                     {
-                        var merchantName = transaction.MerchantName;
-                        if (mapping.UseNormalizedMerchantNames && !string.IsNullOrEmpty(transaction.MerchantNameNormalized))
-                        {
-                            merchantName = transaction.MerchantNameNormalized;
-                        }
                         //Specifying the name here will use the existing contact with that name, otherwise it will create a new one.
-                        contact = new AplosApiContactDetail { CompanyName = merchantName, Type = "company" };
+                        contact = new AplosApiContactDetail { CompanyName = transaction.MerchantName, Type = "company" };
                     }
                     else
                     {
@@ -1247,7 +1238,7 @@ namespace AplosConnector.Common.Services
             var syncTimePeriod = new TimePeriod(startDate, endDate);
 
             var aplosTransactions = await GetTransactions(mapping, startDate, cancellationToken);
-            await SyncInvoices(_logger, mapping, aplosTransactions, startDate, cancellationToken);
+           await SyncInvoices(_logger, mapping, aplosTransactions, startDate, cancellationToken);
 
             _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod}.");
 
@@ -1269,9 +1260,9 @@ namespace AplosConnector.Common.Services
             var invoices = await _pexApiClient.GetInvoices(mapping.PEXExternalAPIToken, startDate, cancellationToken);
 
             var invoicesToSync = invoices
-                .Where(i =>
+                .Where(i => 
                     i.Status == InvoiceStatus.Closed
-                    && i.InvoiceAmount > 0
+                    && i.InvoiceAmount > 0 
                     && !WasPexTransactionSyncedToAplos(aplosTransactions, i.InvoiceId.ToString()))
                 .ToList();
 

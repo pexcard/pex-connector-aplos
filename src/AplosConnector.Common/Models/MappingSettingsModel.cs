@@ -81,6 +81,5 @@ namespace AplosConnector.Common.Models
         public double? SyncTransactionsIntervalDays { get; set; }
         public double? FetchTransactionsIntervalDays { get; set; }
         public bool MapVendorCards { get; set; }
-        public bool UseNormalizedMerchantNames { get; set; }
     }
 }
