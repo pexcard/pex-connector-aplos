@@ -76,6 +76,9 @@ export class SyncConnectComponent implements OnInit {
   availablePexTags: PexTagInfoModel[] = [];
   aplosPreferences: AplosPreferences = { isClassEnabled: false, isLocationEnabled: false, locationFieldName: '' };
 
+  isPrepaid: boolean = false;
+  isCredit: boolean = false;
+
   settingsModel: SettingsModel = {
     syncTransactions: true,
     syncTransfers: false,
@@ -413,8 +416,11 @@ export class SyncConnectComponent implements OnInit {
     this.mapping.getSettings(this.sessionId).subscribe(data => {
       this.settingsModel = { ...data };
       console.log('got settings.', this.settingsModel);
-      let d = new Date(data.earliestTransactionDateToSync);
 
+      this.isPrepaid = this.settingsModel.pexFundingSource == FundingSource.Prepaid;
+      this.isCredit = this.settingsModel.pexFundingSource == FundingSource.Credit;
+
+      let d = new Date(data.earliestTransactionDateToSync);
       let newDate = 1 + d.getMonth() + '/' + d.getDate() + '/' + d.getFullYear();
       this.settingsModel.earliestTransactionDateToSync = newDate;
 
@@ -422,7 +428,7 @@ export class SyncConnectComponent implements OnInit {
       this.getAssetAccounts();
       this.getExpenseAccounts();
 
-      if (this.isCredit()) {
+      if (this.isCredit) {
         this.getLiabilityAccounts();
       }
 
@@ -620,15 +626,6 @@ export class SyncConnectComponent implements OnInit {
   onTagMappingCancel() {
     this.open = false;
   }
-
-  isPrepaid(): boolean {
-    return this.settingsModel.pexFundingSource == FundingSource.Prepaid;
-  }
-
-  isCredit(): boolean {
-    return this.settingsModel.pexFundingSource == FundingSource.Credit;
-  }
-
 }
 
 export interface OauthResponse {
