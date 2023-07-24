@@ -9,7 +9,7 @@ namespace AplosConnector.Common.Entities
         public Pex2AplosMappingEntity()
         {
             CreatedUtc = DateTime.UtcNow;
-            AutomaticSync = false; // current businesses keep automatic sync (old default)
+            AutomaticSync = true; // current businesses keep automatic sync (old default)
             IsManualSync = false; // always reset to false when saving
         }
 

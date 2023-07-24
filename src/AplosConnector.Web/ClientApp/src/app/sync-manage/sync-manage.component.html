@@ -14,325 +14,316 @@
           </div>
         </div>
       </div>
-    </div>   
+    </div>
   </div>
 </div>
 <div class="clr-row" *ngIf="settings">
-    <div class="clr-col clr-col-sm-6 clr-col-m-4 clr-col-xl-4">
+  <div class="clr-col clr-col-sm-6">
+    <div>
+      <h2> <img src="../assets/Aplos-Logo-White.png" alt="Aplos logo" class="aplosLogo"> Connect</h2>
+      <hr />
+      <div class="clr-row">
+        <div class="clr-col-3">
+          <strong>Auto sync</strong>
+        </div>
+        <div class="clr-col-9">
+          <clr-toggle-wrapper>
+            <input type="checkbox" clrToggle [(ngModel)]="settings.automaticSync" (ngModelChange)="onAutomaticSyncToggled()" />
+            <label>Sync transactions on an automatic schedule (24 hours)</label>
+          </clr-toggle-wrapper>
+        </div>
+      </div>
+      <hr />
+      <div class="clr-row">
+        <div class="clr-col-1" style="padding-right:0; display: flex; justify-content: flex-end; padding-top: 4px;">
+          <clr-icon *ngIf="pexConnectionDetail.pexConnection" shape="check" size="md" role="img" class="is-success"></clr-icon>
+          <clr-icon *ngIf="!pexConnectionDetail.pexConnection" shape="times-circle" size="md" role="img" class="is-error"></clr-icon>
+        </div>
+        <div class="clr-col-11">
+          <strong>
+            <span *ngIf="pexConnectionDetail.pexConnection">Valid connection</span>
+            <span *ngIf="!pexConnectionDetail.pexConnection">Invalid connection</span>
+          </strong>
+          <ul>
+            <li><strong>Name:</strong> {{pexConnectionDetail.name ? pexConnectionDetail.name : "Unknown"}}</li>
+            <li><strong>Email:</strong> {{pexConnectionDetail.email ? pexConnectionDetail.email : "Unknown"}}</li>
+          </ul>
+        </div>
+      </div>
+      <hr />
+      <div class="clr-row">
+        <div class="clr-col-11 clr-offset-1">
+          <strong>Status:</strong> <span *ngIf="!pexConnectionDetail.pexConnection"> Idle</span>
+          <span *ngIf="pexConnectionDetail.pexConnection"> Active</span><br />
+          <strong>Latest Sync: </strong>
+          <span *ngIf="pexConnectionDetail.lastSync">{{ pexConnectionDetail.lastSync | date:"d MMM y, hh:mm a" }}</span>
+          <span *ngIf="!pexConnectionDetail.lastSync">Never</span>
+        </div>
+      </div>
+      <hr />
       <div>
-        <h2> <img src="../assets/Aplos-Logo-White.png" alt="Aplos logo" class="aplosLogo"> Connect</h2>
-         <hr />
-         <div class="clr-row">
-           <div class="clr-col-1" style="padding-right:0; display: flex; justify-content: flex-end; padding-top: 4px;">
-             <clr-icon *ngIf="pexConnectionDetail.pexConnection" shape="check" size="md" role="img" class="is-success"></clr-icon> 
-             <clr-icon *ngIf="!pexConnectionDetail.pexConnection" shape="times-circle" size="md" role="img" class="is-error"></clr-icon>
-           </div>
-           <div class="clr-col-11">
-             <strong>
-               <span *ngIf="pexConnectionDetail.pexConnection">Valid connection</span>
-               <span *ngIf="!pexConnectionDetail.pexConnection">Invalid connection</span>
-             </strong>
-             <ul>
-               <li><strong>Name:</strong> {{pexConnectionDetail.name ? pexConnectionDetail.name : "Unknown"}}</li>
-               <li><strong>Email:</strong> {{pexConnectionDetail.email ? pexConnectionDetail.email : "Unknown"}}</li>
-             </ul>
-           </div>
-         </div>
-         <hr />
-         <div class="clr-row">
-           <div class="clr-col-11 clr-offset-1">
-             <strong>Status:</strong> <span *ngIf="!pexConnectionDetail.pexConnection"> Idle</span> 
-                                     <span *ngIf="pexConnectionDetail.pexConnection"> Active</span><br />
-             <strong>Latest Sync: </strong>
-             <span  *ngIf="pexConnectionDetail.lastSync">{{ pexConnectionDetail.lastSync | date:"d MMM y, hh:mm a" }}</span>
-             <span  *ngIf="!pexConnectionDetail.lastSync">Never</span>
-           </div>
-         </div>
-         <hr />
-         <div>
-          <button
-            type="button"
-            [routerLink]="['../sync-connect']"
-            class="btn btn-icon btn-primary-outline"
-            aria-label="edit">
-            <clr-icon shape="cog"></clr-icon> EDIT
-          </button>
-           <button
-            type="button"
-            class="btn btn-icon btn-primary-outline"
-            [clrLoading]="refreshingPexAccount"
-            aria-label="Refresh"
-            (click)="refreshPexAccount()">
-            <clr-icon shape="refresh"></clr-icon> REFRESH
-           </button>
-           <button type="button" class="btn btn-icon btn-danger-outline" aria-label="Disconnect" (click)="disconnectModal=true">
-            <clr-icon shape="disconnect"></clr-icon> DISCONNECT
-          </button>       
-         </div>
-       </div>
+        <button
+                type="button"
+                [routerLink]="['../sync-connect']"
+                class="btn btn-icon btn-primary-outline"
+                aria-label="edit">
+          <clr-icon shape="cog"></clr-icon> EDIT
+        </button>
+        <button
+                type="button"
+                class="btn btn-icon btn-primary-outline"
+                [clrLoading]="refreshingPexAccount"
+                aria-label="Refresh"
+                (click)="refreshPexAccount()">
+          <clr-icon shape="refresh"></clr-icon> REFRESH
+        </button>
+        <button type="button" class="btn btn-icon btn-danger-outline" aria-label="Disconnect" (click)="disconnectModal=true">
+          <clr-icon shape="disconnect"></clr-icon> DISCONNECT
+        </button>
+      </div>
     </div>
   </div>
-   
-  <div class="clr-row" *ngIf="settings">
-   <div class="clr-col clr-col-xl-8">
-      <h4>Settings</h4>
-      <table class="table table-vertical">
-        <tbody>
-          <tr><th>Sync tags</th>
-            <td>
-              <clr-icon
-                *ngIf="settings.syncTags"
-                shape="success-standard"
-                class="is-solid is-success"
-              ></clr-icon>
-              <clr-icon
-                *ngIf="!settings.syncTags"
-                shape="ban"
-                class="is-solid is-error"
-              ></clr-icon>
-            </td>
-          </tr>
-          <tr *ngIf="isPrepaid()">
-            <th>Sync transactions</th>
-            <td>
-              <clr-icon
-                *ngIf="settings.syncTransactions"
-                shape="success-standard"
-                class="is-solid is-success"
-              ></clr-icon>
-              <clr-icon
-                *ngIf="!settings.syncTransactions"
-                shape="ban"
-                class="is-solid is-error"
-              ></clr-icon>&nbsp;
-  
-              <span *ngIf="settings.syncTransactions && settings.syncApprovedOnly"
-                >Approved</span
-              >
-              <span
-                *ngIf="settings.syncTransactions && !settings.syncApprovedOnly"
-                >All</span
-              >
-            </td>
-          </tr>
-          <tr *ngIf="isPrepaid()">
-            <th>Sync transfers</th>
-            <td>
-              <clr-icon
-                *ngIf="settings.syncTransfers"
-                shape="success-standard"
-                class="is-solid is-success"
-              ></clr-icon>
-              <clr-icon
-                *ngIf="!settings.syncTransfers"
-                shape="ban"
-                class="is-solid is-error"
-              ></clr-icon>
-            </td>
-          </tr>
-          <tr *ngIf="isPrepaid()">
-            <th>Sync fees</th>
-            <td>
-              <clr-icon
-                *ngIf="settings.syncPexFees"
-                shape="success-standard"
-                class="is-solid is-success"
-              ></clr-icon>
-              <clr-icon
-                *ngIf="!settings.syncPexFees"
-                shape="ban"
-                class="is-solid is-error"
-              ></clr-icon>
-            </td>
-          </tr>
-          <tr *ngIf="isCredit()">
-            <th>Sync purchases, bill payments and fees</th>
-            <td>
-              <clr-icon
-                *ngIf="settings.syncInvoices"
-                shape="success-standard"
-                class="is-solid is-success"
-              ></clr-icon>
-              <clr-icon
-                *ngIf="!settings.syncInvoices"
-                shape="ban"
-                class="is-solid is-error"
-              ></clr-icon>
-            </td>
-          </tr>
-          <tr><th>Sync 990 tag</th>
-            <td>
-              <clr-icon
-                *ngIf="settings.syncTaxTagToPex"
-                shape="success-standard"
-                class="is-solid is-success"
-              ></clr-icon>
-              <clr-icon
-                *ngIf="!settings.syncTaxTagToPex"
-                shape="ban"
-                class="is-solid is-error"
-              ></clr-icon>
-            </td>
-          </tr>                
-          <tr>
-            <th>Connected on</th>
-            <td>{{settings.connectedOn | date:"yyyy-MM-dd hh:mm a" }}</td> 
-          </tr>
-          <tr>
-            <th>Earliest transaction date</th>
-            <td>{{settings.earliestTransactionDateToSync | date:"yyyy-MM-dd" }}</td>
-          </tr>
-          <tr>
-           <th>Last sync</th>
-            <td>
-              <span *ngIf="!settings.lastSync">Never</span>
-              <span *ngIf="settings.lastSync">
-                {{settings.lastSync | date:"yyyy-MM-dd hh:mm a" }}
-              </span>
-            </td>
+</div>
+
+<div class="clr-row" *ngIf="settings">
+  <div class="clr-col clr-col-xl-8">
+    <h4>Settings</h4>
+    <table class="table table-vertical">
+      <tbody>
+        <tr>
+          <th>Sync tags</th>
+          <td>
+            <clr-icon
+                      *ngIf="settings.syncTags"
+                      shape="success-standard"
+                      class="is-solid is-success"></clr-icon>
+            <clr-icon
+                      *ngIf="!settings.syncTags"
+                      shape="ban"
+                      class="is-solid is-error"></clr-icon>
+          </td>
         </tr>
-        </tbody>
-      </table>
-  
-        <h4>Tag Mapping</h4>
-  
-        <div class="alert alert-warning" role="alert" *ngIf="!hasTagsAvailable">
-            <div class="alert-items">
-                <div class="alert-item static">
-                    <div class="alert-icon-wrapper">
-                        <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
-                    </div>
-                    <span class="alert-text">
-                        Your PEX account does not support Tags. To have this feature enabled and better integrate with Aplos, please contact adminsupport@pexcard.com.
-                    </span>
-                </div>
-            </div>
+        <tr *ngIf="isPrepaid()">
+          <th>Sync transactions</th>
+          <td>
+            <clr-icon
+                      *ngIf="settings.syncTransactions"
+                      shape="success-standard"
+                      class="is-solid is-success"></clr-icon>
+            <clr-icon
+                      *ngIf="!settings.syncTransactions"
+                      shape="ban"
+                      class="is-solid is-error"></clr-icon>&nbsp;
+
+            <span *ngIf="settings.syncTransactions && settings.syncApprovedOnly">Approved</span>
+            <span
+                  *ngIf="settings.syncTransactions && !settings.syncApprovedOnly">All</span>
+          </td>
+        </tr>
+        <tr *ngIf="isPrepaid()">
+          <th>Sync transfers</th>
+          <td>
+            <clr-icon
+                      *ngIf="settings.syncTransfers"
+                      shape="success-standard"
+                      class="is-solid is-success"></clr-icon>
+            <clr-icon
+                      *ngIf="!settings.syncTransfers"
+                      shape="ban"
+                      class="is-solid is-error"></clr-icon>
+          </td>
+        </tr>
+        <tr *ngIf="isPrepaid()">
+          <th>Sync fees</th>
+          <td>
+            <clr-icon
+                      *ngIf="settings.syncPexFees"
+                      shape="success-standard"
+                      class="is-solid is-success"></clr-icon>
+            <clr-icon
+                      *ngIf="!settings.syncPexFees"
+                      shape="ban"
+                      class="is-solid is-error"></clr-icon>
+          </td>
+        </tr>
+        <tr *ngIf="isCredit()">
+          <th>Sync purchases, bill payments and fees</th>
+          <td>
+            <clr-icon
+                      *ngIf="settings.syncInvoices"
+                      shape="success-standard"
+                      class="is-solid is-success"></clr-icon>
+            <clr-icon
+                      *ngIf="!settings.syncInvoices"
+                      shape="ban"
+                      class="is-solid is-error"></clr-icon>
+          </td>
+        </tr>
+        <tr>
+          <th>Sync 990 tag</th>
+          <td>
+            <clr-icon
+                      *ngIf="settings.syncTaxTagToPex"
+                      shape="success-standard"
+                      class="is-solid is-success"></clr-icon>
+            <clr-icon
+                      *ngIf="!settings.syncTaxTagToPex"
+                      shape="ban"
+                      class="is-solid is-error"></clr-icon>
+          </td>
+        </tr>
+        <tr>
+          <th>Connected on</th>
+          <td>{{settings.connectedOn | date:"yyyy-MM-dd hh:mm a" }}</td>
+        </tr>
+        <tr>
+          <th>Earliest transaction date</th>
+          <td>{{settings.earliestTransactionDateToSync | date:"yyyy-MM-dd" }}</td>
+        </tr>
+        <tr>
+          <th>Last sync</th>
+          <td>
+            <span *ngIf="!settings.lastSync">Never</span>
+            <span *ngIf="settings.lastSync">
+              {{settings.lastSync | date:"yyyy-MM-dd hh:mm a" }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>Tag Mapping</h4>
+
+    <div class="alert alert-warning" role="alert" *ngIf="!hasTagsAvailable">
+      <div class="alert-items">
+        <div class="alert-item static">
+          <div class="alert-icon-wrapper">
+            <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
+          </div>
+          <span class="alert-text">
+            Your PEX account does not support Tags. To have this feature enabled and better integrate with Aplos, please contact adminsupport@pexcard.com.
+          </span>
         </div>
-       
-        <table class="table" *ngIf="hasTagsAvailable">
-          <thead>
-            <tr>
-              <th class="left">Aplos field</th>
-              <th class="left">PEX Tag</th>
-              <th class="left">Sync Tag options from Aplos</th>
-            </tr>
-          </thead>
-          
-          <tbody>
-            <tr>
-              <td class="left">Fund</td>
-              <td class="left">
-                  {{tagNameFund}}
-              </td>
-              <td>
-                <clr-icon
-                  *ngIf="settings.syncTags && settings.syncFundsToPex"
-                  shape="success-standard"
-                  class="is-solid is-success"
-                ></clr-icon>
-                <clr-icon
-                  *ngIf="!(settings.syncTags && settings.syncFundsToPex)"
-                  shape="ban"
-                  class="is-solid is-error"
-                ></clr-icon>
-              </td>
-            </tr>
-            <tr *ngFor="let accountMapping of tagNameAccount">
-              <td class="left">Account</td>
-              <td class="left">
-                {{accountMapping.expenseAccountsPexTagId}}
-              </td>
-              <td>
-                <clr-icon
-                  *ngIf="settings.syncTags && accountMapping.syncExpenseAccounts"
-                  shape="success-standard"
-                  class="is-solid is-success"
-                ></clr-icon>
-                <clr-icon
-                  *ngIf="!(settings.syncTags && accountMapping.syncExpenseAccounts)"
-                  shape="ban"
-                  class="is-solid is-error"
-                ></clr-icon>
-              </td>
-            </tr>
-            <tr *ngFor="let tagMapping of tagMappings">
-              <td class="left">
-                {{tagMapping.aplosTagId}}
-              </td>
-              <td class="left">
-                {{tagMapping.pexTagId}}
-              </td>
-              <td>
-                <clr-icon
-                  *ngIf="settings.syncTags && tagMapping.syncToPex"
-                  shape="success-standard"
-                  class="is-solid is-success"
-                ></clr-icon>
-                <clr-icon
-                  *ngIf="!(settings.syncTags && tagMapping.syncToPex)"
-                  shape="ban"
-                  class="is-solid is-error"
-                ></clr-icon>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-  
-        <table class="table table-vertical" *ngIf="!hasTagsAvailable && settings.syncTransactions">
-          <tr class="left">
-            <th>Default Fund for purchases</th>
-            <td>{{defaultFundName}}</td>
-          </tr>
-          <tr class="left">
-            <th>Default Transaction account for purchases</th>
-            <td>{{defaultTransactionAccountName}}</td>
-          </tr>
-        </table>
-  
-        <table class="table table-vertical" *ngIf="settings.syncTransfers || settings.syncInvoices || settings.syncPexFees">
-          <tbody>
-            <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferContact">
-              <th *ngIf="isPrepaid()">Contact for transfers</th>
-              <th *ngIf="isCredit()">Payee for bill payments</th>
-              <td>{{transferContact.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncTransfers && transferFund">
-              <th *ngIf="isPrepaid()">Fund for transfers</th>
-              <th *ngIf="isCredit()">Fund for bill payments</th>
-              <td>{{transferFund.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferAccount">
-              <th *ngIf="isPrepaid()">Transaction account for transfers</th>
-              <th *ngIf="isCredit()">Transaction account for bill payments</th>
-              <td>{{transferAccount | aplosAccount}}</td>
-            </tr>
-            <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesContact">
-              <th>Contact for fees</th>
-              <td>{{feesContact.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesFund">
-              <th>Fund for fees</th>
-              <td>{{feesFund.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesAccount">
-              <th>Transaction account for fees</th>
-              <td>{{feesAccount | aplosAccount}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncTaxTagToPex && settings.pexFeesAplosTaxTag">
-              <th>990 tag for fees</th>
-              <td>{{pexFeesAplosTaxTagName}}</td>
-            </tr>
-          </tbody>
-        </table>
-  
-      <clr-modal [(clrModalOpen)]="disconnectModal">
-        <h3 class="modal-title">Are you sure?</h3>
-        <div class="modal-body">
-            <p>Your data will no longer be synced.</p>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-outline" (click)="disconnectModal = false">No, Stay connected</button>
-            <button type="button" class="btn btn-primary" (click)="onDisconnect()">Yes, Disconnect</button>
-        </div>
+      </div>
+    </div>
+
+    <table class="table" *ngIf="hasTagsAvailable">
+      <thead>
+        <tr>
+          <th class="left">Aplos field</th>
+          <th class="left">PEX Tag</th>
+          <th class="left">Sync Tag options from Aplos</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td class="left">Fund</td>
+          <td class="left">
+            {{tagNameFund}}
+          </td>
+          <td>
+            <clr-icon
+                      *ngIf="settings.syncTags && settings.syncFundsToPex"
+                      shape="success-standard"
+                      class="is-solid is-success"></clr-icon>
+            <clr-icon
+                      *ngIf="!(settings.syncTags && settings.syncFundsToPex)"
+                      shape="ban"
+                      class="is-solid is-error"></clr-icon>
+          </td>
+        </tr>
+        <tr *ngFor="let accountMapping of tagNameAccount">
+          <td class="left">Account</td>
+          <td class="left">
+            {{accountMapping.expenseAccountsPexTagId}}
+          </td>
+          <td>
+            <clr-icon
+                      *ngIf="settings.syncTags && accountMapping.syncExpenseAccounts"
+                      shape="success-standard"
+                      class="is-solid is-success"></clr-icon>
+            <clr-icon
+                      *ngIf="!(settings.syncTags && accountMapping.syncExpenseAccounts)"
+                      shape="ban"
+                      class="is-solid is-error"></clr-icon>
+          </td>
+        </tr>
+        <tr *ngFor="let tagMapping of tagMappings">
+          <td class="left">
+            {{tagMapping.aplosTagId}}
+          </td>
+          <td class="left">
+            {{tagMapping.pexTagId}}
+          </td>
+          <td>
+            <clr-icon
+                      *ngIf="settings.syncTags && tagMapping.syncToPex"
+                      shape="success-standard"
+                      class="is-solid is-success"></clr-icon>
+            <clr-icon
+                      *ngIf="!(settings.syncTags && tagMapping.syncToPex)"
+                      shape="ban"
+                      class="is-solid is-error"></clr-icon>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table class="table table-vertical" *ngIf="!hasTagsAvailable && settings.syncTransactions">
+      <tr class="left">
+        <th>Default Fund for purchases</th>
+        <td>{{defaultFundName}}</td>
+      </tr>
+      <tr class="left">
+        <th>Default Transaction account for purchases</th>
+        <td>{{defaultTransactionAccountName}}</td>
+      </tr>
+    </table>
+
+    <table class="table table-vertical" *ngIf="settings.syncTransfers || settings.syncInvoices || settings.syncPexFees">
+      <tbody>
+        <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferContact">
+          <th *ngIf="isPrepaid()">Contact for transfers</th>
+          <th *ngIf="isCredit()">Payee for bill payments</th>
+          <td>{{transferContact.name}}</td>
+        </tr>
+        <tr class="left" *ngIf="settings.syncTransfers && transferFund">
+          <th *ngIf="isPrepaid()">Fund for transfers</th>
+          <th *ngIf="isCredit()">Fund for bill payments</th>
+          <td>{{transferFund.name}}</td>
+        </tr>
+        <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferAccount">
+          <th *ngIf="isPrepaid()">Transaction account for transfers</th>
+          <th *ngIf="isCredit()">Transaction account for bill payments</th>
+          <td>{{transferAccount | aplosAccount}}</td>
+        </tr>
+        <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesContact">
+          <th>Contact for fees</th>
+          <td>{{feesContact.name}}</td>
+        </tr>
+        <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesFund">
+          <th>Fund for fees</th>
+          <td>{{feesFund.name}}</td>
+        </tr>
+        <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesAccount">
+          <th>Transaction account for fees</th>
+          <td>{{feesAccount | aplosAccount}}</td>
+        </tr>
+        <tr class="left" *ngIf="settings.syncTaxTagToPex && settings.pexFeesAplosTaxTag">
+          <th>990 tag for fees</th>
+          <td>{{pexFeesAplosTaxTagName}}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <clr-modal [(clrModalOpen)]="disconnectModal">
+      <h3 class="modal-title">Are you sure?</h3>
+      <div class="modal-body">
+        <p>Your data will no longer be synced.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" (click)="disconnectModal = false">No, Stay connected</button>
+        <button type="button" class="btn btn-primary" (click)="onDisconnect()">Yes, Disconnect</button>
+      </div>
     </clr-modal>
- 

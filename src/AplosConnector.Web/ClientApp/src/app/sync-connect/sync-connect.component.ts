@@ -80,6 +80,7 @@ export class SyncConnectComponent implements OnInit {
   isCredit: boolean = false;
 
   settingsModel: SettingsModel = {
+    automaticSync: false,
     syncTransactions: true,
     syncTransfers: false,
     syncInvoices: false,
