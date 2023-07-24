@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading;
 using AplosConnector.Common.Storage;
+using System.Collections.Generic;
 
 namespace AplosConnector.SyncWorker
 {
@@ -27,10 +28,17 @@ namespace AplosConnector.SyncWorker
             var mappings = await _mappingStorage.GetAllMappings(cancellationToken);
             log.LogInformation($"Found {mappings.Count()} mappings.");
 
-            foreach (var mapping in mappings)
+            foreach (var mapping in mappings?.ToList().ToShuffled())
             {
-                log.LogInformation($"Enqueuing {nameof(mapping.PEXBusinessAcctId)} '{mapping.PEXBusinessAcctId}'");
-                await _mappingQueue.EnqueueMapping(mapping, cancellationToken);
+                if (mapping.AutomaticSync)
+                {
+                    log.LogInformation($"Enqueuing {nameof(mapping.PEXBusinessAcctId)} '{mapping.PEXBusinessAcctId}'");
+                    await _mappingQueue.EnqueueMapping(mapping, cancellationToken);
+                }
+                else
+                {
+                    log.LogInformation($"Skipping {nameof(mapping.PEXBusinessAcctId)} '{mapping.PEXBusinessAcctId}'. AutomaticSync is off.");
+                }
             }
 
             log.LogInformation($"C# Timer trigger function finished at: {DateTime.UtcNow}");
