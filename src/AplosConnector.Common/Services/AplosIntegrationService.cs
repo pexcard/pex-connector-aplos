@@ -376,10 +376,16 @@ namespace AplosConnector.Common.Services
                         {
                             merchantName = transaction.MerchantNameNormalized;
                         }
+
                         //Specifying the name here will use the existing contact with that name, otherwise it will create a new one.
                         contact = new AplosApiContactDetail { CompanyName = merchantName, Type = "company" };
                     }
                     else
+                    {
+                        contact = new AplosApiContactDetail { Id = allocationDetail.pexTagValues.AplosContactId };
+                    }
+
+                    if (contact is null && allocationDetail.pexTagValues?.AplosContactId != null)
                     {
                         contact = new AplosApiContactDetail { Id = allocationDetail.pexTagValues.AplosContactId };
                     }

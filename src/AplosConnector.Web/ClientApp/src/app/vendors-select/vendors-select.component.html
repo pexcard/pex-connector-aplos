@@ -213,7 +213,7 @@
           <clr-toggle-container>
             <clr-toggle-wrapper>
               <input type="checkbox" clrToggle [disabled]="isConfiguringSettings" [(ngModel)]="mapVendorCardsToVendors" (ngModelChange)="onMapCardsToVendors()" />
-              <label>Automatically map expenses from vendors cards to vendors in Aplos.</label>
+              <label>Automatically map expenses from vendors cards to contacts in Aplos.</label>
             </clr-toggle-wrapper>
           </clr-toggle-container>
         </div>
@@ -276,7 +276,7 @@
               <span><code>{{countCardsAutoFunding}}</code> card<span *ngIf="countCardsAutoFunding > 1">s</span> will be auto funded out of your remaining account balance of <code>{{availableBalance | currency}}</code>.</span>
             </p>
           </ng-container>
-  
+
           <div class="alert alert-info" role="alert">
             <div class="alert-items">
               <div class="alert-item static">

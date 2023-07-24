@@ -5,6 +5,7 @@ namespace AplosConnector.Common.Models
 {
     public class MappingSettingsModel
     {
+        public bool AutomaticSync { get; set; }
         public bool IsManualSync { get; set; }
         public DateTime ConnectedOn { get; set; }
         public DateTime? LastSync { get; set; }
