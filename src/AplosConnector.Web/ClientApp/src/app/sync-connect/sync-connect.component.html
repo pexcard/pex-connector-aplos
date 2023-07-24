@@ -174,7 +174,7 @@
         <label>Sync Aplos Funds/Accounts to PEX Tags</label>
       </clr-toggle-wrapper>
 
-      <clr-toggle-wrapper *ngIf="isPrepaid()">
+      <clr-toggle-wrapper *ngIf="isPrepaid">
         <input
                type="checkbox"
                clrToggle
@@ -198,7 +198,7 @@
         </label>
       </clr-toggle-wrapper>
 
-      <clr-toggle-wrapper *ngIf="isPrepaid()">
+      <clr-toggle-wrapper *ngIf="isPrepaid">
         <input
                type="checkbox"
                clrToggle
@@ -207,7 +207,7 @@
         <label>Automatically import PEX transfers into Aplos.</label>
       </clr-toggle-wrapper>
 
-      <clr-toggle-wrapper *ngIf="isPrepaid()">
+      <clr-toggle-wrapper *ngIf="isPrepaid">
         <input
                type="checkbox"
                clrToggle
@@ -218,7 +218,7 @@
         </label>
       </clr-toggle-wrapper>
 
-      <clr-toggle-wrapper *ngIf="isCredit()">
+      <clr-toggle-wrapper *ngIf="isCredit">
         <input
                type="checkbox"
                clrToggle
@@ -255,7 +255,7 @@
             Please choose an account you have set up to represent your PEX funds:
             <div class="clr-select-wrapper">
 
-              <select *ngIf="isPrepaid()"
+              <select *ngIf="isPrepaid"
                       id="aplosRegisterAccountNumber"
                       class="clr-select"
                       [(ngModel)]="settingsModel.aplosRegisterAccountNumber"
@@ -264,7 +264,7 @@
                 <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAssetAccounts">{{aplosAccount | aplosAccount}}</option>
               </select>
 
-              <select *ngIf="isCredit()"
+              <select *ngIf="isCredit"
                       id="aplosRegisterAccountNumber"
                       class="clr-select"
                       [(ngModel)]="settingsModel.aplosRegisterAccountNumber"
@@ -521,10 +521,13 @@
                    [clrWizardPageNextDisabled]="!defaultCategoryForm.valid">
 
     <ng-template clrPageNavTitle>Transaction Options</ng-template>
-    <ng-template clrPageTitle>Configure options for transfers and fees.</ng-template>
-
-    <h4 *ngIf="isPrepaid()">Please choose the following items when importing Transfers and Fees into Aplos</h4>
-    <h4 *ngIf="isCredit()">Please choose the following items when importing Bill Payments and Fees into Aplos</h4>
+    <ng-template  clrPageTitle>
+      <span *ngIf="isPrepaid">Configure options for transfers and fees.</span>
+      <span *ngIf="isCredit">Configure options for bill payments and fees.</span>
+    </ng-template>
+    
+    <h4 *ngIf="isPrepaid">Please choose the following items when importing Transfers and Fees into Aplos</h4>
+    <h4 *ngIf="isCredit">Please choose the following items when importing Bill Payments and Fees into Aplos</h4>
 
     <app-loading-placeholder
                              [loadingState]="loadingExpenseCategories"
@@ -566,11 +569,11 @@
       </div>
 
       <div *ngIf="settingsModel.syncTransfers || settingsModel.syncInvoices">
-        <span *ngIf="isPrepaid()">
+        <span *ngIf="isPrepaid">
           <h4>Transfers:</h4>
           <span class="selectLabel">Contact:</span>
         </span>
-        <span *ngIf="isCredit()">
+        <span *ngIf="isCredit">
           <h4>Bill Payments:</h4>
           <span class="selectLabel">Payee:</span>
         </span>
@@ -586,7 +589,7 @@
           </select>
         </div>
         <br>
-        <div *ngIf="isPrepaid()">
+        <div *ngIf="isPrepaid">
           <span class="selectLabel">Fund:</span>
           <div class="clr-select-wrapper">
             <select
