@@ -22,7 +22,7 @@ namespace AplosConnector.SyncWorker
         }
 
         [FunctionName(nameof(SyncProcessor))]
-        public async Task Run([QueueTrigger( Pex2AplosMappingQueue.QUEUE_NAME, Connection = "StorageConnectionString")] Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        public async Task Run([QueueTrigger( Pex2AplosMappingQueue.QUEUE_NAME)] Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             _logger.LogInformation($"Beginning Azure Function {nameof(SyncProcessor)} for {nameof(mapping.PEXBusinessAcctId)} {mapping.PEXBusinessAcctId}.");
 

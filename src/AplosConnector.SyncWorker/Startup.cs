@@ -84,11 +84,13 @@ namespace AplosConnector.SyncWorker
             builder.Services.AddSingleton<IVendorCardStorage>(provider => new VendorCardStorage(vendorCardTableClient,
                 provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardStorage>>()));
 
-            builder.Services.AddSingleton(_ => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
-            
             var queueServiceClient = new QueueServiceClient(storageConnectionString);
             builder.Services.TryAddSingleton(queueServiceClient);
-            
+
+            var pex2AplosMappingQueueClient = queueServiceClient.GetQueueClient(Pex2AplosMappingQueue.QUEUE_NAME);
+            pex2AplosMappingQueueClient.CreateIfNotExistsAsync();
+            builder.Services.AddSingleton(_ => new Pex2AplosMappingQueue(pex2AplosMappingQueueClient));
+
             builder.Services.AddScoped<IAccessTokenDecryptor>(provider => new AplosAccessTokenDecryptor());
 
             builder.Services.AddSingleton(provider =>

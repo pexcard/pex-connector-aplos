@@ -30,6 +30,7 @@ using AplosConnector.Common.Storage;
 using AplosConnector.Common.VendorCards;
 using Azure.Data.Tables;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Azure.Storage.Queues;
 
 namespace AplosConnector.Web
 {
@@ -98,8 +99,13 @@ namespace AplosConnector.Web
             services.AddSingleton<IVendorCardStorage>(provider => new VendorCardStorage(vendorCardTableClient,
                 provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardStorage>>()));
 
-            services.AddSingleton(_ => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
-            
+            var queueServiceClient = new QueueServiceClient(storageConnectionString);
+            services.TryAddSingleton(queueServiceClient);
+
+            var pex2AplosMappingQueueClient = queueServiceClient.GetQueueClient(Pex2AplosMappingQueue.QUEUE_NAME);
+            pex2AplosMappingQueueClient.CreateIfNotExistsAsync();
+            services.AddSingleton(_ => new Pex2AplosMappingQueue(pex2AplosMappingQueueClient));
+
             services.AddScoped<IVendorCardService, VendorCardService>();
             
             services.AddScoped<IAccessTokenDecryptor>(_ => new AplosAccessTokenDecryptor());
