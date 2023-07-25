@@ -124,7 +124,7 @@ namespace AplosConnector.Web
                 provider.GetService<SyncHistoryStorage>(),
                 provider.GetService<Pex2AplosMappingStorage>(),
                 provider.GetService<SyncSettingsModel>(),
-                provider.GetService<VendorCardStorage>()));
+                provider.GetService<IVendorCardStorage>()));
 
             services.AddCors(options =>
             {
