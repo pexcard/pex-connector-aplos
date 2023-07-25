@@ -384,6 +384,11 @@ namespace AplosConnector.Common.Services
                     {
                         contact = new AplosApiContactDetail { Id = allocationDetail.pexTagValues.AplosContactId };
                     }
+
+                    if (contact is null && allocationDetail.pexTagValues?.AplosContactId != default)
+                    {
+                        contact = new AplosApiContactDetail { Id = allocationDetail.pexTagValues.AplosContactId };
+                    }
                 }
             }
 
