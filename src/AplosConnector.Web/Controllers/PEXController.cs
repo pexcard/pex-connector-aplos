@@ -220,7 +220,7 @@ namespace AplosConnector.Web.Controllers
                 }
                 else
                 {
-                    await _aplosIntegrationService.GetAplosAccounts(mapping, null, cancellationToken);
+                    connectionDetail.AplosConnection = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping, cancellationToken);
                 }
             }
             catch (Exception)
