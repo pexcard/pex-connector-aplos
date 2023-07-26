@@ -17,15 +17,15 @@
     </div>
   </div>
 </div>
-<div class="clr-row" *ngIf="settings">
+<div class="clr-row">
   <div class="clr-col clr-col-sm-6">
     <div>
       <h2> <img src="../assets/Aplos-Logo-White.png" alt="Aplos logo" class="aplosLogo"> Connect</h2>
       <hr />
-      <div class="clr-row">
+      <div *ngIf="settings" class="clr-row">
         <div class="clr-col-auto">
           <clr-toggle-wrapper class="auto-sync-toggle">
-            <input type="checkbox" clrToggle [(ngModel)]="settings.automaticSync" (ngModelChange)="onAutomaticSyncToggled()" />
+            <input type="checkbox" clrToggle [(ngModel)]="settings.automaticSync" [disabled]="!settings.automaticSync && (!connection?.pexConnection || !connection?.aplosConnection)" (ngModelChange)="onAutomaticSyncToggled()" />
             <label>
               <strong>Auto sync</strong>
               <span>Sync transactions on an automatic schedule (every 24 hours)</span>
@@ -34,30 +34,34 @@
         </div>
       </div>
       <hr />
-      <div class="clr-row">
-        <div class="clr-col-1" style="padding-right:0; display: flex; justify-content: flex-end; padding-top: 4px;">
-          <clr-icon *ngIf="pexConnectionDetail.pexConnection" shape="check" size="md" role="img" class="is-success"></clr-icon>
-          <clr-icon *ngIf="!pexConnectionDetail.pexConnection" shape="times-circle" size="md" role="img" class="is-error"></clr-icon>
-        </div>
-        <div class="clr-col-11">
+      <div *ngIf="connection" class="clr-row">
+        <div class="clr-col-auto">
           <strong>
-            <span *ngIf="pexConnectionDetail.pexConnection">Valid connection</span>
-            <span *ngIf="!pexConnectionDetail.pexConnection">Invalid connection</span>
+            <span *ngIf="connection.pexConnection && connection.aplosConnection">
+              <clr-icon *ngIf="connection.pexConnection" shape="check" size="md" role="img" class="is-success"></clr-icon>
+              Valid connections
+            </span>
+            <span *ngIf="!connection.pexConnection">
+              <clr-icon shape="times-circle" size="md" role="img" class="is-error"></clr-icon>
+              Invalid PEX connection
+            </span>
+            <span *ngIf="!connection.aplosConnection">
+              <clr-icon shape="times-circle" size="md" role="img" class="is-error"></clr-icon>
+              Invalid APLOS connection
+            </span>
           </strong>
-          <ul>
-            <li><strong>Name:</strong> {{pexConnectionDetail.name ? pexConnectionDetail.name : "Unknown"}}</li>
-            <li><strong>Email:</strong> {{pexConnectionDetail.email ? pexConnectionDetail.email : "Unknown"}}</li>
+          <ul *ngIf="connection.pexConnection && connection.aplosConnection">
+            <li><strong>Name:</strong> {{connection.name ? connection.name : "Unknown"}}</li>
+            <li><strong>Email:</strong> {{connection.email ? connection.email : "Unknown"}}</li>
           </ul>
         </div>
       </div>
       <hr />
-      <div class="clr-row">
-        <div class="clr-col-11 clr-offset-1">
-          <strong>Status:</strong> <span *ngIf="!pexConnectionDetail.pexConnection"> Idle</span>
-          <span *ngIf="pexConnectionDetail.pexConnection"> Active</span><br />
+      <div *ngIf="connection" class="clr-row">
+        <div class="clr-col-auto">
           <strong>Latest Sync: </strong>
-          <span *ngIf="pexConnectionDetail.lastSync">{{ pexConnectionDetail.lastSync | date:"d MMM y, hh:mm a" }}</span>
-          <span *ngIf="!pexConnectionDetail.lastSync">Never</span>
+          <span *ngIf="connection.lastSync">{{ connection.lastSync | date:"d MMM y, hh:mm a" }}</span>
+          <span *ngIf="!connection.lastSync">Never</span>
         </div>
       </div>
       <hr />
