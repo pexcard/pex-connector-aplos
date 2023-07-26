@@ -4,3 +4,12 @@
     width: 120px;
     margin-bottom: 2px;
 }
+
+.auto-sync-toggle {
+  height: unset;
+}
+.auto-sync-toggle>label {
+  height: unset;
+  display: flex;
+  flex-direction: column;
+}

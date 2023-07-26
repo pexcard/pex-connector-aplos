@@ -1,6 +1,5 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-
 import { ExpenseAccountMappingModel, FundingSource, MappingService, SettingsModel, TagMappingModel } from '../services/mapping.service';
 import { AuthService } from '../services/auth.service';
 import { AplosService, AplosPreferences, AplosAccount, AplosObject, AplosApiTaxTagCategoryDetail } from '../services/aplos.service';
@@ -19,7 +18,7 @@ export class SyncManageComponent implements OnInit {
   sessionId: string = '';
   settings: SettingsModel;
   vendorName: string;
-  pexConnectionDetail: PexConnectionDetailModel | {} = {};
+  connection: PexConnectionDetailModel;
   refreshingPexAccount: boolean = false;
   paymentMethod: string;
   paymentAccount: string;
@@ -94,7 +93,7 @@ export class SyncManageComponent implements OnInit {
   private getPexConnectionDetail() {
     this.pex.getConnectionAccountDetail(this.sessionId)
       .subscribe(result => {
-        this.pexConnectionDetail = result;
+        this.connection = result;
       });
   }
 

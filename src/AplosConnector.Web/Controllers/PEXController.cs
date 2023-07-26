@@ -13,6 +13,7 @@ using AplosConnector.Common.Storage;
 using Microsoft.Extensions.Logging;
 using LazyCache;
 using AplosConnector.Common.VendorCards;
+using AplosConnector.Common.Services.Abstractions;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -26,6 +27,7 @@ namespace AplosConnector.Web.Controllers
         private readonly IVendorCardService _vendorCardService;
         private readonly ILogger<PexController> _logger;
         private readonly IAppCache _cache;
+        private readonly IAplosIntegrationService _aplosIntegrationService;
 
         public PexController(
             IPexApiClient pexApiClient,
@@ -34,7 +36,8 @@ namespace AplosConnector.Web.Controllers
             PexOAuthSessionStorage pexOAuthSessionStorage,
             Pex2AplosMappingStorage pex2AplosMappingStorage,
             ILogger<PexController> logger,
-            IAppCache cache)
+            IAppCache cache,
+            IAplosIntegrationService aplosIntegrationService)
         {
             _pexApiClient = pexApiClient;
             _vendorCardStorage = vendorCardStorage;
@@ -43,6 +46,7 @@ namespace AplosConnector.Web.Controllers
             _pex2AplosMappingStorage = pex2AplosMappingStorage;
             _logger = logger;
             _cache = cache;
+            _aplosIntegrationService = aplosIntegrationService;
         }
 
         [HttpGet, Route("Validity")]
@@ -161,7 +165,7 @@ namespace AplosConnector.Web.Controllers
         public async Task<ActionResult<PexConnectionDetailModel>> GetPexConnectionDetail(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
-            
+
             var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (session == null) return Unauthorized();
 
@@ -216,22 +220,22 @@ namespace AplosConnector.Web.Controllers
                 }
                 else
                 {
-                    connectionDetail.AplosConnection = true;
-
-                    try
-                    {
-                        var aplosVendorCardOrders = await _vendorCardStorage.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
-                        connectionDetail.VendorsSetup = aplosVendorCardOrders?.Count > 0;
-                    }
-                    catch (Exception)
-                    {
-                        connectionDetail.VendorsSetup = false;
-                    }
+                    connectionDetail.AplosConnection = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping, cancellationToken);
                 }
             }
             catch (Exception)
             {
                 connectionDetail.AplosConnection = false;
+            }
+
+            try
+            {
+                var aplosVendorCardOrders = await _vendorCardStorage.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
+                connectionDetail.VendorsSetup = aplosVendorCardOrders?.Count > 0;
+            }
+            catch (Exception)
+            {
+                connectionDetail.VendorsSetup = false;
             }
 
             return Ok(connectionDetail);
