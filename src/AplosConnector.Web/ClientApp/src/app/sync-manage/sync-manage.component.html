@@ -23,13 +23,13 @@
       <h2> <img src="../assets/Aplos-Logo-White.png" alt="Aplos logo" class="aplosLogo"> Connect</h2>
       <hr />
       <div class="clr-row">
-        <div class="clr-col-3">
-          <strong>Auto sync</strong>
-        </div>
-        <div class="clr-col-9">
-          <clr-toggle-wrapper>
+        <div class="clr-col-auto">
+          <clr-toggle-wrapper class="auto-sync-toggle">
             <input type="checkbox" clrToggle [(ngModel)]="settings.automaticSync" (ngModelChange)="onAutomaticSyncToggled()" />
-            <label>Sync transactions on an automatic schedule (24 hours)</label>
+            <label>
+              <strong>Auto sync</strong>
+              <span>Sync transactions on an automatic schedule (every 24 hours)</span>
+            </label>
           </clr-toggle-wrapper>
         </div>
       </div>
