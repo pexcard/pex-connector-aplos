@@ -37,115 +37,110 @@
     </clr-wizard-page>
 
     <clr-wizard-page *ngIf="isAuthenticated && !isPexAccountLinked && !isFirstInstalation"
-    clrWizardPagePreventDefault="true"
-    [clrWizardPagePreventDefault]="true"
-    [clrWizardPageNextDisabled]="true"
-    (clrWizardPageOnCancel)="preventCancel()">
+                     clrWizardPagePreventDefault="true"
+                     [clrWizardPagePreventDefault]="true"
+                     [clrWizardPageNextDisabled]="true"
+                     (clrWizardPageOnCancel)="preventCancel()">
 
-    <ng-template clrPageTitle>Connect to PEX</ng-template>
-    <p>{{businessName}} is currently logged in as {{pexAdminEmailAccount}}. Click the button below to switch to your PEX credentials.</p>
-    <p></p>
-    <app-loading-placeholder [loadingState]="verifyingPexAuthentication" [errorState]="false"></app-loading-placeholder>
-    <button class="btn btn-primary" (click)="onUseCurrentPexAccount()" *ngIf="!verifyingPexAuthentication">USE MY PEX CREDENTIALS</button>
-  </clr-wizard-page>
+      <ng-template clrPageTitle>Connect to PEX</ng-template>
+      <p>{{businessName}} is currently logged in as {{pexAdminEmailAccount}}. Click the button below to switch to your PEX credentials.</p>
+      <p></p>
+      <app-loading-placeholder [loadingState]="verifyingPexAuthentication" [errorState]="false"></app-loading-placeholder>
+      <button class="btn btn-primary" (click)="onUseCurrentPexAccount()" *ngIf="!verifyingPexAuthentication">USE MY PEX CREDENTIALS</button>
+    </clr-wizard-page>
 
-  <clr-wizard-page
-    clrWizardPagePreventDefault="true"
-    (clrWizardPageOnCommit)="onAplosCredentialsCommit()"
-    *ngIf="isAuthenticated && (settingsModel.aplosAuthenticationMode === 0 || (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl))"
-    [clrWizardPagePreventDefault]="true"
-    (clrWizardPageOnCancel)="onCloseWizard()"
-    [clrWizardPageNextDisabled]="!aplosServiceAccountForm.valid
-                   || (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl)"
-  >
-    <ng-template clrPageTitle>Connect to Aplos</ng-template>
+    <clr-wizard-page
+                     clrWizardPagePreventDefault="true"
+                     (clrWizardPageOnCommit)="onAplosCredentialsCommit()"
+                     *ngIf="isAuthenticated && (settingsModel.aplosAuthenticationMode === 0 || (aplosAuthenticationStatus && !aplosAuthenticationStatus.isAuthenticated))"
+                     [clrWizardPagePreventDefault]="true"
+                     (clrWizardPageOnCancel)="onCloseWizard()"
+                     [clrWizardPageNextDisabled]="!aplosServiceAccountForm.valid || (aplosAuthenticationStatus && !aplosAuthenticationStatus.isAuthenticated)">
+      <ng-template clrPageTitle>Connect to Aplos</ng-template>
 
-    <app-loading-placeholder
-      [loadingState]="savingAplosCredentials"
-      [errorState]="errorSavingAplosCredentials"
-      errorText="We were unable to connect to Aplos with the information you provided."
-      [allowRetry]="false"
-    ></app-loading-placeholder>
+      <app-loading-placeholder
+                               [loadingState]="savingAplosCredentials"
+                               [errorState]="errorSavingAplosCredentials"
+                               errorText="We were unable to connect to Aplos with the information you provided."
+                               [allowRetry]="false"></app-loading-placeholder>
 
-    <form
-      clrForm
-      #aplosServiceAccountForm="ngForm"
-      [class.hide]="!savingAplosCredentials"
-    >
-      <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.aplosAuthenticationMode === 0">
-        <p>
-          To obtain a client id, you must have an Aplos account and a user with administrative permissions.
+      <form
+            clrForm
+            #aplosServiceAccountForm="ngForm"
+            [class.hide]="!savingAplosCredentials">
+        <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.aplosAuthenticationMode === 0">
+          <p>
+            To obtain a client id, you must have an Aplos account and a user with administrative permissions.
 
-          Assuming you have these, you can generate a client id and key pair from the <a href="https://www.aplos.com/aws/sm">settings</a> page.
-        </p>
-        <clr-input-container>
-          <label>Client ID</label>
-          <input
-            clrInput
-            required
-            placeholder=""
-            name="aplosClientId"
-            [(ngModel)]="settingsModel.aplosClientId"
-            style="width: 500px" />
-          <clr-control-error>You must enter a Client ID</clr-control-error>
-        </clr-input-container>
+            Assuming you have these, you can generate a client id and key pair from the <a href="https://www.aplos.com/aws/sm">settings</a> page.
+          </p>
+          <clr-input-container>
+            <label>Client ID</label>
+            <input
+                   clrInput
+                   required
+                   placeholder=""
+                   name="aplosClientId"
+                   [(ngModel)]="settingsModel.aplosClientId"
+                   style="width: 500px" />
+            <clr-control-error>You must enter a Client ID</clr-control-error>
+          </clr-input-container>
 
-        <clr-input-container>
-          <label>Private Key</label>
-          <input
-            clrInput
-            required
-            placeholder=""
-            name="aplosPrivateKey"
-            style="width: 500px"
-            [(ngModel)]="settingsModel.aplosPrivateKey" />
-          <clr-control-error>You must enter a Private Key</clr-control-error>
-        </clr-input-container>
-      </div>
+          <clr-input-container>
+            <label>Private Key</label>
+            <input
+                   clrInput
+                   required
+                   placeholder=""
+                   name="aplosPrivateKey"
+                   style="width: 500px"
+                   [(ngModel)]="settingsModel.aplosPrivateKey" />
+            <clr-control-error>You must enter a Private Key</clr-control-error>
+          </clr-input-container>
+        </div>
 
-      <div *ngIf="aplosAuthenticationStatus && !aplosAuthenticationStatus.hasAplosAccountId" class="alert alert-warning" role="alert">
-        <div class="alert-items">
-          <div class="alert-item static">
-            <div class="alert-icon-wrapper">
-              <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
+        <div *ngIf="aplosAuthenticationStatus && !aplosAuthenticationStatus.hasAplosAccountId" class="alert alert-warning" role="alert">
+          <div class="alert-items">
+            <div class="alert-item static">
+              <div class="alert-icon-wrapper">
+                <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
+              </div>
+              <span class="alert-text">
+                Sorry, we don't seem to have your Aplos customer ID on file so can't connect your PEX account to Aplos.
+                <br />
+                <br />
+                Please contact <a href="https://www.aplos.com/support/">Aplos Support</a> and ask that your customer ID be sent to PEX. Once we have it, we'll contact you so that you know when you're able to complete the account linking process.
+              </span>
             </div>
-            <span class="alert-text">
-              Sorry, we don't seem to have your Aplos customer ID on file so can't connect your PEX account to Aplos.
-              <br />
-              <br />
-              Please contact <a href="https://www.aplos.com/support/">Aplos Support</a> and ask that your customer ID be sent to PEX.  Once we have it, we'll contact you so that you know when you're able to complete the account linking process.
-            </span>
           </div>
         </div>
-      </div>
 
-      <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl">
-        <p>
-          Click the button below to connect PEX with your Aplos account.
-        </p>
+        <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl">
+          <p>
+            Click the button below to connect PEX with your Aplos account.
+          </p>
 
-        <p></p>
+          <p></p>
 
-        <app-loading-placeholder
-        [loadingState]="verifyingAplosAuthentication"
-        [errorState]="false"
-        ></app-loading-placeholder>
+          <app-loading-placeholder
+                                   [loadingState]="verifyingAplosAuthentication"
+                                   [errorState]="false"></app-loading-placeholder>
 
-        <clr-spinner *ngIf="redirectingToAplosAuth">
+          <clr-spinner *ngIf="redirectingToAplosAuth">
             Saving...
-        </clr-spinner>
+          </clr-spinner>
 
-        <div class="clr-row clr-justify-content-around" *ngIf="!verifyingAplosAuthentication && !redirectingToAplosAuth">
-          <div class="clr-col-6">
-            <button type="button" class="btn btn-primary " aria-label="add" (click)="onAplosPartnerVerification()">
-              <clr-icon shape="link" size="36"></clr-icon>
-              <span>Connect to Aplos</span>
-            </button>
+          <div class="clr-row clr-justify-content-around" *ngIf="!verifyingAplosAuthentication && !redirectingToAplosAuth">
+            <div class="clr-col-6">
+              <button type="button" class="btn btn-primary " aria-label="add" (click)="onAplosPartnerVerification()">
+                <clr-icon shape="link" size="36"></clr-icon>
+                <span>Connect to Aplos</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </form>
-  </clr-wizard-page>
+      </form>
+    </clr-wizard-page>
 
     <clr-wizard-page *ngIf="connectionDetails?.pexConnection && connectionDetails?.aplosConnection"
                      (clrWizardPageOnLoad)="onSelectVendorsWizardPageLoad()"
@@ -156,15 +151,15 @@
       <div class="text-weight-500">You can create {{maxVendorCards | number}} vendor cards at a time. You have {{(connectionDetails.vendorCardsAvailable - selectedVendors.length) | number}} cards available for creation.</div>
       <div class="p7 text-margin">Hold cmnd+click (mac) or ctrl/shift+click (win) for multi selection.</div>
       <ng-container *ngIf="!isLoadingVendors">
-          <div class="alert alert-info" role="alert">
-            <div class="alert-items">
-              <div class="alert-item static">
-                <div class="alert-icon-wrapper">
-                  <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
-                </div>
-                <div>You can save 1% of all vendor spend with a PEX Vendor Card.</div>
+        <div class="alert alert-info" role="alert">
+          <div class="alert-items">
+            <div class="alert-item static">
+              <div class="alert-icon-wrapper">
+                <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
               </div>
+              <div>You can save 1% of all vendor spend with a PEX Vendor Card.</div>
             </div>
+          </div>
         </div>
         <clr-dropdown [clrCloseMenuOnItemClick]="true">
           <button class="btn btn-link" clrDropdownTrigger>SORT BY
