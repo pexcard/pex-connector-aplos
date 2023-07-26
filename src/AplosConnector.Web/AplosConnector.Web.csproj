@@ -102,10 +102,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Remove="appSettings.Development.json" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Remove="ClientApp\.vscode\launch.json" />
   </ItemGroup>
 
