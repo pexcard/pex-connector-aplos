@@ -377,8 +377,10 @@ namespace AplosConnector.Common.Services
                             merchantName = transaction.MerchantNameNormalized;
                         }
 
-                        //Specifying the name here will use the existing contact with that name, otherwise it will create a new one.
-                        contact = new AplosApiContactDetail { CompanyName = merchantName, Type = "company" };
+                        if (!string.IsNullOrEmpty(merchantName))
+                        {
+                            contact = new AplosApiContactDetail { CompanyName = merchantName, Type = "company" };
+                        }
                     }
                     else
                     {
@@ -466,12 +468,11 @@ namespace AplosConnector.Common.Services
             using (_logger.BeginScope(GetLoggingScopeForSync(mapping)))
             {
 
-                //Let's refresh Aplos API tokens before sync start and interrupt sync processor in case of invalidity
+                // Let's refresh Aplos API tokens before sync start and interrupt sync processor in case of invalidity
                 var aplosAccessToken = await GetAplosAccessToken(mapping, cancellationToken);
                 if (string.IsNullOrEmpty(aplosAccessToken))
                 {
-                    _logger.LogCritical(
-                        $"Integration for business {mapping.PEXBusinessAcctId} is not working. access API token is invalid");
+                    _logger.LogCritical($"Integration for business {mapping.PEXBusinessAcctId} is not working. Aplos API token is invalid.");
                     return;
                 }
 

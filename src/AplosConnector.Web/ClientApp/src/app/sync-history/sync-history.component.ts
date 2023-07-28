@@ -11,6 +11,7 @@ export class SyncHistoryComponent implements OnInit {
   sessionId = '';
   settings: SettingsModel;
   syncResults: SyncResultModel[];
+  syncing = false;
   loadingHistory = false;
 
   constructor(private auth: AuthService, private mapping: MappingService) { }
@@ -34,7 +35,7 @@ export class SyncHistoryComponent implements OnInit {
     }
     );
   }
-  
+
   getSyncResults() {
     this.loadingHistory = true;
     this.mapping.getSyncResults(this.sessionId).subscribe(
@@ -49,12 +50,11 @@ export class SyncHistoryComponent implements OnInit {
   }
 
   sync() {
+    this.syncing = true;
     this.mapping.sync(this.sessionId).subscribe(
       () => {
-        this.loadingHistory = true;
-        setTimeout(() => {
-          this.getSyncResults();
-        }, 60000);
+        this.syncing = false;
+        this.getSyncResults();
       }
     );
   }

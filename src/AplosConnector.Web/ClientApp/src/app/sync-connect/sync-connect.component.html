@@ -50,7 +50,7 @@
                    *ngIf="isAuthenticated && (settingsModel.aplosAuthenticationMode === 0 || (aplosAuthenticationStatus && !aplosAuthenticationStatus.isAuthenticated))"
                    (clrWizardPageOnCancel)="onCloseWizard()"
                    [clrWizardPageNextDisabled]="!aplosServiceAccountForm.valid
-                   || (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl)">
+                   || (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl) || (aplosAuthenticationStatus && !aplosAuthenticationStatus.isAuthenticated)">
 
     <ng-template clrPageNavTitle>Connect to Aplos</ng-template>
     <ng-template clrPageTitle>Connect to Aplos</ng-template>

@@ -1,15 +1,14 @@
 <h4>Sync history</h4>
 <p>
-  Data is automatically synchronized between Aplos and PEX daily. 
+  Data is automatically synchronized between Aplos and PEX daily.
 </p>
 
-<button
-  type="button"
-  class="btn btn-icon btn-primary-outline"
-  aria-label="sync"
-  (click)="sync()" 
-  [disabled]="loadingHistory"
-  >
+<button type="button"
+        class="btn btn-icon btn-primary-outline"
+        aria-label="sync"
+        (click)="sync()"
+        [clrLoading]="syncing"
+        [disabled]="syncing || loadingHistory">
   <clr-icon shape="sync"></clr-icon> SYNC NOW
 </button>
 
@@ -17,7 +16,7 @@
   <span *ngIf="loadingHistory" class="spinner spinner-inline">
     Loading...
   </span>
-  
+
   <table class="table">
     <thead>
       <th>Sync Time</th>
@@ -30,7 +29,7 @@
         <td>{{ item.createdUtc | date:"yyyy-MM-dd hh:mm a" }}</td>
         <td>{{item.syncType}}</td>
         <td><span
-            [ngClass]="{'label': true, 'label-success': item.syncStatus==='Success', 'label-warning': item.syncStatus==='Partial', 'label-danger': item.syncStatus==='Failed'}">{{item.syncStatus}}</span>
+                [ngClass]="{'label': true, 'label-success': item.syncStatus==='Success', 'label-warning': item.syncStatus==='Partial', 'label-danger': item.syncStatus==='Failed'}">{{item.syncStatus}}</span>
         </td>
         <td>
           {{ item.syncedRecords }}
