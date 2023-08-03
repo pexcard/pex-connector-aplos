@@ -18,21 +18,18 @@ namespace AplosConnector.SyncWorker
         private readonly PexOAuthSessionStorage _sessionStorage;
         private readonly IPexApiClient _pexApiClient;
         private readonly List<string> _inUseExternalApiTokens = new();
-        private readonly SyncResultStorage _resultStorage;
         private readonly SyncHistoryStorage _syncHistoryStorage;
         private readonly ILogger<TokenRefresher> _log;
 
         public TokenRefresher(Pex2AplosMappingStorage mappingStorage, 
             PexOAuthSessionStorage sessionStorage, 
             IPexApiClient pexApiClient, 
-            SyncResultStorage resultStorage,
             SyncHistoryStorage syncHistoryStorage,
             ILogger<TokenRefresher> log)
         {
             _mappingStorage = mappingStorage;
             _sessionStorage = sessionStorage;
             _pexApiClient = pexApiClient;
-            _resultStorage = resultStorage;
             _syncHistoryStorage = syncHistoryStorage;
             _log = log;
         }
@@ -112,13 +109,6 @@ namespace AplosConnector.SyncWorker
 
         private async Task CleanupSyncResults(CancellationToken cancellationToken)
         {
-            _log.LogInformation("Cleaning up Sync Results");
-            var syncResults = await _resultStorage.GetOldResults(DateTime.UtcNow.AddYears(-3), cancellationToken);
-            foreach(var result in syncResults)
-            {
-                await _resultStorage.DeleteSyncResult(result, cancellationToken);
-            }
-
             _log.LogInformation("Cleaning up Sync History");
             var syncHistoryResults = await _syncHistoryStorage.GetOldResults(DateTime.UtcNow.AddYears(-3), cancellationToken);
             foreach (var result in syncHistoryResults)

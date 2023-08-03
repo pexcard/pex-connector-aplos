@@ -39,7 +39,6 @@ namespace AplosConnector.Common.Services
         private readonly IAplosApiClientFactory _aplosApiClientFactory;
         private readonly IAplosIntegrationMappingService _aplosIntegrationMappingService;
         private readonly IPexApiClient _pexApiClient;
-        private readonly SyncResultStorage _resultStorage;
         private readonly SyncHistoryStorage _historyStorage;
         private readonly Pex2AplosMappingStorage _mappingStorage;
         private readonly SyncSettingsModel _syncSettings;
@@ -51,7 +50,6 @@ namespace AplosConnector.Common.Services
             IAplosApiClientFactory aplosApiClientFactory,
             IAplosIntegrationMappingService aplosIntegrationMappingService,
             IPexApiClient pexApiClient,
-            SyncResultStorage resultStorage,
             SyncHistoryStorage historyStorage,
             Pex2AplosMappingStorage mappingStorage,
             SyncSettingsModel syncSettings,
@@ -62,7 +60,6 @@ namespace AplosConnector.Common.Services
             _aplosApiClientFactory = aplosApiClientFactory;
             _aplosIntegrationMappingService = aplosIntegrationMappingService;
             _pexApiClient = pexApiClient;
-            _resultStorage = resultStorage;
             _historyStorage = historyStorage;
             _mappingStorage = mappingStorage;
             _syncSettings = syncSettings;
@@ -612,7 +609,6 @@ namespace AplosConnector.Common.Services
                     SyncedRecords = syncCount,
                     SyncNotes = syncNotes
                 };
-                await _resultStorage.CreateAsync(result, cancellationToken);
                 await _historyStorage.CreateAsync(result, cancellationToken);
             }
         }
@@ -660,7 +656,6 @@ namespace AplosConnector.Common.Services
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
             };
-            await _resultStorage.CreateAsync(result, cancellationToken);
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
@@ -815,7 +810,6 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = syncNotes
             };
-            await _resultStorage.CreateAsync(result, cancellationToken);
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
@@ -895,7 +889,6 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = syncNotes
             };
-            await _resultStorage.CreateAsync(result, cancellationToken);
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
@@ -1204,7 +1197,6 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
             };
-            await _resultStorage.CreateAsync(result, cancellationToken);
             await _historyStorage.CreateAsync(result, cancellationToken);
 
             return allCardholderTransactions?.SelectCardAccountFees() ?? new List<TransactionModel>();
@@ -1394,7 +1386,6 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
             };
-            await _resultStorage.CreateAsync(result, cancellationToken);
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
@@ -1581,7 +1572,6 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
             };
-            await _resultStorage.CreateAsync(result, cancellationToken);
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
@@ -1684,7 +1674,6 @@ namespace AplosConnector.Common.Services
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
             };
-            await _resultStorage.CreateAsync(result, cancellationToken);
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 

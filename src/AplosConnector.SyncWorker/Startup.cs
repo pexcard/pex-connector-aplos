@@ -75,10 +75,6 @@ namespace AplosConnector.SyncWorker
             builder.Services.AddSingleton(provider => new Pex2AplosMappingStorage(pex2AplosMappingTableClient,
                 provider.GetService<IStorageMappingService>(), provider.GetService<ILogger<Pex2AplosMappingStorage>>()));
 
-            var syncResultTableClient = tableServiceClient.GetTableClient(SyncResultStorage.TABLE_NAME);
-            syncResultTableClient.CreateIfNotExistsAsync();
-            builder.Services.AddSingleton(_ => new SyncResultStorage(syncResultTableClient));
-
             var syncHistoryTableClient = tableServiceClient.GetTableClient(SyncHistoryStorage.TABLE_NAME);
             syncHistoryTableClient.CreateIfNotExistsAsync();
             builder.Services.AddSingleton(_ => new SyncHistoryStorage(syncHistoryTableClient));
@@ -88,15 +84,13 @@ namespace AplosConnector.SyncWorker
             builder.Services.AddSingleton<IVendorCardStorage>(provider => new VendorCardStorage(vendorCardTableClient,
                 provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardStorage>>()));
 
-            builder.Services.AddSingleton(_ => new Pex2AplosMappingQueue(storageConnectionString).InitQueue());
-            
             var queueServiceClient = new QueueServiceClient(storageConnectionString);
             builder.Services.TryAddSingleton(queueServiceClient);
 
-            var dataMigrationQueueClient = queueServiceClient.GetQueueClient(DataMigrationQueue.QUEUE_NAME);
-            dataMigrationQueueClient.CreateIfNotExistsAsync();
-            builder.Services.AddSingleton(_ => new DataMigrationQueue(storageConnectionString));
-            
+            var pex2AplosMappingQueueClient = queueServiceClient.GetQueueClient(Pex2AplosMappingQueue.QUEUE_NAME);
+            pex2AplosMappingQueueClient.CreateIfNotExistsAsync();
+            builder.Services.AddSingleton(_ => new Pex2AplosMappingQueue(pex2AplosMappingQueueClient));
+
             builder.Services.AddScoped<IAccessTokenDecryptor>(provider => new AplosAccessTokenDecryptor());
 
             builder.Services.AddSingleton(provider =>
@@ -127,7 +121,6 @@ namespace AplosConnector.SyncWorker
                 provider.GetService<IAplosApiClientFactory>(),
                 provider.GetService<IAplosIntegrationMappingService>(),
                 provider.GetService<IPexApiClient>(),
-                provider.GetService<SyncResultStorage>(),
                 provider.GetService<SyncHistoryStorage>(),
                 provider.GetService<Pex2AplosMappingStorage>(),
                 provider.GetService<SyncSettingsModel>(),
