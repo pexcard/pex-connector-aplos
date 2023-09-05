@@ -409,7 +409,7 @@ namespace AplosConnector.Common.Services
             {
                 Contact = contact,
                 Amount = transaction.TransactionAmount,
-                Date = transaction.TransactionTime,
+                Date = transaction.GetPostDate(mapping.PostDateType),
                 Note = aplosTransactionNote,
                 Lines = lines.ToArray(),
             };

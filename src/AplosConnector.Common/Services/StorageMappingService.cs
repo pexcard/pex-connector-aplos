@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using PexCard.Api.Client.Core.Models;
+using System;
 
 namespace AplosConnector.Common.Services
 {
@@ -100,7 +101,8 @@ namespace AplosConnector.Common.Services
                     SyncTransactionsIntervalDays = model.SyncTransactionsIntervalDays,
                     FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays,
                     MapVendorCards = model.MapVendorCards,
-                    UseNormalizedMerchantNames = model.UseNormalizedMerchantNames
+                    UseNormalizedMerchantNames = model.UseNormalizedMerchantNames,
+                    PostDateType = model.PostDateType.ToString(),
                 };
             }
 
@@ -216,6 +218,7 @@ namespace AplosConnector.Common.Services
                     FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays,
                     MapVendorCards = model.MapVendorCards,
                     UseNormalizedMerchantNames = model.UseNormalizedMerchantNames,
+                    PostDateType = !string.IsNullOrEmpty(model.PostDateType) ? Enum.Parse<PostDateType>(model.PostDateType) : PostDateType.Transaction,
                 };
             }
 

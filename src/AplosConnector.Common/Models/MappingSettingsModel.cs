@@ -83,5 +83,7 @@ namespace AplosConnector.Common.Models
         public double? FetchTransactionsIntervalDays { get; set; }
         public bool MapVendorCards { get; set; }
         public bool UseNormalizedMerchantNames { get; set; }
+
+        public PostDateType PostDateType { get; set; }
     }
 }
