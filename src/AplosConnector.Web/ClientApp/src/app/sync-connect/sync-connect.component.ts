@@ -11,7 +11,8 @@ import {
   TagMappingModel,
   AplosAuthenticationStatusModel,
   AplosAuthenticationMode,
-  FundingSource
+  FundingSource,
+  PostDateType
 } from "../services/mapping.service";
 import { AplosService, AplosPreferences, AplosAccount, AplosObject, AplosApiTaxTagCategoryDetail } from "../services/aplos.service";
 import { PexService, PexTagInfoModel, CustomFieldType } from '../services/pex.service';
@@ -79,6 +80,9 @@ export class SyncConnectComponent implements OnInit {
   isPrepaid: boolean = false;
   isCredit: boolean = false;
 
+  public readonly postDateTypeTransaction = PostDateType.Transaction;
+  public readonly postDateTypeSettlement = PostDateType.Settlement;
+
   settingsModel: SettingsModel = {
     automaticSync: false,
     syncTransactions: true,
@@ -117,6 +121,7 @@ export class SyncConnectComponent implements OnInit {
     pexFundingSource: FundingSource.Unknown,
     mapVendorCards: true,
     useNormalizedMerchantNames: true,
+    postDateType: PostDateType.Transaction
   };
 
   getExpenseAccountFormElements() {

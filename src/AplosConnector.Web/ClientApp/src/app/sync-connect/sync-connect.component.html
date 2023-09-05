@@ -295,6 +295,18 @@
                    name="earliestTransactionDateToSync"
                    [(ngModel)]="settingsModel.earliestTransactionDateToSync">
           </clr-date-container>
+          <clr-radio-container clrInline>
+            <label>Post Date</label>
+            <clr-radio-wrapper>
+              <input type="radio" clrRadio name="postDateType" [value]="postDateTypeSettlement" [(ngModel)]="settingsModel.postDateType" required />
+              <label>Settlement Time</label>
+            </clr-radio-wrapper>
+            <clr-radio-wrapper>
+              <input type="radio" clrRadio name="postDateType" [value]="postDateTypeTransaction" [(ngModel)]="settingsModel.postDateType" required />
+              <label>Transaction Time</label>
+            </clr-radio-wrapper>
+            <clr-control-error>A post date type is required.</clr-control-error>
+          </clr-radio-container>
         </div>
       </div>
 

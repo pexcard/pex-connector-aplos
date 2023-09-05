@@ -1,4 +1,5 @@
 ﻿using System;
+using AplosConnector.Common.Models;
 using Azure;
 using Azure.Data.Tables;
 
@@ -71,6 +72,7 @@ namespace AplosConnector.Common.Entities
         public double? FetchTransactionsIntervalDays { get; set; }
         public bool MapVendorCards { get; set; }
         public bool UseNormalizedMerchantNames { get; set; }
+        public string PostDateType { get; set; }
 
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
