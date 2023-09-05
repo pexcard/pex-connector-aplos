@@ -14,7 +14,7 @@ export class MappingService {
     private httpClient: HttpClient,
     @Inject('BASE_URL') private baseUrl: string,
     private cache: CacheRepositoryService
-  ) {}
+  ) { }
 
   private readonly CACHE_KEY_GET_AUTHENTICATION_STATUS = 'mapping.getAplosAuthenticationStatus';
   private readonly CACHE_KEY_GET_SETTINGS = 'mapping.getSettings';
@@ -71,7 +71,7 @@ export class MappingService {
 
   setVendorCardsMapped(sessionId: string, enable: boolean): Observable<boolean> {
     return this.httpClient
-      .put<void>(this.buildUrl(sessionId,'Settings/VendorCardMapping'), enable)
+      .put<void>(this.buildUrl(sessionId, 'Settings/VendorCardMapping'), enable)
       .pipe(retryWithBackoff());
   }
 
@@ -147,6 +147,7 @@ export interface SettingsModel {
 
   mapVendorCards: boolean;
   useNormalizedMerchantNames: boolean;
+  postDateType: PostDateType;
 }
 
 export interface ExpenseAccountMappingModel {
@@ -170,4 +171,9 @@ export enum FundingSource {
   Unknown = 0,
   Prepaid = 1,
   Credit = 2
+}
+
+export enum PostDateType {
+  Transaction = 'transaction',
+  Settlement = 'settlement'
 }
