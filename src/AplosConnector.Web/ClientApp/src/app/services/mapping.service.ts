@@ -174,6 +174,6 @@ export enum FundingSource {
 }
 
 export enum PostDateType {
-  Transaction = 'transaction',
-  Settlement = 'settlement'
+  Transaction = 0,
+  Settlement = 1
 }
