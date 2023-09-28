@@ -179,7 +179,8 @@
           type="checkbox"
           clrToggle
           name="syncTransactions"
-          [(ngModel)]="settingsModel.syncTransactions"/>
+          [(ngModel)]="settingsModel.syncTransactions"
+          (change)="onSyncTransactionChange()"/>
         <label>Automatically import
           <span *ngIf="!settingsModel.syncTransactions">approved</span>
           <div *ngIf="settingsModel.syncTransactions" class="clr-select-wrapper">
@@ -540,8 +541,7 @@
       *ngIf="isAuthenticated && (settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncRebates)"
       (clrWizardPageOnCommit)="onDefaultCategoryCommit()"
       (clrWizardPageOnCancel)="onCloseWizard()"
-      [clrWizardPageNextDisabled]="!defaultCategoryForm.valid
-      || !(settingsModel.syncRebates && settingsModel.pexRebatesAplosContactId > 0 && settingsModel.pexRebatesAplosFundId > 0 && settingsModel.pexRebatesAplosTransactionAccountNumber > 0)">
+      [clrWizardPageNextDisabled]="!defaultCategoryForm.valid">
 
     <ng-template clrPageNavTitle>Transaction Options</ng-template>
     <ng-template  clrPageTitle>

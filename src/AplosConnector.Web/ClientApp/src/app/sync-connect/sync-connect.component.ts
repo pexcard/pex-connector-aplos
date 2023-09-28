@@ -616,6 +616,12 @@ export class SyncConnectComponent implements OnInit {
     });
   }
 
+  onSyncTransactionChange() {
+    if (!this.settingsModel.syncTransactions) {
+      this.settingsModel.syncRebates = false;
+    }
+  }
+
   getAvailableTags() {
     this.availablePexTags = [];
     this.pex.getTags(this.sessionId).subscribe(
