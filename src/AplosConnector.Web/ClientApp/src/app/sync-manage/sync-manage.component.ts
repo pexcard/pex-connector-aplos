@@ -46,6 +46,10 @@ export class SyncManageComponent implements OnInit {
   feesAccount: AplosObject;
   aplosTagCategories: AplosObject[];
 
+  rebatesContact: AplosObject;
+  rebatesFund: AplosObject;
+  rebatesAccount: AplosObject;
+
   AplosPreferences: AplosPreferences = { isClassEnabled: false, isLocationEnabled: false, locationFieldName: '' };
   isPrepaid: boolean = false;
   isCredit: boolean = false;
@@ -89,6 +93,7 @@ export class SyncManageComponent implements OnInit {
         this.validatePexSetup();
         this.getTransferInfo();
         this.getFeesInfo();
+        this.getRebatesInfo();
       }
     }
     );
@@ -231,6 +236,31 @@ export class SyncManageComponent implements OnInit {
         account => {
           console.log('got fees account', account);
           this.feesAccount = { ...account };
+        }
+      );
+    }
+  }
+
+  getRebatesInfo() {
+    if (this.settings.syncRebates) {
+      this.aplos.getContact(this.sessionId, this.settings.pexRebatesAplosContactId).subscribe(
+        contact => {
+          console.log('got rebates contact', contact);
+          this.rebatesContact = { ...contact };
+        }
+      );
+
+      this.aplos.getFund(this.sessionId, this.settings.pexRebatesAplosFundId).subscribe(
+        fund => {
+          console.log('got rebates fund', fund);
+          this.rebatesFund = { ...fund };
+        }
+      );
+
+      this.aplos.getAccount(this.sessionId, this.settings.pexRebatesAplosTransactionAccountNumber).subscribe(
+        account => {
+          console.log('got rebates account', account);
+          this.rebatesAccount = { ...account };
         }
       );
     }

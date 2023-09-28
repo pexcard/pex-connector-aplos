@@ -125,6 +125,13 @@
             </td>
           </tr>
           <tr *ngIf="isPrepaid">
+            <th>Sync rebates</th>
+            <td>
+              <clr-icon *ngIf="settings.syncRebates" shape="success-standard" class="is-solid is-success"></clr-icon>
+              <clr-icon *ngIf="!settings.syncRebates" shape="ban" class="is-solid is-error"></clr-icon>
+            </td>
+          </tr>
+          <tr *ngIf="isPrepaid">
             <th>Sync transfers</th>
             <td>
               <clr-icon
@@ -285,7 +292,7 @@
           </tr>
         </table>
   
-        <table class="table table-vertical" *ngIf="settings.syncTransfers || settings.syncInvoices || settings.syncPexFees">
+        <table class="table table-vertical" *ngIf="settings.syncTransfers || settings.syncInvoices || settings.syncPexFees || settings.syncRebates">
           <tbody>
             <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferContact">
               <th *ngIf="isPrepaid">Contact for transfers</th>
@@ -318,17 +325,17 @@
               <th>990 tag for fees</th>
               <td>{{pexFeesAplosTaxTagName}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && feesContact">
+            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates) && rebatesContact">
               <th>Contact for rebates</th>
-              <td>{{feesContact.name}}</td>
+              <td>{{rebatesContact.name}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && feesFund">
+            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates) && rebatesFund">
               <th>Fund for rebates</th>
-              <td>{{feesFund.name}}</td>
+              <td>{{rebatesFund.name}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && feesAccount">
+            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates) && rebatesAccount">
               <th>Transaction account for rebates</th>
-              <td>{{feesAccount | aplosAccount}}</td>
+              <td>{{rebatesAccount | aplosAccount}}</td>
             </tr>
           </tbody>
         </table>
