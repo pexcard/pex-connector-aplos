@@ -28,6 +28,7 @@ namespace AplosConnector.Common.Entities
         public bool SyncTransfers { get; set; }
         public bool SyncInvoices { get; set; }
         public bool SyncPexFees { get; set; }
+        public bool SyncRebates { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
         public DateTime? EndDateUtc { get; set; }
@@ -61,6 +62,10 @@ namespace AplosConnector.Common.Entities
         public int PexFeesAplosFundId { get; set; }
         public string PexFeesAplosTransactionAccountNumber { get; set; }
         public string PexFeesAplosTaxTagId { get; set; }
+
+        public int PexRebatesAplosContactId { get; set; }
+        public int PexRebatesAplosFundId { get; set; }
+        public string PexRebatesAplosTransactionAccountNumber { get; set; }
 
         public string ExpenseAccountMappings { get; set; }
         public string TagMappings { get; set; }

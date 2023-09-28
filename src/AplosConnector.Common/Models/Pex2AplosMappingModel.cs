@@ -24,6 +24,7 @@ namespace AplosConnector.Common.Models
             SyncTransfers = mapping.SyncTransfers;
             SyncPexFees = mapping.SyncPexFees;
             SyncInvoices = mapping.SyncInvoices;
+            SyncRebates = mapping.SyncRebates;
             LastSyncUtc = mapping.LastSync;
             EarliestTransactionDateToSync = mapping.EarliestTransactionDateToSync.ToUniversalTime();
             if (mapping.EndDateUtc != null)
@@ -57,6 +58,10 @@ namespace AplosConnector.Common.Models
             PexFeesAplosTransactionAccountNumber = mapping.PexFeesAplosTransactionAccountNumber;
             PexFeesAplosTaxTagId = mapping.PexFeesAplosTaxTag;
 
+            PexRebatesAplosContactId = mapping.PexRebatesAplosContactId;
+            PexRebatesAplosFundId = mapping.PexRebatesAplosFundId;
+            PexRebatesAplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber;
+
             PexFundsTagId = mapping.PexFundsTagId;
             SyncFundsToPex = mapping.SyncFundsToPex;
 
@@ -89,6 +94,7 @@ namespace AplosConnector.Common.Models
                 SyncTransfers = SyncTransfers,
                 SyncInvoices = SyncInvoices,
                 SyncPexFees = SyncPexFees,
+                SyncRebates = SyncRebates,
                 LastSync = LastSyncUtc,
                 EarliestTransactionDateToSync = EarliestTransactionDateToSync,
                 EndDateUtc = EndDateUtc,
@@ -122,6 +128,10 @@ namespace AplosConnector.Common.Models
                 PexFeesAplosTransactionAccountNumber = PexFeesAplosTransactionAccountNumber,
                 PexFeesAplosTaxTag = PexFeesAplosTaxTagId,
 
+                PexRebatesAplosContactId = PexRebatesAplosContactId,
+                PexRebatesAplosFundId = PexRebatesAplosFundId,
+                PexRebatesAplosTransactionAccountNumber = PexRebatesAplosTransactionAccountNumber,
+
                 SyncFundsToPex = SyncFundsToPex,
 
                 ExpenseAccountMappings = ExpenseAccountMappings,
@@ -150,6 +160,7 @@ namespace AplosConnector.Common.Models
         public bool SyncTransfers { get; set; }
         public bool SyncPexFees { get; set; }
         public bool SyncInvoices { get; set; }
+        public bool SyncRebates { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
         public DateTime? EndDateUtc { get; set; }
@@ -179,6 +190,10 @@ namespace AplosConnector.Common.Models
         public int PexFeesAplosFundId { get; set; }
         public string PexFeesAplosTaxTagId { get; set; }
         public decimal PexFeesAplosTransactionAccountNumber { get; set; }
+
+        public int PexRebatesAplosContactId { get; set; }
+        public int PexRebatesAplosFundId { get; set; }
+        public decimal PexRebatesAplosTransactionAccountNumber { get; set; }
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }

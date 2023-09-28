@@ -57,6 +57,7 @@ namespace AplosConnector.Common.Services
                     SyncTransfers = model.SyncTransfers,
                     SyncInvoices = model.SyncInvoices,
                     SyncPexFees = model.SyncPexFees,
+                    SyncRebates = model.SyncRebates,
                     SyncApprovedOnly = model.SyncApprovedOnly,
                     EarliestTransactionDateToSync = model.EarliestTransactionDateToSync,
                     EndDateUtc = model.EndDateUtc,
@@ -86,6 +87,10 @@ namespace AplosConnector.Common.Services
                     PexFeesAplosFundId = model.PexFeesAplosFundId,
                     PexFeesAplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber.ToString(),
                     PexFeesAplosTaxTagId = model.PexFeesAplosTaxTagId,
+
+                    PexRebatesAplosContactId = model.PexRebatesAplosContactId,
+                    PexRebatesAplosFundId = model.PexRebatesAplosFundId,
+                    PexRebatesAplosTransactionAccountNumber = model.PexRebatesAplosTransactionAccountNumber.ToString(),
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
@@ -151,6 +156,7 @@ namespace AplosConnector.Common.Services
                 decimal.TryParse(model.DefaultAplosTransactionAccountNumber, out var defaultAplosTransactionAccountNumber);
                 decimal.TryParse(model.TransfersAplosTransactionAccountNumber, out var transfersAplosTransactionAccountNumber);
                 decimal.TryParse(model.PexFeesAplosTransactionAccountNumber, out var pexFeesAplosTransactionAccountNumber);
+                decimal.TryParse(model.PexRebatesAplosTransactionAccountNumber, out var pexRebatesAplosTransactionAccountNumber);
 
                 result = new Pex2AplosMappingModel
                 {
@@ -168,6 +174,7 @@ namespace AplosConnector.Common.Services
                     SyncTransfers = model.SyncTransfers,
                     SyncInvoices = model.SyncInvoices,
                     SyncPexFees = model.SyncPexFees,
+                    SyncRebates = model.SyncRebates,
                     SyncApprovedOnly = model.SyncApprovedOnly,
                     EarliestTransactionDateToSync = model.EarliestTransactionDateToSync,
                     EndDateUtc = model.EndDateUtc,
@@ -197,6 +204,10 @@ namespace AplosConnector.Common.Services
                     PexFeesAplosFundId = model.PexFeesAplosFundId,
                     PexFeesAplosTransactionAccountNumber = pexFeesAplosTransactionAccountNumber,
                     PexFeesAplosTaxTagId = model.PexFeesAplosTaxTagId,
+
+                    PexRebatesAplosContactId = model.PexRebatesAplosContactId,
+                    PexRebatesAplosFundId = model.PexRebatesAplosFundId,
+                    PexRebatesAplosTransactionAccountNumber = pexRebatesAplosTransactionAccountNumber,
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
