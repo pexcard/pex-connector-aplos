@@ -31,11 +31,13 @@ namespace Aplos.Api.Client
         public const string APLOS_ACCOUNT_CATEGORY_ASSET = "asset";
         public const string APLOS_ACCOUNT_CATEGORY_EXPENSE = "expense";
         public const string APLOS_ACCOUNT_CATEGORY_LIABILITY = "liability";
+        public const string APLOS_ACCOUNT_CATEGORY_INCOME = "income";
         private static readonly ImmutableHashSet<string> _validAplosAccountCategories = new HashSet<string>
         {
             APLOS_ACCOUNT_CATEGORY_ASSET,
             APLOS_ACCOUNT_CATEGORY_EXPENSE,
-            APLOS_ACCOUNT_CATEGORY_LIABILITY
+            APLOS_ACCOUNT_CATEGORY_LIABILITY,
+            APLOS_ACCOUNT_CATEGORY_INCOME
         }.ToImmutableHashSet();
 
         private readonly string _aplosAccountId;

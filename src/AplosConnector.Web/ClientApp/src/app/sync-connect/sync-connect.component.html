@@ -741,6 +741,7 @@
               [(ngModel)]="settingsModel.pexRebatesAplosTransactionAccountNumber">
             <option></option>
             <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosIncomeAccounts">{{aplosAccount | aplosAccount}}</option>
+            <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
           </select>
         </div>
       </div>
