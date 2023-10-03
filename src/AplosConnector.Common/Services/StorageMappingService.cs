@@ -91,6 +91,7 @@ namespace AplosConnector.Common.Services
                     PexRebatesAplosContactId = model.PexRebatesAplosContactId,
                     PexRebatesAplosFundId = model.PexRebatesAplosFundId,
                     PexRebatesAplosTransactionAccountNumber = model.PexRebatesAplosTransactionAccountNumber.ToString(),
+                    PexRebatesAplosTaxTagId = model.PexRebatesAplosTaxTagId,
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
@@ -208,6 +209,7 @@ namespace AplosConnector.Common.Services
                     PexRebatesAplosContactId = model.PexRebatesAplosContactId,
                     PexRebatesAplosFundId = model.PexRebatesAplosFundId,
                     PexRebatesAplosTransactionAccountNumber = pexRebatesAplosTransactionAccountNumber,
+                    PexRebatesAplosTaxTagId = model.PexRebatesAplosTaxTagId,
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,

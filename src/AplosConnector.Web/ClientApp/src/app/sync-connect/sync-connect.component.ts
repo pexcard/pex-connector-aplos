@@ -119,6 +119,7 @@ export class SyncConnectComponent implements OnInit {
     pexRebatesAplosContactId: 0,
     pexRebatesAplosFundId: 0,
     pexRebatesAplosTransactionAccountNumber: 0,
+    pexRebatesAplosTaxTag: 0,
     expenseAccountMappings: [],
     tagMappings: [],
     taxTagCategoryDetails: [],

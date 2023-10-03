@@ -124,6 +124,7 @@ export interface SettingsModel {
   pexRebatesAplosContactId: number;
   pexRebatesAplosFundId: number;
   pexRebatesAplosTransactionAccountNumber: number;
+  pexRebatesAplosTaxTag: number;
 
   aplosRegisterAccountNumber: number;
 

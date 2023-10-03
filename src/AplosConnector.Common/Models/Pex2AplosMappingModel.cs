@@ -61,6 +61,7 @@ namespace AplosConnector.Common.Models
             PexRebatesAplosContactId = mapping.PexRebatesAplosContactId;
             PexRebatesAplosFundId = mapping.PexRebatesAplosFundId;
             PexRebatesAplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber;
+            PexRebatesAplosTaxTagId = mapping.PexRebatesAplosTaxTag;
 
             PexFundsTagId = mapping.PexFundsTagId;
             SyncFundsToPex = mapping.SyncFundsToPex;
@@ -131,6 +132,7 @@ namespace AplosConnector.Common.Models
                 PexRebatesAplosContactId = PexRebatesAplosContactId,
                 PexRebatesAplosFundId = PexRebatesAplosFundId,
                 PexRebatesAplosTransactionAccountNumber = PexRebatesAplosTransactionAccountNumber,
+                PexRebatesAplosTaxTag = PexRebatesAplosTaxTagId,
 
                 SyncFundsToPex = SyncFundsToPex,
 
@@ -194,6 +196,7 @@ namespace AplosConnector.Common.Models
         public int PexRebatesAplosContactId { get; set; }
         public int PexRebatesAplosFundId { get; set; }
         public decimal PexRebatesAplosTransactionAccountNumber { get; set; }
+        public string PexRebatesAplosTaxTagId { get; set; }
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
