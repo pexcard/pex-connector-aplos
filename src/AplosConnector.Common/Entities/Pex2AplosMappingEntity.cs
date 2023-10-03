@@ -66,7 +66,8 @@ namespace AplosConnector.Common.Entities
         public int PexRebatesAplosContactId { get; set; }
         public int PexRebatesAplosFundId { get; set; }
         public string PexRebatesAplosTransactionAccountNumber { get; set; }
-
+        public string PexRebatesAplosTaxTagId { get; set; }
+        
         public string ExpenseAccountMappings { get; set; }
         public string TagMappings { get; set; }
         

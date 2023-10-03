@@ -82,6 +82,7 @@ namespace AplosConnector.Common.Models
         public int PexRebatesAplosContactId { get; set; }
         public int PexRebatesAplosFundId { get; set; }
         public decimal PexRebatesAplosTransactionAccountNumber { get; set; }
+        public string PexRebatesAplosTaxTag { get; set; }
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }

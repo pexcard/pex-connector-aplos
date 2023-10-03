@@ -1274,9 +1274,7 @@ namespace AplosConnector.Common.Services
                 _logger.LogInformation($"Skipping sync rebate for business {mapping.PEXBusinessAcctId}. Rebates are not configured.");
             }
 
-            var rebates = allBusinessAccountTransactions.Where(t =>
-                t.Description.Contains("Rebate Credit") ||
-                t.Description.StartsWith("Prepaid customer rebate payout to business"));
+            var rebates = allBusinessAccountTransactions.Where(FilterRebateTransactions);
 
             var rebatesToSync = rebates
                 .Where(r => !WasPexTransactionSyncedToAplos(aplosTransactions, r.TransactionId.ToString()))
@@ -1307,6 +1305,7 @@ namespace AplosConnector.Common.Services
                             AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
                             AplosContactId = mapping.PexRebatesAplosContactId,
                             AplosFundId = mapping.PexRebatesAplosFundId,
+                            AplosTaxTagId = mapping.PexRebatesAplosTaxTagId,
                             AplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber
                         };
 
@@ -1598,7 +1597,7 @@ namespace AplosConnector.Common.Services
             _logger.LogInformation($"Syncing {transactions.Count} transfers for business: {model.PEXBusinessAcctId}");
 
             var transactionsToSync = transactions
-                .Where(t => !WasPexTransactionSyncedToAplos(aplosTransactions, t.TransactionId.ToString()))
+                .Where(t => !WasPexTransactionSyncedToAplos(aplosTransactions, t.TransactionId.ToString()) && !FilterRebateTransactions(t))
                 .ToList();
 
             var allocationMapping = await _pexApiClient.GetTagAllocations(model.PEXExternalAPIToken, transactionsToSync, cancellationToken);
@@ -1893,7 +1892,6 @@ namespace AplosConnector.Common.Services
             };
         }
 
-
         private static IDictionary<string, object> GetLoggingScopeForRebate(TransactionModel transaction)
         {
             if (transaction is null)
@@ -1910,6 +1908,12 @@ namespace AplosConnector.Common.Services
                 ["TransactionTime"] = transaction.TransactionTime,
                 ["SettlementTime"] = transaction.SettlementTime,
             };
+        }
+
+        private static bool FilterRebateTransactions(TransactionModel t)
+        {
+            return t.Description.Contains("Rebate Credit") ||
+                   t.Description.StartsWith("Prepaid customer rebate payout to business");
         }
 
         public DateTime GetStartDateUtc(Pex2AplosMappingModel model, DateTime utcNow, SyncSettingsModel settings)

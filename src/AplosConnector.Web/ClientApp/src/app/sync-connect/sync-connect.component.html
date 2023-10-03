@@ -670,7 +670,7 @@
           </div>
         <br>
           
-        <span class="selectLabel">Transaction Account:</span>
+        <span class="selectLabel">Account:</span>
         <div class="clr-select-wrapper">
           <select
             id="pexFeesAplosTransactionAccountNumber"
@@ -731,7 +731,7 @@
         </div>
         <br>
           
-        <span class="selectLabel">Bank Account:</span>
+        <span class="selectLabel">Account:</span>
         <div class="clr-select-wrapper">
           <select
               id="pexRebatesAplosTransactionAccountNumber"
@@ -743,6 +743,23 @@
             <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosIncomeAccounts">{{aplosAccount | aplosAccount}}</option>
             <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
           </select>
+        </div>
+
+        <div *ngIf="settingsModel.syncTaxTagToPex">
+          <span class="selectLabel">990 Tag Option:</span>
+          <div class="clr-select-wrapper">
+            <select
+              id="pexRebatesAplosTaxTag"
+              class="clr-select select"
+              name="pexRebatesAplosTaxTag"
+              required
+              [(ngModel)]="settingsModel.pexRebatesAplosTaxTag">
+              <option></option>
+              <optgroup  *ngFor="let aplosTaxTagCategory of aplosTaxTagCategories" label="{{aplosTaxTagCategory.name}}">
+                <option  [value]="aplosTaxTag.id" *ngFor="let aplosTaxTag of aplosTaxTagCategory.tax_tags">{{aplosTaxTag.name}} - {{aplosTaxTag.group_name}}</option>
+              </optgroup>
+            </select>
+          </div>
         </div>
       </div>
 
