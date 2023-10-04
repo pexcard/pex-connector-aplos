@@ -1467,7 +1467,6 @@ namespace AplosConnector.Common.Services
                             continue;
                         }
 
-                        _logger.LogInformation($"Starting sync for invoice {invoiceModel.InvoiceId}");
                         var transactionSyncResult = TransactionSyncResult.Failed;
                         try
                         {
@@ -1633,7 +1632,7 @@ namespace AplosConnector.Common.Services
             {
                 using (_logger.BeginScope(GetLoggingScopeForTransaction(transaction)))
                 {
-                    _logger.LogDebug($"Starting sync for PEX account transfer {transaction.TransactionId}");
+                    _logger.LogDebug($"Starting sync for PEX transfer {transaction.TransactionId}");
 
                     try
                     {
@@ -1742,7 +1741,7 @@ namespace AplosConnector.Common.Services
             {
                 using (_logger.BeginScope(GetLoggingScopeForTransaction(transaction)))
                 {
-                    _logger.LogDebug($"Starting sync for PEX account fee {transaction.TransactionId}");
+                    _logger.LogDebug($"Starting sync for PEX fee {transaction.TransactionId}");
 
                     try
                     {
