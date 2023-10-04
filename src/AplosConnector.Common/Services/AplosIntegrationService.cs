@@ -29,6 +29,7 @@ using System.Threading.Tasks;
 using Aplos.Api.Client.Models.Response;
 using AplosConnector.Common.Storage;
 using AplosConnector.Common.VendorCards;
+using System.Transactions;
 
 namespace AplosConnector.Common.Services
 {
@@ -418,7 +419,7 @@ namespace AplosConnector.Common.Services
             await aplosApiClient.CreateTransaction(aplosTransaction, cancellationToken);
 
             return TransactionSyncResult.Success;
-            }
+        }
 
         public async Task<string> GetAplosAccessToken(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
@@ -935,6 +936,37 @@ namespace AplosConnector.Common.Services
                 vendorCardsOrdered = vendorCardOrders?.SelectMany(x => x.CardOrders)?.ToList() ?? new List<VendorCardOrdered>();
             }
 
+            var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown, cancellationToken);
+            List<TagDropdownDetailsModel> dropdownTags = default;
+            if (useTags)
+            {
+                var dropdownTagTasks = new List<Task<TagDropdownDetailsModel>>
+                {
+                    _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId, cancellationToken),
+                };
+                if (mapping.ExpenseAccountMappings != null)
+                {
+                    foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
+                    {
+                        dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, cancellationToken));
+                    }
+                }
+                if (mapping.TagMappings != null)
+                {
+                    foreach (var tagMapping in mapping.TagMappings)
+                    {
+                        dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, cancellationToken));
+                    }
+                }
+                await Task.WhenAll(dropdownTagTasks);
+                dropdownTags = dropdownTagTasks.Where(t => !t.IsFaulted).Select(t => t.Result).ToList();
+                foreach (var failedTask in dropdownTagTasks.Where(t => t.IsFaulted))
+                {
+                    _logger.LogError(failedTask.Exception?.InnerException, $"Exception getting dropdown tag for business {mapping.PEXBusinessAcctId}. {failedTask.Exception?.InnerException}");
+                }
+            }
+            _logger.LogInformation($"Retrieved ALL {dropdownTags.Count} PEX dropdown tags for business.");
+
             var allCardholderTransactions = new CardholderTransactions(new List<TransactionModel>());
             foreach (var dateRangeBatch in fetchTransactionDateBatches)
             {
@@ -944,38 +976,7 @@ namespace AplosConnector.Common.Services
                 allCardholderTransactions.AddRange(cardholderTransactions);
                 var transactions = FilterTransactions(mapping, cardholderTransactions);
 
-                _logger.LogInformation($"Syncing {transactions.Count} transactions for business: {mapping.PEXBusinessAcctId}");
-
-                var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown, cancellationToken);
-
-                List<TagDropdownDetailsModel> dropdownTags = default;
-                if (useTags)
-                {
-                    var dropdownTagTasks = new List<Task<TagDropdownDetailsModel>>
-                {
-                    _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId, cancellationToken),
-                };
-                    if (mapping.ExpenseAccountMappings != null)
-                    {
-                        foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
-                        {
-                            dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, cancellationToken));
-                        }
-                    }
-                    if (mapping.TagMappings != null)
-                    {
-                        foreach (var tagMapping in mapping.TagMappings)
-                        {
-                            dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, cancellationToken));
-                        }
-                    }
-                    await Task.WhenAll(dropdownTagTasks);
-                    dropdownTags = dropdownTagTasks.Where(t => !t.IsFaulted).Select(t => t.Result).ToList();
-                    foreach (var failedTask in dropdownTagTasks.Where(t => t.IsFaulted))
-                    {
-                        _logger.LogError(failedTask.Exception?.InnerException, $"Exception getting dropdown tag for business {mapping.PEXBusinessAcctId}. {failedTask.Exception?.InnerException}");
-                    }
-                }
+                _logger.LogInformation($"Syncing {transactions.Count} filtered transactions for business: {mapping.PEXBusinessAcctId}");
 
                 var allocationMapping = await _pexApiClient.GetTagAllocations(mapping.PEXExternalAPIToken, new CardholderTransactions(transactions), cancellationToken);
 
@@ -983,194 +984,200 @@ namespace AplosConnector.Common.Services
                 {
                     using (_logger.BeginScope(GetLoggingScopeForTransaction(transaction)))
                     {
-                        _logger.LogInformation($"Processing transaction {transaction.TransactionId}");
+                        _logger.LogDebug($"Starting sync for PEX transaction {transaction.TransactionId}");
 
-                        if (!allocationMapping.TryGetValue(transaction.TransactionId, out var allocations))
+                        try
                         {
-                            _logger.LogWarning($"Transaction {transaction.TransactionId} doesn't have an associated allocation. Skipping");
-                            continue;
-                        }
-
-                        var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
-                        string syncIneligibilityReason = null;
-
-                        foreach (var allocation in allocations)
-                        {
-                            var pexTagValues = new PexTagValuesModel
+                            if (!allocationMapping.TryGetValue(transaction.TransactionId, out var allocations))
                             {
-                                AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
-                                AplosContactId = mapping.DefaultAplosContactId,
-                            };
+                                _logger.LogWarning($"Transaction {transaction.TransactionId} doesn't have an associated allocation. Skipping");
+                                continue;
+                            }
 
-                            if (useTags)
+                            var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
+                            string syncIneligibilityReason = null;
+
+                            foreach (var allocation in allocations)
                             {
-                                var allocationFundTag = allocation.GetTagValue(mapping.PexFundsTagId);
-                                if (allocationFundTag != null)
+                                var pexTagValues = new PexTagValuesModel
                                 {
-                                    var fundTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(allocationFundTag.TagId, StringComparison.InvariantCultureIgnoreCase));
-                                    var allocationFundTagOptionValue = allocationFundTag?.Value?.ToString();
-                                    var allocationFundTagOptionName = allocationFundTag?.GetTagOptionName(fundTagDefinition?.Options);
-                                    var allocationFundEntity = aplosFunds.FindMatchingEntity(allocationFundTagOptionValue, allocationFundTagOptionName, ':', _logger);
-                                    if (allocationFundEntity == null)
+                                    AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
+                                    AplosContactId = mapping.DefaultAplosContactId,
+                                };
+
+                                if (useTags)
+                                {
+                                    var allocationFundTag = allocation.GetTagValue(mapping.PexFundsTagId);
+                                    if (allocationFundTag != null)
                                     {
-                                        _logger.LogWarning($"Could not match PEX fund tag '{fundTagDefinition?.Name}' option ['{allocationFundTagOptionName}' : '{allocationFundTagOptionValue}'] with an Aplos fund entity.");
-                                    }
-                                    else
-                                    {
-                                        if (int.TryParse(allocationFundEntity.Id, out var aplosFundId))
+                                        var fundTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(allocationFundTag.TagId, StringComparison.InvariantCultureIgnoreCase));
+                                        var allocationFundTagOptionValue = allocationFundTag?.Value?.ToString();
+                                        var allocationFundTagOptionName = allocationFundTag?.GetTagOptionName(fundTagDefinition?.Options);
+                                        var allocationFundEntity = aplosFunds.FindMatchingEntity(allocationFundTagOptionValue, allocationFundTagOptionName, ':', _logger);
+                                        if (allocationFundEntity == null)
                                         {
-                                            _logger.LogInformation($"Matched PEX fund tag '{fundTagDefinition?.Name}' option ['{allocationFundTagOptionName}' : '{allocationFundTagOptionValue}'] with Aplos fund entity '{allocationFundEntity.Name}' ({allocationFundEntity.Id}).");
-                                            pexTagValues.AplosFundId = aplosFundId;
+                                            _logger.LogWarning($"Could not match PEX fund tag '{fundTagDefinition?.Name}' option ['{allocationFundTagOptionName}' : '{allocationFundTagOptionValue}'] with an Aplos fund entity.");
                                         }
                                         else
                                         {
-                                            _logger.LogWarning($"Could not parse Aplos {aplosAccountCategory} fund id '{allocationFundEntity.Id}' into a int.");
+                                            if (int.TryParse(allocationFundEntity.Id, out var aplosFundId))
+                                            {
+                                                _logger.LogDebug($"Matched PEX fund tag '{fundTagDefinition?.Name}' option ['{allocationFundTagOptionName}' : '{allocationFundTagOptionValue}'] with Aplos fund entity '{allocationFundEntity.Name}' ({allocationFundEntity.Id}).");
+                                                pexTagValues.AplosFundId = aplosFundId;
+                                            }
+                                            else
+                                            {
+                                                _logger.LogWarning($"Could not parse Aplos {aplosAccountCategory} fund id '{allocationFundEntity.Id}' into a int.");
+                                            }
                                         }
                                     }
+                                    else
+                                    {
+                                        _logger.LogInformation($"No PEX fund tag on allocation {allocation.Amount:C}.");
+                                    }
+
+                                    TagValueItem expenseAccountTag = null;
+                                    foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
+                                    {
+                                        var expenseAccountTransactionTag = allocation.GetTagValue(expenseAccountMapping.ExpenseAccountsPexTagId);
+                                        if (expenseAccountTransactionTag != null)
+                                        {
+                                            expenseAccountTag = expenseAccountTransactionTag;
+                                            break;
+                                        }
+                                    }
+
+                                    if (expenseAccountTag == null)
+                                    {
+                                        syncIneligibilityReason = $"Transaction {transaction.TransactionId} doesn't have {aplosAccountCategory} Account tagged. Skipping";
+                                        break;
+                                    }
+
+                                    var expenseAccountTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(expenseAccountTag.TagId, StringComparison.InvariantCultureIgnoreCase));
+                                    var allocationExpenseAccountTagOptionName = expenseAccountTag.GetTagOptionName(expenseAccountTagDefinition?.Options);
+                                    var allocationExpenseAccountTagOptionValue = expenseAccountTag.Value?.ToString();
+                                    var allocationExpenseAccountEntity = aplosExpenseAccounts.FindMatchingEntity(allocationExpenseAccountTagOptionValue, allocationExpenseAccountTagOptionName, ':', _logger);
+                                    if (allocationExpenseAccountEntity == null)
+                                    {
+                                        _logger.LogWarning($"Could not match PEX {aplosAccountCategory} account tag '{expenseAccountTagDefinition?.Name}' option ['{allocationExpenseAccountTagOptionName}' : '{allocationExpenseAccountTagOptionValue}'] with an Aplos expense account entity.");
+                                    }
+                                    else
+                                    {
+                                        if (decimal.TryParse(allocationExpenseAccountEntity.Id, out var aplosTransactionAccountNumber))
+                                        {
+                                            _logger.LogDebug($"Matched PEX {aplosAccountCategory} account tag '{expenseAccountTagDefinition?.Name}' option ['{allocationExpenseAccountTagOptionName}' : '{allocationExpenseAccountTagOptionValue}'] with Aplos expense account entity '{allocationExpenseAccountEntity.Name}' ({allocationExpenseAccountEntity.Id}).");
+                                            pexTagValues.AplosTransactionAccountNumber = aplosTransactionAccountNumber;
+                                        }
+                                        else
+                                        {
+                                            _logger.LogWarning($"Could not parse Aplos {aplosAccountCategory} account id '{allocationExpenseAccountEntity.Id}' into a decimal.");
+                                        }
+                                    }
+
+                                    if (mapping.TagMappings?.Any() == true)
+                                    {
+                                        pexTagValues.AplosTagIds = new List<string>();
+
+                                        _logger.LogInformation($"Processing {mapping.TagMappings.Length} Aplos tag mappings for transaction {transaction.TransactionId} allocation {allocation.Amount:C}");
+
+                                        foreach (var tagMapping in mapping.TagMappings)
+                                        {
+                                            var allocationTag = allocation.GetTagValue(tagMapping.PexTagId);
+                                            if (allocationTag == null || allocationTag.TagId == mapping.PexTaxTagId)
+                                            {
+                                                _logger.LogInformation($"No PEX tag {tagMapping.PexTagId} on transaction {transaction.TransactionId} allocation {allocation.Amount:C}");
+                                                continue;
+                                            }
+
+                                            var allocationTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(allocationTag.TagId, StringComparison.InvariantCultureIgnoreCase));
+                                            var allocationTagOptionValue = allocationTag.Value?.ToString();
+                                            var allocationTagOptionName = allocationTag.GetTagOptionName(allocationTagDefinition?.Options);
+                                            var allocationTagEntity = aplosTags.FindMatchingEntity(allocationTagOptionValue, allocationTagOptionName, ':', _logger);
+                                            if (allocationTagEntity is null)
+                                            {
+                                                _logger.LogDebug($"Could not match PEX tag '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with an Aplos tag entity.");
+                                            }
+                                            else
+                                            {
+                                                _logger.LogInformation($"Matched PEX tag '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with Aplos tag entity '{allocationTagEntity.Name}' ({allocationTagEntity.Id}).");
+                                                pexTagValues.AplosTagIds.Add(allocationTagEntity.Id);
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        _logger.LogInformation($"No Aplos tag mappings to process.");
+                                    }
+
+                                    var taxTag = allocation.GetTagValue(mapping.PexTaxTagId);
+                                    pexTagValues.AplosTaxTagId = taxTag?.Value?.ToString();
                                 }
                                 else
                                 {
-                                    _logger.LogInformation($"No PEX fund tag on allocation {allocation.Amount:C}.");
+                                    _logger.LogInformation($"Business does not have tags, or tag are NOT enabled for the account. Using default fund id '{mapping.DefaultAplosFundId}' and default transaction account number '{mapping.DefaultAplosTransactionAccountNumber}'.");
+                                    pexTagValues.AplosFundId = mapping.DefaultAplosFundId;
+                                    pexTagValues.AplosTransactionAccountNumber = mapping.DefaultAplosTransactionAccountNumber;
                                 }
 
-                                TagValueItem expenseAccountTag = null;
-                                foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
+                                if (pexTagValues.AplosFundId == default || aplosFunds.All(ec => ec.Id != pexTagValues.AplosFundId.ToString()))
                                 {
-                                    var expenseAccountTransactionTag = allocation.GetTagValue(expenseAccountMapping.ExpenseAccountsPexTagId);
-                                    if (expenseAccountTransactionTag != null)
-                                    {
-                                        expenseAccountTag = expenseAccountTransactionTag;
-                                        break;
-                                    }
-                                }
-
-                                if (expenseAccountTag == null)
-                                {
-                                    syncIneligibilityReason = $"Transaction {transaction.TransactionId} doesn't have {aplosAccountCategory} Account tagged. Skipping";
+                                    syncIneligibilityReason = $"Transaction {transaction.TransactionId}: {nameof(pexTagValues.AplosFundId)} '{pexTagValues.AplosFundId}' not valid for {aplosFunds.Count} funds found in Aplos";
                                     break;
                                 }
 
-                                var expenseAccountTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(expenseAccountTag.TagId, StringComparison.InvariantCultureIgnoreCase));
-                                var allocationExpenseAccountTagOptionName = expenseAccountTag.GetTagOptionName(expenseAccountTagDefinition?.Options);
-                                var allocationExpenseAccountTagOptionValue = expenseAccountTag.Value?.ToString();
-                                var allocationExpenseAccountEntity = aplosExpenseAccounts.FindMatchingEntity(allocationExpenseAccountTagOptionValue, allocationExpenseAccountTagOptionName, ':', _logger);
-                                if (allocationExpenseAccountEntity == null)
+                                if (pexTagValues.AplosTransactionAccountNumber == default || aplosExpenseAccounts.All(ec => decimal.TryParse(ec.Id, out var accountNumber) && accountNumber != pexTagValues.AplosTransactionAccountNumber))
                                 {
-                                    _logger.LogWarning($"Could not match PEX {aplosAccountCategory} account tag '{expenseAccountTagDefinition?.Name}' option ['{allocationExpenseAccountTagOptionName}' : '{allocationExpenseAccountTagOptionValue}'] with an Aplos expense account entity.");
-                                }
-                                else
-                                {
-                                    if (decimal.TryParse(allocationExpenseAccountEntity.Id, out var aplosTransactionAccountNumber))
-                                    {
-                                        _logger.LogInformation($"Matched PEX {aplosAccountCategory} account tag '{expenseAccountTagDefinition?.Name}' option ['{allocationExpenseAccountTagOptionName}' : '{allocationExpenseAccountTagOptionValue}'] with Aplos expense account entity '{allocationExpenseAccountEntity.Name}' ({allocationExpenseAccountEntity.Id}).");
-                                        pexTagValues.AplosTransactionAccountNumber = aplosTransactionAccountNumber;
-                                    }
-                                    else
-                                    {
-                                        _logger.LogWarning($"Could not parse Aplos {aplosAccountCategory} account id '{allocationExpenseAccountEntity.Id}' into a decimal.");
-                                    }
+                                    syncIneligibilityReason = $"Transaction {transaction.TransactionId}: {nameof(pexTagValues.AplosTransactionAccountNumber)} '{pexTagValues.AplosTransactionAccountNumber}' not valid for {aplosExpenseAccounts.Count} accounts found in Aplos";
+                                    break;
                                 }
 
-                                if (mapping.TagMappings?.Any() == true)
-                                {
-                                    pexTagValues.AplosTagIds = new List<string>();
-
-                                    _logger.LogInformation($"Processing {mapping.TagMappings.Length} Aplos tag mappings for transaction {transaction.TransactionId} allocation {allocation.Amount:C}");
-
-                                    foreach (var tagMapping in mapping.TagMappings)
-                                    {
-                                        var allocationTag = allocation.GetTagValue(tagMapping.PexTagId);
-                                        if (allocationTag == null || allocationTag.TagId == mapping.PexTaxTagId)
-                                        {
-                                            _logger.LogInformation($"No PEX tag {tagMapping.PexTagId} on transaction {transaction.TransactionId} allocation {allocation.Amount:C}");
-                                            continue;
-                                        }
-
-                                        var allocationTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(allocationTag.TagId, StringComparison.InvariantCultureIgnoreCase));
-                                        var allocationTagOptionValue = allocationTag.Value?.ToString();
-                                        var allocationTagOptionName = allocationTag.GetTagOptionName(allocationTagDefinition?.Options);
-                                        var allocationTagEntity = aplosTags.FindMatchingEntity(allocationTagOptionValue, allocationTagOptionName, ':', _logger);
-                                        if (allocationTagEntity is null)
-                                        {
-                                            _logger.LogWarning($"Could not match PEX tag '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with an Aplos tag entity.");
-                                        }
-                                        else
-                                        {
-                                            _logger.LogInformation($"Matched PEX tag '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with Aplos tag entity '{allocationTagEntity.Name}' ({allocationTagEntity.Id}).");
-                                            pexTagValues.AplosTagIds.Add(allocationTagEntity.Id);
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    _logger.LogInformation($"No Aplos tag mappings to process.");
-                                }
-
-                                var taxTag = allocation.GetTagValue(mapping.PexTaxTagId);
-                                pexTagValues.AplosTaxTagId = taxTag?.Value?.ToString();
+                                allocationDetails.Add((allocation, pexTagValues));
                             }
-                            else
+
+                            if (!string.IsNullOrEmpty(syncIneligibilityReason))
                             {
-                                _logger.LogInformation($"Business does not have tags, or tag are NOT enabled for the account. Using default fund id '{mapping.DefaultAplosFundId}' and default transaction account number '{mapping.DefaultAplosTransactionAccountNumber}'.");
-                                pexTagValues.AplosFundId = mapping.DefaultAplosFundId;
-                                pexTagValues.AplosTransactionAccountNumber = mapping.DefaultAplosTransactionAccountNumber;
+                                _logger.LogWarning(syncIneligibilityReason);
+                                continue;
                             }
 
-                            if (pexTagValues.AplosFundId == default || aplosFunds.All(ec => ec.Id != pexTagValues.AplosFundId.ToString()))
+                            var transactionSyncResult = TransactionSyncResult.Failed;
+                            try
                             {
-                                syncIneligibilityReason = $"Transaction {transaction.TransactionId}: {nameof(pexTagValues.AplosFundId)} '{pexTagValues.AplosFundId}' not valid for {aplosFunds.Count} funds found in Aplos";
-                                break;
+                                var cardholderDetails = await GetCardholderDetails(mapping, transaction.AcctId, _logger, cancellationToken);
+                                transactionSyncResult = await SyncTransaction(
+                                    allocationDetails,
+                                    mapping,
+                                    transaction,
+                                    cardholderDetails,
+                                    vendorCardsOrdered,
+                                    cancellationToken);
                             }
-
-                            if (pexTagValues.AplosTransactionAccountNumber == default || aplosExpenseAccounts.All(ec => decimal.TryParse(ec.Id, out var accountNumber) && accountNumber != pexTagValues.AplosTransactionAccountNumber))
+                            catch (Exception ex)
                             {
-                                syncIneligibilityReason = $"Transaction {transaction.TransactionId}: {nameof(pexTagValues.AplosTransactionAccountNumber)} '{pexTagValues.AplosTransactionAccountNumber}' not valid for {aplosExpenseAccounts.Count} accounts found in Aplos";
-                                break;
+                                _logger.LogError(ex, $"Error syncing transaction {transaction.TransactionId}.");
                             }
 
-                            allocationDetails.Add((allocation, pexTagValues));
-                        }
-
-                        if (!string.IsNullOrEmpty(syncIneligibilityReason))
-                        {
-                            _logger.LogWarning(syncIneligibilityReason);
-                            continue;
-                        }
-
-                        _logger.LogInformation($"Starting sync for transaction {transaction.TransactionId}");
-
-                        var transactionSyncResult = TransactionSyncResult.Failed;
-                        try
-                        {
-                            var cardholderDetails = await GetCardholderDetails(mapping, transaction.AcctId, _logger, cancellationToken);
-                            transactionSyncResult = await SyncTransaction(
-                                allocationDetails,
-                                mapping,
-                                transaction,
-                                cardholderDetails,
-                                vendorCardsOrdered,
-                                cancellationToken);
+                            if (transactionSyncResult != TransactionSyncResult.NotEligible)
+                            {
+                                _logger.LogWarning($"Sync not eligible for transaction {transaction.TransactionId}");
+                                eligibleCount++;
+                            }
+                            if (transactionSyncResult == TransactionSyncResult.Success)
+                            {
+                                syncCount++;
+                                _logger.LogInformation($"Synced transaction {transaction.TransactionId}");
+                                var syncedNoteText = $"{PexCardConst.SyncedWithAplosNote} on {DateTime.UtcNow.ToEst():MM/dd/yyyy h:mm tt}";
+                                await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText, cancellationToken);
+                            }
+                            else if (transactionSyncResult == TransactionSyncResult.Failed)
+                            {
+                                _logger.LogError($"Failed syncing transaction {transaction.TransactionId}.");
+                                failureCount++;
+                            }
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, $"Exception syncing transaction {transaction.TransactionId}.");
-                        }
-
-                        if (transactionSyncResult != TransactionSyncResult.NotEligible)
-                        {
-                            _logger.LogWarning($"Sync not eligible for transaction {transaction.TransactionId}");
-                            eligibleCount++;
-                        }
-                        if (transactionSyncResult == TransactionSyncResult.Success)
-                        {
-                            syncCount++;
-                            _logger.LogInformation($"Synced transaction {transaction.TransactionId}");
-                            var syncedNoteText = $"{PexCardConst.SyncedWithAplosNote} on {DateTime.UtcNow.ToEst():MM/dd/yyyy h:mm tt}";
-                            await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText, cancellationToken);
-                        }
-                        else if (transactionSyncResult == TransactionSyncResult.Failed)
-                        {
-                            _logger.LogWarning($"Failed to sync transaction {transaction.TransactionId}");
+                            _logger.LogError(ex, $"Error processing transaction {transaction.TransactionId}.");
                             failureCount++;
                         }
                     }
@@ -1260,14 +1267,14 @@ namespace AplosConnector.Common.Services
 
         private async Task SyncRebates(
             ILogger _logger,
-            Pex2AplosMappingModel mapping, 
+            Pex2AplosMappingModel mapping,
             BusinessAccountTransactions allBusinessAccountTransactions,
             List<AplosApiTransactionDetail> aplosTransactions,
             CancellationToken cancellationToken)
         {
             if (!mapping.SyncInvoices && !mapping.SyncRebates) return;
 
-            if (!(mapping.PexRebatesAplosContactId > 0 
+            if (!(mapping.PexRebatesAplosContactId > 0
                 && mapping.PexRebatesAplosFundId > 0
                 && mapping.PexRebatesAplosTransactionAccountNumber > 0))
             {
@@ -1289,54 +1296,64 @@ namespace AplosConnector.Common.Services
             {
                 using (_logger.BeginScope(GetLoggingScopeForRebate(transaction)))
                 {
-                    if (!allocationMapping.TryGetValue(transaction.TransactionId, out var allocations))
-                    {
-                        _logger.LogWarning($"Rebate {transaction.TransactionId} doesn't have an associated allocation. Skipping");
-                        continue;
-                    }
+                    _logger.LogDebug($"Starting sync for PEX rebate {transaction.TransactionId}");
 
-                    var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
-                    foreach (var allocation in allocations)
-                    {
-                        //We currently don't support tags on business transactions.
-                        //If we add support, we just need to create a setting for mapping and find the value from the allocations based on the tagId.
-                        var pexTagValues = new PexTagValuesModel
-                        {
-                            AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
-                            AplosContactId = mapping.PexRebatesAplosContactId,
-                            AplosFundId = mapping.PexRebatesAplosFundId,
-                            AplosTaxTagId = mapping.PexRebatesAplosTaxTagId,
-                            AplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber
-                        };
-
-                        allocationDetails.Add((allocation, pexTagValues));
-                    }
-
-                    _logger.LogInformation($"Starting sync for rebate {transaction.TransactionId}");
-                    var transactionSyncResult = TransactionSyncResult.Failed;
                     try
                     {
-                        transactionSyncResult = await SyncTransaction(
-                        allocationDetails,
-                            mapping,
-                            transaction,
-                            null,
-                            null,
-                            cancellationToken); 
+                        if (!allocationMapping.TryGetValue(transaction.TransactionId, out var allocations))
+                        {
+                            _logger.LogWarning($"Rebate {transaction.TransactionId} doesn't have an associated allocation. Skipping");
+                            continue;
+                        }
+
+                        var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
+                        foreach (var allocation in allocations)
+                        {
+                            //We currently don't support tags on business transactions.
+                            //If we add support, we just need to create a setting for mapping and find the value from the allocations based on the tagId.
+                            var pexTagValues = new PexTagValuesModel
+                            {
+                                AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
+                                AplosContactId = mapping.PexRebatesAplosContactId,
+                                AplosFundId = mapping.PexRebatesAplosFundId,
+                                AplosTaxTagId = mapping.PexRebatesAplosTaxTagId,
+                                AplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber
+                            };
+
+                            allocationDetails.Add((allocation, pexTagValues));
+                        }
+
+                        var transactionSyncResult = TransactionSyncResult.Failed;
+                        try
+                        {
+                            transactionSyncResult = await SyncTransaction(
+                            allocationDetails,
+                                mapping,
+                                transaction,
+                                null,
+                                null,
+                                cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            failureCount++;
+                            _logger.LogError(ex, $"Error syncing rebate {transaction.TransactionId}.");
+                        }
+
+                        if (transactionSyncResult == TransactionSyncResult.Success)
+                        {
+                            syncCount++;
+                            _logger.LogInformation($"Synced rebate {transaction.TransactionId} with Aplos");
+                        }
+                        else if (transactionSyncResult == TransactionSyncResult.Failed)
+                        {
+                            failureCount++;
+                            _logger.LogError($"Failed syncing rebate {transaction.TransactionId}.");
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, $"Exception syncing rebate {transaction.TransactionId}.");
-                    }
-
-                    if (transactionSyncResult == TransactionSyncResult.Success)
-                    {
-                        syncCount++;
-                        _logger.LogInformation($"Synced rebate {transaction.TransactionId} with Aplos");
-                    }
-                    else if (transactionSyncResult == TransactionSyncResult.Failed)
-                    {
-                        failureCount++;
+                        _logger.LogError(ex, $"Error processing rebate {transaction.TransactionId}.");
                     }
                 }
             }
@@ -1389,86 +1406,92 @@ namespace AplosConnector.Common.Services
             {
                 using (_logger.BeginScope(GetLoggingScopeForInvoice(invoiceModel)))
                 {
-                    var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+                    _logger.LogDebug($"Starting sync for PEX invoice {invoiceModel.InvoiceId}");
 
-                    var totalPaymentsAmount = invoicePayments.Sum(p => p.Amount);
-
-                    if (totalPaymentsAmount != invoiceModel.InvoiceAmount)
-                    {
-                        failureCount++;
-                        continue;
-                    }
-
-                    List<InvoiceAllocationModel> invoiceAllocations;
                     try
                     {
-                        invoiceAllocations = await _pexApiClient.GetInvoiceAllocations(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
-                    }
-                    catch (PexApiClientException)
-                    {
-                        failureCount++;
-                        continue;
-                    }
+                        var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
 
-                    var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
-                    var totalAllocationsAmount = 0m;
+                        var totalPaymentsAmount = invoicePayments.Sum(p => p.Amount);
 
-                    foreach (var invoiceAllocationMode in invoiceAllocations)
-                    {
-                        if (aplosFunds.All(f => f.Id != invoiceAllocationMode.TagValue) || !int.TryParse(invoiceAllocationMode.TagValue, out var tagValue))
+                        if (totalPaymentsAmount != invoiceModel.InvoiceAmount)
                         {
+                            _logger.LogWarning($"totalPaymentsAmount ({totalPaymentsAmount} != invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}). Skipping invoice {invoiceModel.InvoiceId}.");
+                            failureCount++;
                             continue;
                         }
 
-                        totalAllocationsAmount += invoiceAllocationMode.TotalAmount;
+                        List<InvoiceAllocationModel> invoiceAllocations;
 
-                        var allocationTagValue = new AllocationTagValue
+                        invoiceAllocations = await _pexApiClient.GetInvoiceAllocations(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+
+                        var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
+                        var totalAllocationsAmount = 0m;
+
+                        foreach (var invoiceAllocationMode in invoiceAllocations)
                         {
-                            Amount = invoiceAllocationMode.TotalAmount,
-                            Allocation = new List<TagValueItem>
-                        {
-                            new TagValueItem
+                            if (aplosFunds.All(f => f.Id != invoiceAllocationMode.TagValue) || !int.TryParse(invoiceAllocationMode.TagValue, out var tagValue))
                             {
-                                Value = invoiceAllocationMode.TagValue
+                                continue;
                             }
+
+                            totalAllocationsAmount += invoiceAllocationMode.TotalAmount;
+
+                            var allocationTagValue = new AllocationTagValue
+                            {
+                                Amount = invoiceAllocationMode.TotalAmount,
+                                Allocation = new List<TagValueItem>
+                                {
+                                    new TagValueItem
+                                    {
+                                        Value = invoiceAllocationMode.TagValue
+                                    }
+                                }
+                            };
+
+                            var pexTagValues = new PexTagValuesModel
+                            {
+                                AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
+                                AplosContactId = mapping.TransfersAplosContactId,
+                                AplosFundId = tagValue,
+                                AplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber
+                            };
+
+                            allocationDetails.Add((allocationTagValue, pexTagValues));
                         }
-                        };
 
-                        var pexTagValues = new PexTagValuesModel
+                        if (totalAllocationsAmount != totalPaymentsAmount)
                         {
-                            AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
-                            AplosContactId = mapping.TransfersAplosContactId,
-                            AplosFundId = tagValue,
-                            AplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber
-                        };
+                            _logger.LogWarning($"totalAllocationsAmount ({totalAllocationsAmount} != totalPaymentsAmount ({totalPaymentsAmount}). Skipping invoice {invoiceModel.InvoiceId}.");
+                            failureCount++;
+                            continue;
+                        }
 
-                        allocationDetails.Add((allocationTagValue, pexTagValues));
-                    }
+                        var transactionSyncResult = TransactionSyncResult.Failed;
+                        try
+                        {
+                            transactionSyncResult = await SyncInvoice(allocationDetails, mapping, invoiceModel, null, cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error syncing invoice {invoiceModel.InvoiceId}.");
+                            failureCount++;
+                        }
 
-                    if (totalAllocationsAmount != totalPaymentsAmount)
-                    {
-                        failureCount++;
-                        continue;
+                        if (transactionSyncResult == TransactionSyncResult.Success)
+                        {
+                            syncCount++;
+                            _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
+                        }
+                        else if (transactionSyncResult == TransactionSyncResult.Failed)
+                        {
+                            _logger.LogError($"Failed syncing invoice {invoiceModel.InvoiceId}.");
+                            failureCount++;
+                        }
                     }
-
-                    _logger.LogInformation($"Starting sync for invoice {invoiceModel.InvoiceId}");
-                    var transactionSyncResult = TransactionSyncResult.Failed;
-                    try
+                    catch (PexApiClientException ex)
                     {
-                        transactionSyncResult = await SyncInvoice(allocationDetails, mapping, invoiceModel, null, cancellationToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, $"Exception syncing invoice {invoiceModel.InvoiceId}.");
-                    }
-
-                    if (transactionSyncResult == TransactionSyncResult.Success)
-                    {
-                        syncCount++;
-                        _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
-                    }
-                    else if (transactionSyncResult == TransactionSyncResult.Failed)
-                    {
+                        _logger.LogError(ex, $"Error processing invoice {invoiceModel.InvoiceId}.");
                         failureCount++;
                     }
                 }
@@ -1609,53 +1632,61 @@ namespace AplosConnector.Common.Services
             {
                 using (_logger.BeginScope(GetLoggingScopeForTransaction(transaction)))
                 {
-                    if (!allocationMapping.TryGetValue(transaction.TransactionId, out var allocations))
-                    {
-                        _logger.LogWarning($"Transaction {transaction.TransactionId} doesn't have an associated allocation. Skipping");
-                        continue;
-                    }
+                    _logger.LogDebug($"Starting sync for PEX transfer {transaction.TransactionId}");
 
-                    var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
-                    foreach (var allocation in allocations)
-                    {
-                        //We currently don't support tags on business transactions.
-                        //If we add support, we just need to create a setting for mapping and find the value from the allocations based on the tagId.
-                        var pexTagValues = new PexTagValuesModel
-                        {
-                            AplosRegisterAccountNumber = model.AplosRegisterAccountNumber,
-                            AplosContactId = model.TransfersAplosContactId,
-                            AplosFundId = model.TransfersAplosFundId,
-                            AplosTransactionAccountNumber = model.TransfersAplosTransactionAccountNumber
-                        };
-
-                        allocationDetails.Add((allocation, pexTagValues));
-                    }
-
-                    _logger.LogInformation($"Starting sync for transfer {transaction.TransactionId}");
-                    var transactionSyncResult = TransactionSyncResult.Failed;
                     try
                     {
-                        transactionSyncResult = await SyncTransaction(
-                            allocationDetails,
-                            model,
-                            transaction,
-                            null,
-                            null,
-                            cancellationToken);
+                        if (!allocationMapping.TryGetValue(transaction.TransactionId, out var allocations))
+                        {
+                            _logger.LogWarning($"Transaction {transaction.TransactionId} doesn't have an associated allocation. Skipping");
+                            continue;
+                        }
+
+                        var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
+                        foreach (var allocation in allocations)
+                        {
+                            //We currently don't support tags on business transactions.
+                            //If we add support, we just need to create a setting for mapping and find the value from the allocations based on the tagId.
+                            var pexTagValues = new PexTagValuesModel
+                            {
+                                AplosRegisterAccountNumber = model.AplosRegisterAccountNumber,
+                                AplosContactId = model.TransfersAplosContactId,
+                                AplosFundId = model.TransfersAplosFundId,
+                                AplosTransactionAccountNumber = model.TransfersAplosTransactionAccountNumber
+                            };
+
+                            allocationDetails.Add((allocation, pexTagValues));
+                        }
+
+                        var transactionSyncResult = TransactionSyncResult.Failed;
+                        try
+                        {
+                            transactionSyncResult = await SyncTransaction(
+                                allocationDetails,
+                                model,
+                                transaction,
+                                null,
+                                null,
+                                cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error syncing transfer {transaction.TransactionId}.");
+                        }
+
+                        if (transactionSyncResult == TransactionSyncResult.Success)
+                        {
+                            syncCount++;
+                            _logger.LogInformation($"Synced transfer {transaction.TransactionId} with Aplos");
+                        }
+                        else if (transactionSyncResult == TransactionSyncResult.Failed)
+                        {
+                            failureCount++;
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, $"Exception syncing transfer {transaction.TransactionId}.");
-                    }
-
-                    if (transactionSyncResult == TransactionSyncResult.Success)
-                    {
-                        syncCount++;
-                        _logger.LogInformation($"Synced transfer {transaction.TransactionId} with Aplos");
-                    }
-                    else if (transactionSyncResult == TransactionSyncResult.Failed)
-                    {
-                        failureCount++;
+                        _logger.LogError(ex, $"Error processing transfer {transaction.TransactionId}.");
                     }
                 }
             }
@@ -1710,54 +1741,62 @@ namespace AplosConnector.Common.Services
             {
                 using (_logger.BeginScope(GetLoggingScopeForTransaction(transaction)))
                 {
-                    if (!allocationMapping.TryGetValue(transaction.TransactionId, out var allocations))
-                    {
-                        _logger.LogWarning($"Transaction {transaction.TransactionId} doesn't have an associated allocation. Skipping");
-                        continue;
-                    }
+                    _logger.LogDebug($"Starting sync for PEX fee {transaction.TransactionId}");
 
-                    var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
-                    foreach (var allocation in allocations)
-                    {
-                        //We currently don't support tags on business transactions.
-                        //If we add support, we just need to create a setting for mapping and find the value from the allocations based on the tagId.
-                        var pexTagValues = new PexTagValuesModel
-                        {
-                            AplosRegisterAccountNumber = model.AplosRegisterAccountNumber,
-                            AplosContactId = model.PexFeesAplosContactId,
-                            AplosFundId = model.PexFeesAplosFundId,
-                            AplosTaxTagId = model.PexFeesAplosTaxTagId,
-                            AplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber
-                        };
-
-                        allocationDetails.Add((allocation, pexTagValues));
-                    }
-
-                    _logger.LogInformation($"Starting sync for PEX account fee {transaction.TransactionId}");
-                    var transactionSyncResult = TransactionSyncResult.Failed;
                     try
                     {
-                        transactionSyncResult = await SyncTransaction(
-                            allocationDetails,
-                            model,
-                            transaction,
-                            null,
-                            null,
-                            cancellationToken);
+                        if (!allocationMapping.TryGetValue(transaction.TransactionId, out var allocations))
+                        {
+                            _logger.LogWarning($"Transaction {transaction.TransactionId} doesn't have an associated allocation. Skipping");
+                            continue;
+                        }
+
+                        var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
+                        foreach (var allocation in allocations)
+                        {
+                            //We currently don't support tags on business transactions.
+                            //If we add support, we just need to create a setting for mapping and find the value from the allocations based on the tagId.
+                            var pexTagValues = new PexTagValuesModel
+                            {
+                                AplosRegisterAccountNumber = model.AplosRegisterAccountNumber,
+                                AplosContactId = model.PexFeesAplosContactId,
+                                AplosFundId = model.PexFeesAplosFundId,
+                                AplosTaxTagId = model.PexFeesAplosTaxTagId,
+                                AplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber
+                            };
+
+                            allocationDetails.Add((allocation, pexTagValues));
+                        }
+
+                        var transactionSyncResult = TransactionSyncResult.Failed;
+                        try
+                        {
+                            transactionSyncResult = await SyncTransaction(
+                                allocationDetails,
+                                model,
+                                transaction,
+                                null,
+                                null,
+                                cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error syncing PEX account fee {transaction.TransactionId}.");
+                        }
+
+                        if (transactionSyncResult == TransactionSyncResult.Success)
+                        {
+                            syncCount++;
+                            _logger.LogInformation($"Synced PEX account fee {transaction.TransactionId} with Aplos");
+                        }
+                        else if (transactionSyncResult == TransactionSyncResult.Failed)
+                        {
+                            failureCount++;
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, $"Exception syncing PEX account fee {transaction.TransactionId}.");
-                    }
-
-                    if (transactionSyncResult == TransactionSyncResult.Success)
-                    {
-                        syncCount++;
-                        _logger.LogInformation($"Synced PEX account fee {transaction.TransactionId} with Aplos");
-                    }
-                    else if (transactionSyncResult == TransactionSyncResult.Failed)
-                    {
-                        failureCount++;
+                        _logger.LogError(ex, $"Error processing PEX account fee {transaction.TransactionId}.");
                     }
                 }
             }
