@@ -935,6 +935,37 @@ namespace AplosConnector.Common.Services
                 vendorCardsOrdered = vendorCardOrders?.SelectMany(x => x.CardOrders)?.ToList() ?? new List<VendorCardOrdered>();
             }
 
+            var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown, cancellationToken);
+            List<TagDropdownDetailsModel> dropdownTags = default;
+            if (useTags)
+            {
+                var dropdownTagTasks = new List<Task<TagDropdownDetailsModel>>
+                {
+                    _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId, cancellationToken),
+                };
+                if (mapping.ExpenseAccountMappings != null)
+                {
+                    foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
+                    {
+                        dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, cancellationToken));
+                    }
+                }
+                if (mapping.TagMappings != null)
+                {
+                    foreach (var tagMapping in mapping.TagMappings)
+                    {
+                        dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, cancellationToken));
+                    }
+                }
+                await Task.WhenAll(dropdownTagTasks);
+                dropdownTags = dropdownTagTasks.Where(t => !t.IsFaulted).Select(t => t.Result).ToList();
+                foreach (var failedTask in dropdownTagTasks.Where(t => t.IsFaulted))
+                {
+                    _logger.LogError(failedTask.Exception?.InnerException, $"Exception getting dropdown tag for business {mapping.PEXBusinessAcctId}. {failedTask.Exception?.InnerException}");
+                }
+            }
+            _logger.LogInformation($"Loaded {dropdownTags.Count} dropdown tags for business.");
+
             var allCardholderTransactions = new CardholderTransactions(new List<TransactionModel>());
             foreach (var dateRangeBatch in fetchTransactionDateBatches)
             {
@@ -945,37 +976,6 @@ namespace AplosConnector.Common.Services
                 var transactions = FilterTransactions(mapping, cardholderTransactions);
 
                 _logger.LogInformation($"Syncing {transactions.Count} transactions for business: {mapping.PEXBusinessAcctId}");
-
-                var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown, cancellationToken);
-
-                List<TagDropdownDetailsModel> dropdownTags = default;
-                if (useTags)
-                {
-                    var dropdownTagTasks = new List<Task<TagDropdownDetailsModel>>
-                {
-                    _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId, cancellationToken),
-                };
-                    if (mapping.ExpenseAccountMappings != null)
-                    {
-                        foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
-                        {
-                            dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, cancellationToken));
-                        }
-                    }
-                    if (mapping.TagMappings != null)
-                    {
-                        foreach (var tagMapping in mapping.TagMappings)
-                        {
-                            dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, cancellationToken));
-                        }
-                    }
-                    await Task.WhenAll(dropdownTagTasks);
-                    dropdownTags = dropdownTagTasks.Where(t => !t.IsFaulted).Select(t => t.Result).ToList();
-                    foreach (var failedTask in dropdownTagTasks.Where(t => t.IsFaulted))
-                    {
-                        _logger.LogError(failedTask.Exception?.InnerException, $"Exception getting dropdown tag for business {mapping.PEXBusinessAcctId}. {failedTask.Exception?.InnerException}");
-                    }
-                }
 
                 var allocationMapping = await _pexApiClient.GetTagAllocations(mapping.PEXExternalAPIToken, new CardholderTransactions(transactions), cancellationToken);
 
