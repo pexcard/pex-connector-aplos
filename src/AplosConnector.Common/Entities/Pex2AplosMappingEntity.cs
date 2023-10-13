@@ -1,4 +1,5 @@
 ﻿using System;
+using AplosConnector.Common.Models;
 using Azure;
 using Azure.Data.Tables;
 
@@ -27,6 +28,7 @@ namespace AplosConnector.Common.Entities
         public bool SyncTransfers { get; set; }
         public bool SyncInvoices { get; set; }
         public bool SyncPexFees { get; set; }
+        public bool SyncRebates { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
         public DateTime? EndDateUtc { get; set; }
@@ -61,6 +63,11 @@ namespace AplosConnector.Common.Entities
         public string PexFeesAplosTransactionAccountNumber { get; set; }
         public string PexFeesAplosTaxTagId { get; set; }
 
+        public int PexRebatesAplosContactId { get; set; }
+        public int PexRebatesAplosFundId { get; set; }
+        public string PexRebatesAplosTransactionAccountNumber { get; set; }
+        public string PexRebatesAplosTaxTagId { get; set; }
+        
         public string ExpenseAccountMappings { get; set; }
         public string TagMappings { get; set; }
         
@@ -71,6 +78,7 @@ namespace AplosConnector.Common.Entities
         public double? FetchTransactionsIntervalDays { get; set; }
         public bool MapVendorCards { get; set; }
         public bool UseNormalizedMerchantNames { get; set; }
+        public string PostDateType { get; set; }
 
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }

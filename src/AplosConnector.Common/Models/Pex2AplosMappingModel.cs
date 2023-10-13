@@ -24,6 +24,7 @@ namespace AplosConnector.Common.Models
             SyncTransfers = mapping.SyncTransfers;
             SyncPexFees = mapping.SyncPexFees;
             SyncInvoices = mapping.SyncInvoices;
+            SyncRebates = mapping.SyncRebates;
             LastSyncUtc = mapping.LastSync;
             EarliestTransactionDateToSync = mapping.EarliestTransactionDateToSync.ToUniversalTime();
             if (mapping.EndDateUtc != null)
@@ -57,6 +58,11 @@ namespace AplosConnector.Common.Models
             PexFeesAplosTransactionAccountNumber = mapping.PexFeesAplosTransactionAccountNumber;
             PexFeesAplosTaxTagId = mapping.PexFeesAplosTaxTag;
 
+            PexRebatesAplosContactId = mapping.PexRebatesAplosContactId;
+            PexRebatesAplosFundId = mapping.PexRebatesAplosFundId;
+            PexRebatesAplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber;
+            PexRebatesAplosTaxTagId = mapping.PexRebatesAplosTaxTag;
+
             PexFundsTagId = mapping.PexFundsTagId;
             SyncFundsToPex = mapping.SyncFundsToPex;
 
@@ -67,6 +73,7 @@ namespace AplosConnector.Common.Models
             PEXFundingSource = mapping.PEXFundingSource;
             MapVendorCards = mapping.MapVendorCards;
             UseNormalizedMerchantNames = mapping.UseNormalizedMerchantNames;
+            PostDateType = mapping.PostDateType;
         }
 
         private static string GetPexTaxTagId(IEnumerable<TagMappingModel> tagMappings)
@@ -88,6 +95,7 @@ namespace AplosConnector.Common.Models
                 SyncTransfers = SyncTransfers,
                 SyncInvoices = SyncInvoices,
                 SyncPexFees = SyncPexFees,
+                SyncRebates = SyncRebates,
                 LastSync = LastSyncUtc,
                 EarliestTransactionDateToSync = EarliestTransactionDateToSync,
                 EndDateUtc = EndDateUtc,
@@ -121,6 +129,11 @@ namespace AplosConnector.Common.Models
                 PexFeesAplosTransactionAccountNumber = PexFeesAplosTransactionAccountNumber,
                 PexFeesAplosTaxTag = PexFeesAplosTaxTagId,
 
+                PexRebatesAplosContactId = PexRebatesAplosContactId,
+                PexRebatesAplosFundId = PexRebatesAplosFundId,
+                PexRebatesAplosTransactionAccountNumber = PexRebatesAplosTransactionAccountNumber,
+                PexRebatesAplosTaxTag = PexRebatesAplosTaxTagId,
+
                 SyncFundsToPex = SyncFundsToPex,
 
                 ExpenseAccountMappings = ExpenseAccountMappings,
@@ -131,6 +144,7 @@ namespace AplosConnector.Common.Models
                 FetchTransactionsIntervalDays = FetchTransactionsIntervalDays,
                 MapVendorCards = MapVendorCards,
                 UseNormalizedMerchantNames = UseNormalizedMerchantNames,
+                PostDateType = PostDateType,
             };
         }
 
@@ -148,6 +162,7 @@ namespace AplosConnector.Common.Models
         public bool SyncTransfers { get; set; }
         public bool SyncPexFees { get; set; }
         public bool SyncInvoices { get; set; }
+        public bool SyncRebates { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
         public DateTime? EndDateUtc { get; set; }
@@ -178,6 +193,11 @@ namespace AplosConnector.Common.Models
         public string PexFeesAplosTaxTagId { get; set; }
         public decimal PexFeesAplosTransactionAccountNumber { get; set; }
 
+        public int PexRebatesAplosContactId { get; set; }
+        public int PexRebatesAplosFundId { get; set; }
+        public decimal PexRebatesAplosTransactionAccountNumber { get; set; }
+        public string PexRebatesAplosTaxTagId { get; set; }
+
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
 
@@ -187,10 +207,19 @@ namespace AplosConnector.Common.Models
         public double? FetchTransactionsIntervalDays { get; set; }
         public bool MapVendorCards { get; set; }
         public bool UseNormalizedMerchantNames { get; set; }
+
+        public PostDateType PostDateType { get; set; }
+
         public DateTime GetLastRenewedDateUtc()
         {
             return LastRenewedUtc ?? CreatedUtc;
         }
+    }
+
+    public enum PostDateType
+    {
+        Transaction,
+        Settlement
     }
 
     public enum AplosAuthenticationMode

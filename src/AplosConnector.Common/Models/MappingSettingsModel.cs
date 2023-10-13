@@ -46,6 +46,10 @@ namespace AplosConnector.Common.Models
         /// </summary>
         public bool SyncInvoices { get; set; }
         /// <summary>
+        /// Whether to sync PEX rebates to Aplos.
+        /// </summary>
+        public bool SyncRebates { get; set; }
+        /// <summary>
         /// Whether to sync PEX account fees to Aplos.
         /// </summary>
         public bool SyncPexFees { get; set; }
@@ -75,6 +79,11 @@ namespace AplosConnector.Common.Models
         public decimal PexFeesAplosTransactionAccountNumber { get; set; }
         public string PexFeesAplosTaxTag { get; set; }
 
+        public int PexRebatesAplosContactId { get; set; }
+        public int PexRebatesAplosFundId { get; set; }
+        public decimal PexRebatesAplosTransactionAccountNumber { get; set; }
+        public string PexRebatesAplosTaxTag { get; set; }
+
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
         public FundingSource PEXFundingSource { get; set; }
@@ -83,5 +92,7 @@ namespace AplosConnector.Common.Models
         public double? FetchTransactionsIntervalDays { get; set; }
         public bool MapVendorCards { get; set; }
         public bool UseNormalizedMerchantNames { get; set; }
+
+        public PostDateType PostDateType { get; set; }
     }
 }

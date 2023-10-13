@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using PexCard.Api.Client.Core.Models;
+using System;
 
 namespace AplosConnector.Common.Services
 {
@@ -56,6 +57,7 @@ namespace AplosConnector.Common.Services
                     SyncTransfers = model.SyncTransfers,
                     SyncInvoices = model.SyncInvoices,
                     SyncPexFees = model.SyncPexFees,
+                    SyncRebates = model.SyncRebates,
                     SyncApprovedOnly = model.SyncApprovedOnly,
                     EarliestTransactionDateToSync = model.EarliestTransactionDateToSync,
                     EndDateUtc = model.EndDateUtc,
@@ -86,6 +88,11 @@ namespace AplosConnector.Common.Services
                     PexFeesAplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber.ToString(),
                     PexFeesAplosTaxTagId = model.PexFeesAplosTaxTagId,
 
+                    PexRebatesAplosContactId = model.PexRebatesAplosContactId,
+                    PexRebatesAplosFundId = model.PexRebatesAplosFundId,
+                    PexRebatesAplosTransactionAccountNumber = model.PexRebatesAplosTransactionAccountNumber.ToString(),
+                    PexRebatesAplosTaxTagId = model.PexRebatesAplosTaxTagId,
+
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
 
@@ -100,7 +107,8 @@ namespace AplosConnector.Common.Services
                     SyncTransactionsIntervalDays = model.SyncTransactionsIntervalDays,
                     FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays,
                     MapVendorCards = model.MapVendorCards,
-                    UseNormalizedMerchantNames = model.UseNormalizedMerchantNames
+                    UseNormalizedMerchantNames = model.UseNormalizedMerchantNames,
+                    PostDateType = model.PostDateType.ToString(),
                 };
             }
 
@@ -149,6 +157,7 @@ namespace AplosConnector.Common.Services
                 decimal.TryParse(model.DefaultAplosTransactionAccountNumber, out var defaultAplosTransactionAccountNumber);
                 decimal.TryParse(model.TransfersAplosTransactionAccountNumber, out var transfersAplosTransactionAccountNumber);
                 decimal.TryParse(model.PexFeesAplosTransactionAccountNumber, out var pexFeesAplosTransactionAccountNumber);
+                decimal.TryParse(model.PexRebatesAplosTransactionAccountNumber, out var pexRebatesAplosTransactionAccountNumber);
 
                 result = new Pex2AplosMappingModel
                 {
@@ -166,6 +175,7 @@ namespace AplosConnector.Common.Services
                     SyncTransfers = model.SyncTransfers,
                     SyncInvoices = model.SyncInvoices,
                     SyncPexFees = model.SyncPexFees,
+                    SyncRebates = model.SyncRebates,
                     SyncApprovedOnly = model.SyncApprovedOnly,
                     EarliestTransactionDateToSync = model.EarliestTransactionDateToSync,
                     EndDateUtc = model.EndDateUtc,
@@ -196,6 +206,11 @@ namespace AplosConnector.Common.Services
                     PexFeesAplosTransactionAccountNumber = pexFeesAplosTransactionAccountNumber,
                     PexFeesAplosTaxTagId = model.PexFeesAplosTaxTagId,
 
+                    PexRebatesAplosContactId = model.PexRebatesAplosContactId,
+                    PexRebatesAplosFundId = model.PexRebatesAplosFundId,
+                    PexRebatesAplosTransactionAccountNumber = pexRebatesAplosTransactionAccountNumber,
+                    PexRebatesAplosTaxTagId = model.PexRebatesAplosTaxTagId,
+
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
 
@@ -216,6 +231,7 @@ namespace AplosConnector.Common.Services
                     FetchTransactionsIntervalDays = model.FetchTransactionsIntervalDays,
                     MapVendorCards = model.MapVendorCards,
                     UseNormalizedMerchantNames = model.UseNormalizedMerchantNames,
+                    PostDateType = !string.IsNullOrEmpty(model.PostDateType) ? Enum.Parse<PostDateType>(model.PostDateType) : PostDateType.Transaction,
                 };
             }
 
