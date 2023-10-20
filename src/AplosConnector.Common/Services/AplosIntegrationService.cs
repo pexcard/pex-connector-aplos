@@ -3,6 +3,7 @@ using Aplos.Api.Client.Abstractions;
 using Aplos.Api.Client.Exceptions;
 using Aplos.Api.Client.Models;
 using Aplos.Api.Client.Models.Detail;
+using Aplos.Api.Client.Models.Response;
 using AplosConnector.Common.Const;
 using AplosConnector.Common.Enums;
 using AplosConnector.Common.Extensions;
@@ -10,6 +11,8 @@ using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services.Abstractions;
+using AplosConnector.Common.Storage;
+using AplosConnector.Common.VendorCards;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -26,10 +29,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Aplos.Api.Client.Models.Response;
-using AplosConnector.Common.Storage;
-using AplosConnector.Common.VendorCards;
-using System.Transactions;
 
 namespace AplosConnector.Common.Services
 {
@@ -1253,7 +1252,6 @@ namespace AplosConnector.Common.Services
             var syncTimePeriod = new TimePeriod(startDate, endDate);
 
             var aplosTransactions = await GetTransactions(mapping, startDate, cancellationToken);
-            await SyncInvoices(_logger, mapping, aplosTransactions, startDate, cancellationToken);
 
             _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod}.");
 
@@ -1263,6 +1261,8 @@ namespace AplosConnector.Common.Services
             await SyncPexFees(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, additionalFeeTransactions, cancellationToken);
 
             await SyncRebates(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, cancellationToken);
+
+            await SyncInvoices(_logger, mapping, aplosTransactions, startDate, cancellationToken);
         }
 
         private async Task SyncRebates(
@@ -1428,25 +1428,19 @@ namespace AplosConnector.Common.Services
                         var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
                         var totalAllocationsAmount = 0m;
 
-                        foreach (var invoiceAllocationMode in invoiceAllocations)
+                        foreach (var invoiceAllocationModel in invoiceAllocations)
                         {
-                            if (aplosFunds.All(f => f.Id != invoiceAllocationMode.TagValue) || !int.TryParse(invoiceAllocationMode.TagValue, out var tagValue))
+                            if (aplosFunds.All(f => f.Id != invoiceAllocationModel.TagValue) || !int.TryParse(invoiceAllocationModel.TagValue, out var tagValue))
                             {
                                 continue;
                             }
 
-                            totalAllocationsAmount += invoiceAllocationMode.TotalAmount;
+                            totalAllocationsAmount += invoiceAllocationModel.TotalAmount;
 
                             var allocationTagValue = new AllocationTagValue
                             {
-                                Amount = invoiceAllocationMode.TotalAmount,
-                                Allocation = new List<TagValueItem>
-                                {
-                                    new TagValueItem
-                                    {
-                                        Value = invoiceAllocationMode.TagValue
-                                    }
-                                }
+                                Amount = invoiceAllocationModel.TotalAmount,
+                                Allocation = new List<TagValueItem> {new() { Value = invoiceAllocationModel.TagValue }}
                             };
 
                             var pexTagValues = new PexTagValuesModel
@@ -1467,6 +1461,50 @@ namespace AplosConnector.Common.Services
                             continue;
                         }
 
+                        // Add rebates
+                        var hasRebateError = false;
+
+                        foreach (var invoicePayment in invoicePayments.Where(invoicePayment => invoicePayment.Type is PaymentType.RebateCredit or PaymentType.RebateCreditReversal))
+                        {
+                            var pexRebatesAplosFundIdString = mapping.PexRebatesAplosFundId.ToString();
+
+                            if (mapping.PexRebatesAplosContactId == 0
+                                || mapping.PexRebatesAplosFundId == 0
+                                || mapping.PexRebatesAplosTransactionAccountNumber == decimal.Zero
+                                || mapping.SyncTaxTagToPex && string.IsNullOrEmpty(mapping.PexRebatesAplosTaxTagId)
+                                || aplosFunds.All(f => f.Id != pexRebatesAplosFundIdString))
+                            {
+                                hasRebateError = true;
+                                continue;
+                            }
+
+                            var amount = invoicePayment.Type == PaymentType.RebateCredit ? - invoicePayment.Amount : invoicePayment.Amount;
+
+                            var allocationTagValue = new AllocationTagValue
+                            {
+                                Amount = amount,
+                                Allocation = new List<TagValueItem> { new() { Value = pexRebatesAplosFundIdString } }
+                            };
+
+                            var pexTagValues = new PexTagValuesModel
+                            {
+                                AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
+                                AplosContactId = mapping.PexRebatesAplosContactId,
+                                AplosFundId = mapping.PexRebatesAplosFundId,
+                                AplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber,
+                                AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
+                            };
+
+                            allocationDetails.Add((allocationTagValue, pexTagValues));
+                        }
+
+                        if (hasRebateError)
+                        {
+                            _logger.LogWarning($"Failed syncing invoice {invoiceModel.InvoiceId}. Incorrect rebates configuration.");
+                            failureCount++;
+                            continue;
+                        }
+
                         var transactionSyncResult = TransactionSyncResult.Failed;
                         try
                         {
@@ -1480,8 +1518,8 @@ namespace AplosConnector.Common.Services
 
                         if (transactionSyncResult == TransactionSyncResult.Success)
                         {
-                            syncCount++;
                             _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
+                            syncCount++;
                         }
                         else if (transactionSyncResult == TransactionSyncResult.Failed)
                         {
@@ -1518,7 +1556,7 @@ namespace AplosConnector.Common.Services
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
-        public async Task<TransactionSyncResult> SyncInvoice(
+        private async Task<TransactionSyncResult> SyncInvoice(
             IEnumerable<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)> allocationDetails,
             Pex2AplosMappingModel mapping,
             InvoiceModel invoice,

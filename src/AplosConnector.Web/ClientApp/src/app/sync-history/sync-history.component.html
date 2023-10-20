@@ -33,9 +33,9 @@
         </td>
         <td>
           {{ item.syncedRecords }}
-          <clr-signpost *ngIf="item.syncNotes?.length>0">
-            <clr-signpost-content *clrIfOpen>
-              <p>{{item.syncNotes}}</p>
+          <clr-signpost *ngIf="item.syncNotes?.length > 0">
+            <clr-signpost-content *clrIfOpen [clrPosition]="'top-left'">
+              <span>{{item.syncNotes}}</span>
             </clr-signpost-content>
           </clr-signpost>
 
