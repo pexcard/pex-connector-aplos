@@ -700,7 +700,7 @@
         </div>
       </div>
 
-      <div *ngIf="(settingsModel.syncTransactions && settingsModel.syncRebates)">
+      <div *ngIf="(settingsModel.syncTransactions && settingsModel.syncRebates) || settingsModel.syncInvoices">
 
         <h4>Rebates:</h4>
         <span class="selectLabel">Contact:</span>
