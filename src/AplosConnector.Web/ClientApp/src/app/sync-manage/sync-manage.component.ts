@@ -32,6 +32,7 @@ export class SyncManageComponent implements OnInit {
   taxTagCategories: AplosApiTaxTagCategoryDetail[] = [];
   transfersAplosTaxTagName: string = ''
   pexFeesAplosTaxTagName: string = ''
+  pexRebatesAplosTaxTagName: string = ''
 
   defaultContact: AplosObject;
   defaultFund: AplosObject;
@@ -179,6 +180,9 @@ export class SyncManageComponent implements OnInit {
     if (this.settings.pexFeesAplosTaxTag) {
       this.pexFeesAplosTaxTagName = this.getTaxTagName(this.settings.pexFeesAplosTaxTag.toString());
     }
+    if (this.settings.pexFeesAplosTaxTag) {
+      this.pexRebatesAplosTaxTagName = this.getTaxTagName(this.settings.pexRebatesAplosTaxTag.toString());
+    }
   }
 
   getTaxTagName(taxTagId: string) {
@@ -242,7 +246,7 @@ export class SyncManageComponent implements OnInit {
   }
 
   getRebatesInfo() {
-    if (this.settings.syncRebates) {
+    if (this.settings.syncRebates || this.settings.syncInvoices) {
       this.aplos.getContact(this.sessionId, this.settings.pexRebatesAplosContactId).subscribe(
         contact => {
           console.log('got rebates contact', contact);
