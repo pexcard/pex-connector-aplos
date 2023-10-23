@@ -158,7 +158,7 @@
             </td>
           </tr>
           <tr *ngIf="isCredit">
-            <th>Sync purchases, bill payments and fees</th>
+            <th>Sync purchases, bill payments, fees and rebates</th>
             <td>
               <clr-icon
                 *ngIf="settings.syncInvoices"
@@ -325,17 +325,21 @@
               <th>990 tag for fees</th>
               <td>{{pexFeesAplosTaxTagName}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates) && rebatesContact">
+            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && rebatesContact">
               <th>Contact for rebates</th>
               <td>{{rebatesContact.name}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates) && rebatesFund">
+            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && rebatesFund">
               <th>Fund for rebates</th>
               <td>{{rebatesFund.name}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates) && rebatesAccount">
+            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && rebatesAccount">
               <th>Transaction account for rebates</th>
               <td>{{rebatesAccount | aplosAccount}}</td>
+            </tr>
+            <tr class="left" *ngIf="settings.syncInvoices && settings.pexRebatesAplosTaxTag">
+              <th>990 tag for rebates</th>
+              <td>{{pexRebatesAplosTaxTagName}}</td>
             </tr>
           </tbody>
         </table>

@@ -235,7 +235,7 @@
           clrToggle
           name="syncInvoices"
           [(ngModel)]="settingsModel.syncInvoices"/>
-        <label>Automatically import PEX purchases with Fund and Account tags, fees and bill payments into Aplos.</label>
+        <label>Automatically import PEX purchases with Fund and Account tags, fees, bill payments and rebates into Aplos.</label>
       </clr-toggle-wrapper>
 
       <clr-toggle-wrapper>
@@ -546,11 +546,11 @@
     <ng-template clrPageNavTitle>Transaction Options</ng-template>
     <ng-template  clrPageTitle>
       <span *ngIf="isPrepaid">Configure options for transfers, fees and rebates</span>
-      <span *ngIf="isCredit">Configure options for bill payments and fees</span>
+      <span *ngIf="isCredit">Configure options for bill payments, fees and rebates</span>
     </ng-template>
 
     <h4 *ngIf="isPrepaid">Please choose the following items when importing Transfers, Fees and Rebates into Aplos</h4>
-    <h4 *ngIf="isCredit">Please choose the following items when importing Bill Payments and Fees into Aplos</h4>
+    <h4 *ngIf="isCredit">Please choose the following items when importing Bill Payments, Fees, and Rebates into Aplos</h4>
 
     <app-loading-placeholder
     [loadingState]="loadingExpenseCategories"
