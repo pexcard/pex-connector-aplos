@@ -337,7 +337,7 @@
               <th>Transaction account for rebates</th>
               <td>{{rebatesAccount | aplosAccount}}</td>
             </tr>
-            <tr class="left" *ngIf="settings.syncInvoices && settings.pexRebatesAplosTaxTag">
+            <tr class="left" *ngIf="settings.syncTaxTagToPex && settings.pexRebatesAplosTaxTag">
               <th>990 tag for rebates</th>
               <td>{{pexRebatesAplosTaxTagName}}</td>
             </tr>
