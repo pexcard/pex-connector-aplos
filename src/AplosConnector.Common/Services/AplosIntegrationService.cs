@@ -963,8 +963,9 @@ namespace AplosConnector.Common.Services
                 {
                     _logger.LogError(failedTask.Exception?.InnerException, $"Exception getting dropdown tag for business {mapping.PEXBusinessAcctId}. {failedTask.Exception?.InnerException}");
                 }
+
+                _logger.LogInformation($"Retrieved ALL {dropdownTags.Count} PEX dropdown tags for business.");
             }
-            _logger.LogInformation($"Retrieved ALL {dropdownTags.Count} PEX dropdown tags for business.");
 
             var allCardholderTransactions = new CardholderTransactions(new List<TransactionModel>());
             foreach (var dateRangeBatch in fetchTransactionDateBatches)
