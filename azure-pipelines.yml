@@ -74,6 +74,8 @@ steps:
     OverWrite: true
 
 - task: WhiteSource@20
+  env:
+    NODE_TLS_REJECT_UNAUTHORIZED: 0
   inputs:
     cwd: '$(Build.ArtifactStagingDirectory)'
     extensions: '.dll'
