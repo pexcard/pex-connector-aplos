@@ -63,6 +63,8 @@ steps:
     pollingTimeoutSec: '300'
 
 - task: WhiteSource@20
+  env:
+    NODE_TLS_REJECT_UNAUTHORIZED: 0
   inputs:
     cwd: '$(System.DefaultWorkingDirectory)'
     extensions: '.dll'
