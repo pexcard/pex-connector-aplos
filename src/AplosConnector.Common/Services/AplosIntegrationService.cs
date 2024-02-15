@@ -1431,28 +1431,37 @@ namespace AplosConnector.Common.Services
 
                         foreach (var invoiceAllocationModel in invoiceAllocations)
                         {
-                            if (aplosFunds.All(f => f.Id != invoiceAllocationModel.TagValue) || !int.TryParse(invoiceAllocationModel.TagValue, out var tagValue))
+                            var isFeeAllocation = invoiceAllocationModel.TagValue == null 
+                                && (invoiceAllocationModel.TransactionTypeCategory == TransactionCategory.CardAccountFee 
+                                    || invoiceAllocationModel.TransactionTypeCategory == TransactionCategory.BusinessAccountFee);
+
+
+                            if ((!int.TryParse(invoiceAllocationModel.TagValue, out var tagValue)
+                                 || aplosFunds.All(f => f.Id != invoiceAllocationModel.TagValue))
+                                && !isFeeAllocation)
                             {
                                 continue;
                             }
 
-                            totalAllocationsAmount += invoiceAllocationModel.TotalAmount;
+                            var allocationValue = isFeeAllocation ? mapping.PexFeesAplosFundId.ToString() : invoiceAllocationModel.TagValue;
+                            var aplosFundId = isFeeAllocation ? mapping.PexFeesAplosFundId : tagValue;
 
                             var allocationTagValue = new AllocationTagValue
                             {
                                 Amount = invoiceAllocationModel.TotalAmount,
-                                Allocation = new List<TagValueItem> {new() { Value = invoiceAllocationModel.TagValue }}
+                                Allocation = new List<TagValueItem> {new() { Value = allocationValue } }
                             };
 
                             var pexTagValues = new PexTagValuesModel
                             {
                                 AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
                                 AplosContactId = mapping.TransfersAplosContactId,
-                                AplosFundId = tagValue,
+                                AplosFundId = aplosFundId,
                                 AplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber
                             };
 
                             allocationDetails.Add((allocationTagValue, pexTagValues));
+                            totalAllocationsAmount += invoiceAllocationModel.TotalAmount;
                         }
 
                         if (totalAllocationsAmount != totalPaymentsAmount)
