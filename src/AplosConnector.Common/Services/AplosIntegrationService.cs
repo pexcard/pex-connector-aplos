@@ -1768,7 +1768,7 @@ namespace AplosConnector.Common.Services
             List<TransactionModel> additionalFeeTransactions,
             CancellationToken cancellationToken)
         {
-            if (!model.SyncPexFees) return;
+            if (!model.SyncPexFees && !model.SyncInvoices) return;
 
             var transactions = businessAccountTransactions.SelectBusinessAccountFees();
             if (additionalFeeTransactions != null)
