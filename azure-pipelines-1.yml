@@ -81,24 +81,24 @@ steps:
     targetType: "inline"
     failOnStderr: true
     script: |
-    # https://github.com/mend-toolkit/mend-examples/blob/main/CI-CD/AzureDevOps/Mend%20CLI/AzureDevOps-linux.yaml
-  
-    # https://curl.se/docs/optionswhen.html
-    echo Downloading mend cli...
-    curl https://downloads.mend.io/cli/linux_amd64/mend -sS -o /usr/local/bin/mend && chmod +x /usr/local/bin/mend
-  
-    # https://docs.mend.io/bundle/integrations/page/configure_the_mend_cli_for_sca.html#Mend-CLI-SCA-parameters
-    mend dependencies --dir '$(appRootFolder)' --scope 'PEX//Marketplace//$(appName)' --non-interactive --update --fail-policy
-  
-    # https://docs.mend.io/bundle/integrations/page/mend_cli_exit_codes.html
-    export dep_exit=$?
-  
-    if [[ "$dep_exit" == "9" ]]; then
-        echo "##vso[task.logissue type=warning;] 🚨 Dependency scan policy violation."
-        echo "##vso[task.complete result=SucceededWithIssues;]"
-    elif [[ "$dep_exit" != "0" ]]; then
-        echo "##vso[task.logissue type=error;] ⚠️ Dependency scan failed. Exit code $dep_exit https://docs.mend.io/bundle/integrations/page/mend_cli_exit_codes.html"
-        echo "##vso[task.complete result=SucceededWithIssues;]"
-    else
-        echo "✅ No policy violations or failures occurred in dependencies scan"
-    fi
+      # https://github.com/mend-toolkit/mend-examples/blob/main/CI-CD/AzureDevOps/Mend%20CLI/AzureDevOps-linux.yaml
+      
+      # https://curl.se/docs/optionswhen.html
+      echo Downloading mend cli...
+      curl https://downloads.mend.io/cli/linux_amd64/mend -sS -o /usr/local/bin/mend && chmod +x /usr/local/bin/mend
+      
+      # https://docs.mend.io/bundle/integrations/page/configure_the_mend_cli_for_sca.html#Mend-CLI-SCA-parameters
+      mend dependencies --dir '$(appRootFolder)' --scope 'PEX//Marketplace//$(appName)' --non-interactive --update --fail-policy
+      
+      # https://docs.mend.io/bundle/integrations/page/mend_cli_exit_codes.html
+      export dep_exit=$?
+      
+      if [[ "$dep_exit" == "9" ]]; then
+          echo "##vso[task.logissue type=warning;] 🚨 Dependency scan policy violation."
+          echo "##vso[task.complete result=SucceededWithIssues;]"
+      elif [[ "$dep_exit" != "0" ]]; then
+          echo "##vso[task.logissue type=error;] ⚠️ Dependency scan failed. Exit code $dep_exit https://docs.mend.io/bundle/integrations/page/mend_cli_exit_codes.html"
+          echo "##vso[task.complete result=SucceededWithIssues;]"
+      else
+          echo "✅ No policy violations or failures occurred in dependencies scan"
+      fi
