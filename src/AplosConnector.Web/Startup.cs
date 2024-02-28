@@ -10,8 +10,6 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SpaServices.AngularCli;
-using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Extensions.Configuration;
@@ -31,6 +29,7 @@ using AplosConnector.Common.VendorCards;
 using Azure.Data.Tables;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Azure.Storage.Queues;
+using Azure.Identity;
 
 namespace AplosConnector.Web
 {
@@ -147,11 +146,9 @@ namespace AplosConnector.Web
             });
 
             var storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer blobContainer = blobClient.GetContainerReference(appSettings.DataProtectionBlobContainer);
+            var blobClient = storageAccount.CreateCloudBlobClient();
+            var blobContainer = blobClient.GetContainerReference(appSettings.DataProtectionBlobContainer);
             blobContainer.CreateIfNotExistsAsync();
-
-            var keyVaultClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(new AzureServiceTokenProvider().KeyVaultTokenCallback));
 
             services
                 .AddDataProtection()
@@ -160,8 +157,8 @@ namespace AplosConnector.Web
                     blobContainer,
                     appSettings.DataProtectionBlobName)
                 .ProtectKeysWithAzureKeyVault(
-                    keyVaultClient,
-                    appSettings.DataProtectionKeyIdentifier);
+                    new Uri(appSettings.DataProtectionKeyIdentifier),
+                    new DefaultAzureCredential());
 
 
             // In production, the Angular files will be served from this directory

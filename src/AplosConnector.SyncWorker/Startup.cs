@@ -7,8 +7,6 @@ using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.SyncWorker;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Extensions.Configuration;
@@ -24,6 +22,7 @@ using AplosConnector.Common.VendorCards;
 using Azure.Data.Tables;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Azure.Storage.Queues;
+using Azure.Identity;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 namespace AplosConnector.SyncWorker
@@ -132,11 +131,9 @@ namespace AplosConnector.SyncWorker
             var dataProtectionKeyIdentifier = Environment.GetEnvironmentVariable("DataProtectionKeyIdentifier", EnvironmentVariableTarget.Process);
 
             var storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer blobContainer = blobClient.GetContainerReference(dataProtectionBlobContainer);
+            var blobClient = storageAccount.CreateCloudBlobClient();
+            var blobContainer = blobClient.GetContainerReference(dataProtectionBlobContainer);
             blobContainer.CreateIfNotExistsAsync();
-
-            var keyVaultClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(new AzureServiceTokenProvider().KeyVaultTokenCallback));
 
             builder.Services
                 .AddDataProtection()
@@ -145,8 +142,8 @@ namespace AplosConnector.SyncWorker
                     blobContainer,
                     dataProtectionBlobName)
                 .ProtectKeysWithAzureKeyVault(
-                    keyVaultClient,
-                    dataProtectionKeyIdentifier)
+                    new Uri(dataProtectionKeyIdentifier),
+                    new DefaultAzureCredential())
                 .DisableAutomaticKeyGeneration();
         }
     }
