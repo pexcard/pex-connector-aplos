@@ -88,7 +88,7 @@ steps:
       curl https://downloads.mend.io/cli/linux_amd64/mend -sS -o /usr/local/bin/mend && chmod +x /usr/local/bin/mend
       
       # https://docs.mend.io/bundle/integrations/page/configure_the_mend_cli_for_sca.html#Mend-CLI-SCA-parameters
-      mend dependencies --dir '$(appRootFolder)' --scope 'PEX//Marketplace//$(appName)' --non-interactive --update --fail-policy
+      mend dependencies --dir '$(System.DefaultWorkingDirectory)' --scope 'PEX//Marketplace//$(appName)' --non-interactive --update --fail-policy
       
       # https://docs.mend.io/bundle/integrations/page/mend_cli_exit_codes.html
       export dep_exit=$?
