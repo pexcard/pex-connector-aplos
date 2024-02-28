@@ -1,4 +1,4 @@
-# ASP.NET Core
+﻿# ASP.NET Core
 # Build and test ASP.NET Core projects targeting .NET Core.
 # Add steps that run tests, create a NuGet package, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
@@ -14,11 +14,19 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
-  buildConfiguration: 'Release'
-  dotnetVersion: '6.0'
-  DOTNET_ROLL_FORWARD: 'Major' #Needed for SonarCloud scanner to work on .NET Core 3+
+- group: mend-variables
+- name: appName
+  value: 'pex-connector-aplos'
+- name: solution
+  value: '**/*.sln'
+- name: buildPlatform
+  value: 'Any CPU'
+- name: buildconfiguration
+  value: 'Release'
+- name: dotnetVersion
+  value: '6.0'
+- name: DOTNET_ROLL_FORWARD
+  value: 'Major' # needed for sonarcloud scanner
 
 steps:
 - task: UseDotNet@2
@@ -73,19 +81,39 @@ steps:
     CleanTargetFolder: false
     OverWrite: true
 
-- task: WhiteSource@20
+- task: Bash@3
+  displayName: "Mend"
+  continueOnError: true
   env:
-    NODE_TLS_REJECT_UNAUTHORIZED: 0
+    MEND_URL: $(MEND-URL)
+    MEND_EMAIL: $(MEND-EMAIL)
+    MEND_USER_KEY: $(MEND-USER-KEY)
+    MEND_LOG_LEVEL: DEBUG
   inputs:
-    cwd: '$(Build.ArtifactStagingDirectory)'
-    extensions: '.dll'
-    checkPolicies: 'FAIL_ON_BUILD'
-    productName: 'Marketplace'
-    projectRule: 'projectName'
-    projectName: '$(Build.Repository.Name)'
-    forceCheckAllDependencies: true
-    forceUpdate: true
-    WhiteSourceService: 'WhiteSource'
+    targetType: "inline"
+    failOnStderr: true
+    script: |
+      # https://github.com/mend-toolkit/mend-examples/blob/main/CI-CD/AzureDevOps/Mend%20CLI/AzureDevOps-linux.yaml
+      
+      # https://curl.se/docs/optionswhen.html
+      echo Downloading mend cli...
+      curl https://downloads.mend.io/cli/linux_amd64/mend -sS -o /usr/local/bin/mend && chmod +x /usr/local/bin/mend
+      
+      # https://docs.mend.io/bundle/integrations/page/configure_the_mend_cli_for_sca.html#Mend-CLI-SCA-parameters
+      mend dependencies --dir '$(System.DefaultWorkingDirectory)' --scope 'PEX//Marketplace//$(appName)' --non-interactive --update --fail-policy
+      
+      # https://docs.mend.io/bundle/integrations/page/mend_cli_exit_codes.html
+      export dep_exit=$?
+      
+      if [[ "$dep_exit" == "9" ]]; then
+          echo "##vso[task.logissue type=warning;] 🚨 Dependency scan policy violation."
+          echo "##vso[task.complete result=SucceededWithIssues;]"
+      elif [[ "$dep_exit" != "0" ]]; then
+          echo "##vso[task.logissue type=error;] ⚠️ Dependency scan failed. Exit code $dep_exit https://docs.mend.io/bundle/integrations/page/mend_cli_exit_codes.html"
+          echo "##vso[task.complete result=SucceededWithIssues;]"
+      else
+          echo "✅ No policy violations or failures occurred in dependencies scan"
+      fi
 
 - task: PublishBuildArtifacts@1
   displayName: 'Publish artifacts'
