@@ -72,6 +72,7 @@ steps:
 
 - task: Bash@3
   displayName: "Mend"
+  continueOnError: true
   env:
     MEND_URL: $(MEND-URL)
     MEND_EMAIL: $(MEND-EMAIL)
