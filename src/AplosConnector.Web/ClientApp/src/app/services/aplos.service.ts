@@ -72,6 +72,12 @@ export class AplosService {
       .pipe(retryWithBackoff()), 60);
   }
 
+  getTags(sessionId: string, categoryId: string): Observable<AplosObject[]> {
+    return this.cache.runAndCacheOrGetFromCache("Aplos.getTags"+categoryId, this.httpClient
+      .get<AplosObject[]>(`${this.buildUrl(sessionId, "Tags")}&categoryId=${categoryId}`)
+      .pipe(retryWithBackoff()), 60);
+  }
+
   getTaxTagCategories(sessionId: string): Observable<AplosApiTaxTagCategoryDetail[]> {
     return this.cache.runAndCacheOrGetFromCache("Aplos.getTaxTagCategories", this.httpClient
       .get<AplosObject[]>(this.buildUrl(sessionId, "TaxTagCategories"))

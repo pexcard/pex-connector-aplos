@@ -407,6 +407,14 @@ namespace Aplos.Api.Client
                 cancellationToken: cancellationToken);
         }
 
+        public async Task<AplosApiTagListResponse> GetTagDetails(string tagId, CancellationToken cancellationToken = default)
+        {
+            return await InvokeAplosApiWithAccessToken<AplosApiTagListResponse>(
+                HttpMethod.Get,
+                $"{APLOS_ENDPOINT_TAGS}/{tagId}",
+                cancellationToken: cancellationToken);
+        }
+
         public async Task<List<AplosApiTaxTagCategoryDetail>> GetTaxTags(CancellationToken cancellationToken = default)
         {
             var response = await InvokeAplosApiWithAccessToken<AplosApiTaxTagListResponse>(

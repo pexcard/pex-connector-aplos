@@ -157,15 +157,16 @@ export interface SettingsModel {
 }
 
 export interface ExpenseAccountMappingModel {
-  //quickBooksExpenseCategoryIdFilter: number;
   syncExpenseAccounts: boolean;
   expenseAccountsPexTagId: string;
+  defaultAplosTransactionAccountNumber: number;
 }
 
 export interface TagMappingModel {
   aplosTagId: string;
   pexTagId: string;
   syncToPex: boolean;
+  defaultAplosTagId: string;
 }
 
 export enum AplosAuthenticationMode {
