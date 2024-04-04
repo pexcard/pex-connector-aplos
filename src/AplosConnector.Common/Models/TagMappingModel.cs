@@ -5,5 +5,6 @@
         public string AplosTagId { get; set; }
         public string PexTagId { get; set; }
         public bool SyncToPex { get; set; }
+        public string DefaultAplosTagId { get; set; }
     }
 }

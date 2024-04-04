@@ -40,7 +40,8 @@ export class SyncConnectComponent implements OnInit {
     expenseAccounts: new UntypedFormArray([
       new UntypedFormGroup({
         expenseAccount: new UntypedFormControl(),
-        syncExpenseAccountToPex: new UntypedFormControl(false)
+        syncExpenseAccountToPex: new UntypedFormControl(false),
+        defaultAplosTransactionAccountNumber: new UntypedFormControl()
       })
     ])
   });
@@ -50,7 +51,8 @@ export class SyncConnectComponent implements OnInit {
       new UntypedFormGroup({
         aplosTag: new UntypedFormControl(),
         pexTag: new UntypedFormControl(),
-        syncToPex: new UntypedFormControl(false)
+        syncToPex: new UntypedFormControl(false),
+        defaultAplosTag: new UntypedFormControl()
       })
     ])
   });
@@ -72,6 +74,7 @@ export class SyncConnectComponent implements OnInit {
   aplosLiabilityAccounts: AplosAccount[] = [];
   aplosFunds: AplosObject[] = [];
   aplosTagCategories: AplosObject[] = [];
+  aplosTags: { [id: string] : AplosObject[]; } = {};
   aplosTaxTagCategories: AplosApiTaxTagCategoryDetail[] = [];
   hasTagsAvailable = true;
   savingServiceAccountSucceeded = true;
@@ -137,13 +140,14 @@ export class SyncConnectComponent implements OnInit {
     this.getExpenseAccountFormElements().removeAt(idx);
   }
 
-  addExpenseAccountElement(expenseAccountMapping: ExpenseAccountMappingModel = { expenseAccountsPexTagId: null, /*quickBooksExpenseCategoryIdFilter: 0,*/ syncExpenseAccounts: false }) {
+  addExpenseAccountElement(expenseAccountMapping: ExpenseAccountMappingModel = { expenseAccountsPexTagId: null, syncExpenseAccounts: false, defaultAplosTransactionAccountNumber: 0 }) {
     console.log('adding expense account element');
     this.getExpenseAccountFormElements().push(
       new UntypedFormGroup(
         {
           expenseAccount: new UntypedFormControl(expenseAccountMapping.expenseAccountsPexTagId, Validators.required),
-          syncExpenseAccountToPex: new UntypedFormControl(expenseAccountMapping.syncExpenseAccounts)
+          syncExpenseAccountToPex: new UntypedFormControl(expenseAccountMapping.syncExpenseAccounts),
+          defaultAplosTransactionAccountNumber: new UntypedFormControl(expenseAccountMapping.defaultAplosTransactionAccountNumber),
         }
       )
     );
@@ -157,14 +161,15 @@ export class SyncConnectComponent implements OnInit {
     this.getTagMappingFormElements().removeAt(idx);
   }
 
-  addTagMappingElement(tagMapping: TagMappingModel = { aplosTagId: null, pexTagId: null, syncToPex: false }) {
+  addTagMappingElement(tagMapping: TagMappingModel = { aplosTagId: null, pexTagId: null, syncToPex: false, defaultAplosTagId: null }) {
     console.log('adding tag mapping element');
     this.getTagMappingFormElements().push(
       new UntypedFormGroup(
         {
           aplosTag: new UntypedFormControl(tagMapping.aplosTagId, Validators.required),
           pexTag: new UntypedFormControl(tagMapping.pexTagId, Validators.required),
-          syncToPex: new UntypedFormControl(tagMapping.syncToPex)
+          syncToPex: new UntypedFormControl(tagMapping.syncToPex),
+          defaultAplosTag: new UntypedFormControl(tagMapping.defaultAplosTagId)
         }
       )
     );
@@ -397,6 +402,26 @@ export class SyncConnectComponent implements OnInit {
     );
   }
 
+  loadingAplosTags = false;
+  errorLoadingAplosTags = false;
+  getTags(categoryId: string) {
+    this.loadingAplosTags = true;
+    this.errorLoadingAplosTags = false;
+
+    return this.aplos.getTags(this.sessionId, categoryId).subscribe(
+      aplosTags => {
+        console.log('getting Tags', aplosTags);
+        this.aplosTags[categoryId] = [ ...aplosTags];
+        this.loadingAplosTags = false;
+        console.log('got Tags', this.aplosTags);
+      },
+      () => {
+        this.loadingAplosTags = false;
+        this.errorLoadingAplosTags = true;
+      }
+    );
+  }
+
   loadingAplosTaxTags = false;
   errorLoadingAplosTaxTags = false;
   getTaxTagCategories() {
@@ -417,6 +442,13 @@ export class SyncConnectComponent implements OnInit {
     );
   }
 
+  onAplosCategoryChange(formGroupName: number) {
+    let aplosTagCategoryId = this.tagMappingForm.value.tagMappings[formGroupName].aplosTag;
+
+    if (aplosTagCategoryId) {
+      this.getTags(aplosTagCategoryId);
+    }
+  }
 
   onAuthenticateWithPex() {
     this.auth.getOauthURL();
@@ -466,6 +498,16 @@ export class SyncConnectComponent implements OnInit {
       this.getTaxTagCategories();
       this.initExpenseAccountMappingFormFromSettings(this.settingsModel);
       this.initTagMappingFormFromSettings(this.settingsModel);
+
+      if (this.settingsModel.tagMappings.length > 0) {
+        this.settingsModel.tagMappings.forEach(
+          mapping => {
+            if (mapping.aplosTagId && mapping.defaultAplosTagId) {
+              this.getTags(mapping.aplosTagId)
+            }
+          }
+        )
+      }
     });
   }
 
@@ -586,7 +628,8 @@ export class SyncConnectComponent implements OnInit {
       this.expenseAccountForm.value.expenseAccounts.forEach(element => {
         accounts.push({
           expenseAccountsPexTagId: element.expenseAccount,
-          syncExpenseAccounts: hasMultipleMappings ? false : element.syncExpenseAccountToPex
+          syncExpenseAccounts: hasMultipleMappings ? false : element.syncExpenseAccountToPex,
+          defaultAplosTransactionAccountNumber: element.defaultAplosTransactionAccountNumber
         });
       });
 
@@ -598,7 +641,8 @@ export class SyncConnectComponent implements OnInit {
           tagMappings.push({
             aplosTagId: element.aplosTag,
             pexTagId: element.pexTag,
-            syncToPex: element.syncToPex
+            syncToPex: element.syncToPex,
+            defaultAplosTagId: element.defaultAplosTag
           });
         }
       });

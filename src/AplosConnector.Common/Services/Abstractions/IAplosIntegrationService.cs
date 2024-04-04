@@ -24,6 +24,7 @@ namespace AplosConnector.Common.Services.Abstractions
         Task<PexAplosApiObject> GetAplosFund(Pex2AplosMappingModel mapping, int aplosFundId, CancellationToken cancellationToken);
         Task<IEnumerable<PexAplosApiObject>> GetAplosFunds(Pex2AplosMappingModel mapping, CancellationToken cancellationToken);
         Task<IEnumerable<PexAplosApiObject>> GetAplosTagCategories(Pex2AplosMappingModel mapping, CancellationToken cancellationToken);
+        Task<IEnumerable<PexAplosApiObject>> GetAplosTags(Pex2AplosMappingModel mapping, string categoryId, CancellationToken cancellationToken);
         Task<List<AplosApiTransactionDetail>> GetTransactions(Pex2AplosMappingModel mapping, DateTime startDate, CancellationToken cancellationToken);
         IAplosApiClient MakeAplosApiClient(Pex2AplosMappingModel mapping, AplosAuthenticationMode? overrideAuthenticationMode = null);
         Task Sync(Pex2AplosMappingModel mapping, CancellationToken cancellationToken);

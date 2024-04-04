@@ -140,7 +140,10 @@ export class SyncManageComponent implements OnInit {
             if (mapping.expenseAccountsPexTagId) {
               const pexTagName = pexTags.find(tag => { return tag.id === mapping.expenseAccountsPexTagId }).name;
 
-              this.tagNameAccount.push({ expenseAccountsPexTagId: pexTagName, syncExpenseAccounts: mapping.syncExpenseAccounts, })
+              this.tagNameAccount.push({ 
+                expenseAccountsPexTagId: pexTagName,
+                syncExpenseAccounts: mapping.syncExpenseAccounts,
+                defaultAplosTransactionAccountNumber: mapping.defaultAplosTransactionAccountNumber })
             }
           });
         }
@@ -157,7 +160,12 @@ export class SyncManageComponent implements OnInit {
                 if (tagMapping.aplosTagId && tagMapping.pexTagId) {
                   const aplosTagName = this.aplosTagCategories.find(tag => { return tag.id.toString() === tagMapping.aplosTagId }).name;
                   const pexTagName = pexTags.find(tag => { return tag.id === tagMapping.pexTagId }).name;
-                  this.tagMappings.push({ aplosTagId: aplosTagName, pexTagId: pexTagName, syncToPex: tagMapping.syncToPex, });
+                  this.tagMappings.push({ 
+                    aplosTagId: aplosTagName,
+                    pexTagId: pexTagName,
+                    syncToPex: tagMapping.syncToPex,
+                    defaultAplosTagId: tagMapping.defaultAplosTagId
+                  });
                 }
               });
             });

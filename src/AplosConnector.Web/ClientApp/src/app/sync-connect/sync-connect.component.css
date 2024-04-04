@@ -8,3 +8,8 @@
 .single-vendor-help {
   margin-left: 2.1em;
 }
+
+.circle-list {
+  list-style: circle;
+  font-size: 13px;
+}

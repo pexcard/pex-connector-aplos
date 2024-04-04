@@ -170,6 +170,26 @@ namespace AplosConnector.Web.Controllers
             return Ok(tagCategories);
         }
 
+        [HttpGet, Route("Tags")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<IEnumerable<PexAplosApiObject>>> GetTagTags(string sessionId, string categoryId, CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
+
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
+            if (session == null) return Unauthorized();
+
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
+            if (mapping == null) return NotFound();
+
+            var tags = await _aplosIntegrationService.GetAplosTags(mapping, categoryId, cancellationToken);
+
+            return Ok(tags);
+        }
+
         [HttpGet, Route("TaxTagCategories")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
