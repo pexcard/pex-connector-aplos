@@ -10,7 +10,11 @@ namespace AplosConnector.Common.Storage;
 
 public class Pex2AplosMappingQueue : AzureQueueAbstract
 {
+#if DEBUG
     public const string QUEUE_NAME = "pex-aplos-mapping-vp";
+#else
+        public const string QUEUE_NAME = "pex-aplos-mapping";
+#endif
 
     public Pex2AplosMappingQueue(QueueClient queueClient) : base(queueClient) {}
 
