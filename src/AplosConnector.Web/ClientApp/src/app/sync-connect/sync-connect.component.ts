@@ -502,7 +502,7 @@ export class SyncConnectComponent implements OnInit {
       if (this.settingsModel.tagMappings.length > 0) {
         this.settingsModel.tagMappings.forEach(
           mapping => {
-            if (mapping.aplosTagId && mapping.defaultAplosTagId) {
+            if (mapping.aplosTagId) {
               this.getTags(mapping.aplosTagId)
             }
           }

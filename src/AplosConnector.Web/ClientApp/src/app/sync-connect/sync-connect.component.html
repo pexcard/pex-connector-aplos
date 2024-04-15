@@ -387,16 +387,13 @@
     </clr-spinner>
 
     <form clrForm #aplosFieldMappingForm="ngForm" [class.hide]="!savingSettings">
+      
       <ul class="circle-list">
-        <li>Map each field name from Aplos on the left to a corresponding PEX Tag on the right. Only dropdown type Tags can be mapped.</li>
-        <li>Enable the sync toggle for the fields you want to sync into PEX as tag option values from Aplos.</li>
-        <li>You can select a default option value for each tag. This value will be applied to transactions if you or your cardholders forget to tag a transaction before it's synced to your Aplos account.</li>
+        <li><p class="display-inline">Map each field name from Aplos on the left to a corresponding PEX Tag on the right. Only dropdown type Tags can be mapped.</p></li>
+        <li><p class="display-inline">Enable the sync toggle for the fields you want to sync into PEX as tag option values from Aplos.</p></li>
+        <li><p class="display-inline">You can select a default option value for each tag. This value will be applied to transactions if you or your cardholders forget to tag a transaction before it's synced to your Aplos account.</p></li>
       </ul>
 
-      <p>
-        Map each field name from Aplos on the left to a corresponding PEX Tag on the right.
-        Only dropdown type Tags can be mapped.
-      </p>
       <table class="table">
         <caption>
           Fund
