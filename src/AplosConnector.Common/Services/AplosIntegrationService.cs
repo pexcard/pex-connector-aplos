@@ -1097,32 +1097,40 @@ namespace AplosConnector.Common.Services
 
                                         foreach (var tagMapping in mapping.TagMappings)
                                         {
-                                            var allocationTag = allocation.GetTagValue(tagMapping.PexTagId);
-
-                                            if (allocationTag != null && allocationTag.TagId != mapping.PexTaxTagId)
+                                            if (tagMapping.AplosTagId == "990")
                                             {
-                                                var allocationTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(allocationTag.TagId, StringComparison.InvariantCultureIgnoreCase));
-                                                var allocationTagOptionValue = allocationTag.Value?.ToString();
-                                                var allocationTagOptionName = allocationTag.GetTagOptionName(allocationTagDefinition?.Options);
-                                                var allocationTagEntity = aplosTags.FindMatchingEntity(allocationTagOptionValue, allocationTagOptionName, ':', _logger);
-                                                if (allocationTagEntity != null)
-                                                {
-                                                    _logger.LogInformation($"Matched PEX tag '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with Aplos tag entity '{allocationTagEntity.Name}' ({allocationTagEntity.Id}).");
-                                                    pexTagValues.AplosTagIds.Add(allocationTagEntity.Id);
-                                                }
-                                                else
-                                                {
-                                                    _logger.LogDebug($"Could not match  '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with an Aplos tag entity.");
-                                                }
-                                            }
-                                            else if (tagMapping.DefaultAplosTagId != null)
-                                            {
-                                                _logger.LogInformation($"Using default Aplos tag value '{tagMapping.DefaultAplosTagId}'.");
-                                                pexTagValues.AplosTagIds.Add(tagMapping.DefaultAplosTagId);
+                                                _logger.LogInformation($"Using default Aplos tax tag value '{tagMapping.DefaultAplosTagId}'.");
+                                                pexTagValues.AplosTaxTagId = tagMapping.DefaultAplosTagId;
                                             }
                                             else
                                             {
-                                                _logger.LogInformation($"No PEX tag {tagMapping.PexTagId} on transaction {transaction.TransactionId} allocation {allocation.Amount:C}");
+                                                var allocationTag = allocation.GetTagValue(tagMapping.PexTagId);
+
+                                                if (allocationTag != null && allocationTag.TagId != mapping.PexTaxTagId)
+                                                {
+                                                    var allocationTagDefinition = dropdownTags.FirstOrDefault(t => t.Id.Equals(allocationTag.TagId, StringComparison.InvariantCultureIgnoreCase));
+                                                    var allocationTagOptionValue = allocationTag.Value?.ToString();
+                                                    var allocationTagOptionName = allocationTag.GetTagOptionName(allocationTagDefinition?.Options);
+                                                    var allocationTagEntity = aplosTags.FindMatchingEntity(allocationTagOptionValue, allocationTagOptionName, ':', _logger);
+                                                    if (allocationTagEntity != null)
+                                                    {
+                                                        _logger.LogInformation($"Matched PEX tag '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with Aplos tag entity '{allocationTagEntity.Name}' ({allocationTagEntity.Id}).");
+                                                        pexTagValues.AplosTagIds.Add(allocationTagEntity.Id);
+                                                    }
+                                                    else
+                                                    {
+                                                        _logger.LogDebug($"Could not match  '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with an Aplos tag entity.");
+                                                    }
+                                                }
+                                                else if (!string.IsNullOrEmpty(tagMapping.DefaultAplosTagId))
+                                                {
+                                                    _logger.LogInformation($"Using default Aplos tag value '{tagMapping.DefaultAplosTagId}'.");
+                                                    pexTagValues.AplosTagIds.Add(tagMapping.DefaultAplosTagId);
+                                                }
+                                                else
+                                                {
+                                                    _logger.LogInformation($"No PEX tag {tagMapping.PexTagId} on transaction {transaction.TransactionId} allocation {allocation.Amount:C}");
+                                                }
                                             }
                                         }
                                     }
@@ -1132,7 +1140,11 @@ namespace AplosConnector.Common.Services
                                     }
 
                                     var taxTag = allocation.GetTagValue(mapping.PexTaxTagId);
-                                    pexTagValues.AplosTaxTagId = taxTag?.Value?.ToString();
+                                    if (taxTag != null && taxTag.Value != null)
+                                    {
+                                        _logger.LogInformation($"Using transaction tag {mapping.PexTaxTagId} for transaction {transaction.TransactionId} as Aplos tax tag value '{taxTag.Value}'.");
+                                        pexTagValues.AplosTaxTagId = taxTag.Value.ToString();
+                                    }
                                 }
                                 else
                                 {

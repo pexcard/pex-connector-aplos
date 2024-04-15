@@ -13,14 +13,14 @@
     <PackageReference Include="Azure.Data.Tables" Version="12.8.3" />
     <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Keys" Version="1.2.3" />
     <PackageReference Include="Azure.Storage.Queues" Version="12.17.1" />
-    <PackageReference Include="Azure.Identity" Version="1.10.4" />
+    <PackageReference Include="Azure.Identity" Version="1.11.0" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="6.0.27" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="6.0.27" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.AzureStorage" Version="3.1.24" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="6.0.27" />
     <PackageReference Include="Microsoft.Azure.Storage.Blob" Version="11.2.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="PexCard.Api.Client.Core" Version="1.62.0" />
+    <PackageReference Include="PexCard.Api.Client.Core" Version="1.64.0" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.0" />
     <PackageReference Include="Polly" Version="8.3.0" />
     <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />

@@ -549,7 +549,18 @@
                   </select>
                 </div>
               </td>
-              <td class="left">
+              <td *ngIf="tagMapping.value.aplosTag == '990'" class="left">
+                <div class="clr-select-wrapper">
+                  <select class="clr-select" 
+                          formControlName="defaultAplosTag">
+                    <option></option>
+                    <optgroup  *ngFor="let aplosTaxTagCategory of aplosTaxTagCategories" label="{{aplosTaxTagCategory.name}}">
+                      <option  [value]="aplosTaxTag.id" *ngFor="let aplosTaxTag of aplosTaxTagCategory.tax_tags">{{aplosTaxTag.name}} - {{aplosTaxTag.group_name}}</option>
+                    </optgroup>                          
+                  </select>
+                </div>
+              </td>
+              <td *ngIf="tagMapping.value.aplosTag != '990'" class="left">
                 <div class="clr-select-wrapper">
                   <select class="clr-select" 
                           formControlName="defaultAplosTag">
