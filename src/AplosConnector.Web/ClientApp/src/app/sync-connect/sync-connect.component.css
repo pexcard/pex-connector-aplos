@@ -13,3 +13,7 @@
   list-style: circle;
   font-size: 13px;
 }
+
+.display-inline {
+  display: inline;
+}

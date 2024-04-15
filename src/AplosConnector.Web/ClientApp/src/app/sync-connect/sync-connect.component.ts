@@ -445,7 +445,7 @@ export class SyncConnectComponent implements OnInit {
   onAplosCategoryChange(formGroupName: number) {
     let aplosTagCategoryId = this.tagMappingForm.value.tagMappings[formGroupName].aplosTag;
 
-    if (aplosTagCategoryId) {
+    if (aplosTagCategoryId && aplosTagCategoryId != "990") {
       this.getTags(aplosTagCategoryId);
     }
   }
