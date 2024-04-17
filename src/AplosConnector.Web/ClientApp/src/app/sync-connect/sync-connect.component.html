@@ -434,11 +434,10 @@
             <td class="left">
               <div class="clr-select-wrapper">
                 <select id="defaultAplosFundId"
-                        class="clr-select"
+                        class="clr-select select"
                         name="defaultAplosFundId"
-                        required
                         [(ngModel)]="settingsModel.defaultAplosFundId">
-                  <option></option>
+                  <option [value]="0"></option>
                   <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
                 </select>
               </div>
@@ -489,9 +488,10 @@
             </td>
             <td class="left">
               <div class="clr-select-wrapper">
-                <select class="clr-select"
-                        formControlName="defaultAplosTransactionAccountNumber">
-                  <option></option>
+                <select class="clr-select select"
+                        formControlName="defaultAplosTransactionAccountNumber"
+                        [(ngModel)]="settingsModel.defaultAplosTransactionAccountNumber">
+                  <option [value]="0"></option>
                   <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount.name}}</option>
                 </select>
               </div>
