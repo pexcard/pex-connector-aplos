@@ -539,6 +539,71 @@ namespace AplosConnector.Common.Services
             _logger.LogInformation("C# Queue trigger function completed.");
         }
 
+        private async Task SyncAplosTagToPex(ILogger _logger, Pex2AplosMappingModel mapping, TagMappingModel tagMapping, List<AplosApiTagCategoryDetail> aplosTagCategories, CancellationToken cancellationToken)
+        {
+            if (!tagMapping.SyncToPex) return;
+
+            if (string.IsNullOrEmpty(tagMapping.AplosTagId))
+            {
+                _logger.LogWarning($"Tag sync is enabled but {nameof(tagMapping.AplosTagId)} is not specified for business: {mapping.PEXBusinessAcctId}");
+                return;
+            }
+
+            var aplosTagCategory = aplosTagCategories.SingleOrDefault(atc => atc.Id == tagMapping.AplosTagId);
+            if (aplosTagCategory == null)
+            {
+                _logger.LogWarning($"Unable to find a single tag for {nameof(tagMapping.AplosTagId)} '{tagMapping.AplosTagId}'. Searched categories: {aplosTagCategories.Count}");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(tagMapping.PexTagId))
+            {
+                _logger.LogWarning($"Tag sync is enabled but {nameof(tagMapping.PexTagId)} is not specified for business: {mapping.PEXBusinessAcctId}");
+                return;
+            }
+
+            var pexTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, cancellationToken);
+            if (pexTag == null)
+            {
+                _logger.LogWarning($"{nameof(tagMapping.PexTagId)} is unavailable in business: {mapping.PEXBusinessAcctId}");
+                return;
+            }
+
+            _logger.LogInformation($"Syncing tags from {nameof(tagMapping.AplosTagId)} '{tagMapping.AplosTagId} / {aplosTagCategory.Name}' to {nameof(tagMapping.PexTagId)} '{tagMapping.PexTagId} / {pexTag.Name}' for business: {mapping.PEXBusinessAcctId}");
+
+            var flattenedAplosTags = GetFlattenedAplosTagValues(aplosTagCategory, cancellationToken);
+            var aplosTagsToSync = _aplosIntegrationMappingService.Map(flattenedAplosTags);
+
+            SyncStatus syncStatus;
+            var syncCount = 0;
+            string syncNotes = null;
+
+            try
+            {
+                pexTag.UpsertTagOptions(aplosTagsToSync, out syncCount);
+
+                await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTag.Id, pexTag, cancellationToken);
+                syncStatus = SyncStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                syncStatus = SyncStatus.Failed;
+                syncNotes = $"Error updating TagId {pexTag.Id}: {ex.Message}";
+
+                _logger.LogError(ex, $"Error updating TagId {pexTag.Id}");
+            }
+
+            var result = new SyncResultModel
+            {
+                PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                SyncType = $"Tag Values ({aplosTagCategory.Name})",
+                SyncStatus = syncStatus.ToString(),
+                SyncedRecords = syncCount,
+                SyncNotes = syncNotes
+            };
+            await _historyStorage.CreateAsync(result, cancellationToken);
+        }
+
         private async Task SyncAplosTagsToPex(ILogger _logger, Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
             if (mapping.TagMappings == null) return;
@@ -548,68 +613,14 @@ namespace AplosConnector.Common.Services
 
             foreach (var tagMapping in mapping.TagMappings)
             {
-                if (!tagMapping.SyncToPex) continue;
-
-                if (string.IsNullOrEmpty(tagMapping.AplosTagId))
-                {
-                    _logger.LogWarning($"Tag sync is enabled but {nameof(tagMapping.AplosTagId)} is not specified for business: {mapping.PEXBusinessAcctId}");
-                    continue;
-                }
-
-                var aplosTagCategory = aplosTagCategories.SingleOrDefault(atc => atc.Id == tagMapping.AplosTagId);
-                if (aplosTagCategory == null)
-                {
-                    _logger.LogWarning($"Unable to find a single tag for {nameof(tagMapping.AplosTagId)} '{tagMapping.AplosTagId}'. Searched categories: {aplosTagCategories.Count}");
-                    continue;
-                }
-
-                if (string.IsNullOrEmpty(tagMapping.PexTagId))
-                {
-                    _logger.LogWarning($"Tag sync is enabled but {nameof(tagMapping.PexTagId)} is not specified for business: {mapping.PEXBusinessAcctId}");
-                    continue;
-                }
-
-                var pexTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, cancellationToken);
-                if (pexTag == null)
-                {
-                    _logger.LogWarning($"{nameof(tagMapping.PexTagId)} is unavailable in business: {mapping.PEXBusinessAcctId}");
-                    continue;
-                }
-
-                _logger.LogInformation($"Syncing tags from {nameof(tagMapping.AplosTagId)} '{tagMapping.AplosTagId} / {aplosTagCategory.Name}' to {nameof(tagMapping.PexTagId)} '{tagMapping.PexTagId} / {pexTag.Name}' for business: {mapping.PEXBusinessAcctId}");
-
-                var flattenedAplosTags = GetFlattenedAplosTagValues(aplosTagCategory, cancellationToken);
-                var aplosTagsToSync = _aplosIntegrationMappingService.Map(flattenedAplosTags);
-
-
-                SyncStatus syncStatus;
-                var syncCount = 0;
-                string syncNotes = null;
-
                 try
                 {
-                    pexTag.UpsertTagOptions(aplosTagsToSync, out syncCount);
-
-                    await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTag.Id, pexTag, cancellationToken);
-                    syncStatus = SyncStatus.Success;
+                    await SyncAplosTagToPex(_logger, mapping, tagMapping, aplosTagCategories, cancellationToken);
                 }
                 catch (Exception ex)
                 {
-                    syncStatus = SyncStatus.Failed;
-                    syncNotes = $"Error updating TagId {pexTag.Id}: {ex.Message}";
-
-                    _logger.LogError(ex, $"Error updating TagId {pexTag.Id}");
+                    _logger.LogWarning(ex, $"Exception during {nameof(SyncAplosTagsToPex)} for business: {mapping.PEXBusinessAcctId}.");
                 }
-
-                var result = new SyncResultModel
-                {
-                    PEXBusinessAcctId = mapping.PEXBusinessAcctId,
-                    SyncType = $"Tag Values ({aplosTagCategory.Name})",
-                    SyncStatus = syncStatus.ToString(),
-                    SyncedRecords = syncCount,
-                    SyncNotes = syncNotes
-                };
-                await _historyStorage.CreateAsync(result, cancellationToken);
             }
         }
 
