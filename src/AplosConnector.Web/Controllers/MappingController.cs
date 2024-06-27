@@ -163,7 +163,7 @@ namespace AplosConnector.Web.Controllers
 
             mapping.IsManualSync = true;
 
-            //await _aplosIntegrationService.Sync(mapping, cancellationToken);
+            //await _aplosIntegrationService.Sync(mapping, CancellationToken.None);
 
             await _mappingQueue.EnqueueMapping(mapping, CancellationToken.None);
 
