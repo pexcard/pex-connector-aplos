@@ -59,7 +59,7 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> SaveSettings(string sessionId, [FromBody]MappingSettingsModel settings, CancellationToken cancellationToken)
+        public async Task<IActionResult> SaveSettings(string sessionId, [FromBody] MappingSettingsModel settings, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
@@ -163,9 +163,9 @@ namespace AplosConnector.Web.Controllers
 
             mapping.IsManualSync = true;
 
-            //await _aplosIntegrationService.Sync(mapping, CancellationToken.None);
+            await _aplosIntegrationService.Sync(mapping, CancellationToken.None);
 
-            await _mappingQueue.EnqueueMapping(mapping, CancellationToken.None);
+            //await _mappingQueue.EnqueueMapping(mapping, CancellationToken.None);
 
             return Ok();
         }
