@@ -10,6 +10,7 @@ namespace AplosConnector.Common.Models
         public bool AplosConnection { get; set; }
         public bool SyncingSetup { get; set; }
         public bool VendorsSetup { get; set; }
+        public bool IsSyncing { get; set; }
         public DateTime? LastSync { get; set; }
         public decimal? AccountBalance { get; set; }
         public bool UseBusinessBalanceEnabled { get; set; }

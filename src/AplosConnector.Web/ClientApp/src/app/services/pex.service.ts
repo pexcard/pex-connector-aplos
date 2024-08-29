@@ -92,6 +92,7 @@ export interface PexConnectionDetailModel {
   aplosConnection: boolean,
   syncingSetup: boolean,
   vendorsSetup: boolean,
+  isSyncing: boolean;
   lastSync: string,
   accountBalance?: number;
   useBusinessBalanceEnabled: boolean;

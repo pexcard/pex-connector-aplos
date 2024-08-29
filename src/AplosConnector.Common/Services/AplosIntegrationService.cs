@@ -6,7 +6,6 @@ using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
 using AplosConnector.Common.Const;
 using AplosConnector.Common.Enums;
-using AplosConnector.Common.Extensions;
 using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
@@ -454,89 +453,98 @@ namespace AplosConnector.Common.Services
 
         public async Task Sync(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("C# Queue trigger function processing.");
+            var utcNow = DateTime.UtcNow;
 
-            if (mapping.PEXBusinessAcctId == default)
+            try
             {
-                _logger.LogWarning($"C# Queue trigger function completed. Business account ID is {mapping.PEXBusinessAcctId}");
-                return;
-            }
+                _logger.LogInformation("C# Queue trigger function processing.");
 
-            using (_logger.BeginScope(GetLoggingScopeForSync(mapping)))
-            {
-
-                // Let's refresh Aplos API tokens before sync start and interrupt sync processor in case of invalidity
-                var aplosAccessToken = await GetAplosAccessToken(mapping, cancellationToken);
-                if (string.IsNullOrEmpty(aplosAccessToken))
+                if (mapping.PEXBusinessAcctId == default)
                 {
-                    _logger.LogCritical($"Integration for business {mapping.PEXBusinessAcctId} is not working. Aplos API token is invalid.");
+                    _logger.LogWarning($"C# Queue trigger function completed. Business account ID is {mapping.PEXBusinessAcctId}");
                     return;
                 }
 
-                await EnsurePartnerInfoPopulated(mapping, cancellationToken);
+                using (_logger.BeginScope(GetLoggingScopeForSync(mapping)))
+                {
 
-                var utcNow = DateTime.UtcNow;
-                List<TransactionModel> additionalFees = default;
-                try
-                {
-                    additionalFees = await SyncTransactions(_logger, mapping, utcNow, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, $"Exception during transactions sync for business: {mapping.PEXBusinessAcctId}");
+                    // Let's refresh Aplos API tokens before sync start and interrupt sync processor in case of invalidity
+                    var aplosAccessToken = await GetAplosAccessToken(mapping, cancellationToken);
+                    if (string.IsNullOrEmpty(aplosAccessToken))
+                    {
+                        _logger.LogCritical($"Integration for business {mapping.PEXBusinessAcctId} is not working. Aplos API token is invalid.");
+                        return;
+                    }
+
+                    await EnsurePartnerInfoPopulated(mapping, cancellationToken);
+
+                    mapping.IsSyncing = true;
+                    await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+
+                    List<TransactionModel> additionalFees = default;
+                    try
+                    {
+                        additionalFees = await SyncTransactions(_logger, mapping, utcNow, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Exception during transactions sync for business: {mapping.PEXBusinessAcctId}");
+                    }
+
+                    try
+                    {
+                        await SyncBusinessAccountTransactions(_logger, mapping, utcNow, additionalFees, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Exception during business account transactions sync for business: {mapping.PEXBusinessAcctId}.");
+                    }
+
+                    try
+                    {
+                        await SyncFundsToPex(_logger, mapping, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Exception during {nameof(SyncFundsToPex)} for business: {mapping.PEXBusinessAcctId}.");
+                    }
+
+                    try
+                    {
+                        await SyncExpenseAccountsToPex(_logger, mapping, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Exception during {nameof(SyncExpenseAccountsToPex)} for business: {mapping.PEXBusinessAcctId}.");
+                    }
+
+                    try
+                    {
+                        await SyncAplosTagsToPex(_logger, mapping, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Exception during {nameof(SyncAplosTagsToPex)} for business: {mapping.PEXBusinessAcctId}.");
+                    }
+
+                    try
+                    {
+                        await SyncAplosTaxTagsToPex(_logger, mapping, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Exception during {nameof(SyncAplosTaxTagsToPex)} for business: {mapping.PEXBusinessAcctId}.");
+                    }
                 }
 
-                try
-                {
-                    await SyncBusinessAccountTransactions(_logger, mapping, utcNow, additionalFees, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, $"Exception during business account transactions sync for business: {mapping.PEXBusinessAcctId}.");
-                }
-
-                try
-                {
-                    await SyncFundsToPex(_logger, mapping, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, $"Exception during {nameof(SyncFundsToPex)} for business: {mapping.PEXBusinessAcctId}.");
-                }
-
-                try
-                {
-                    await SyncExpenseAccountsToPex(_logger, mapping, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, $"Exception during {nameof(SyncExpenseAccountsToPex)} for business: {mapping.PEXBusinessAcctId}.");
-                }
-
-                try
-                {
-                    await SyncAplosTagsToPex(_logger, mapping, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, $"Exception during {nameof(SyncAplosTagsToPex)} for business: {mapping.PEXBusinessAcctId}.");
-                }
-
-                try
-                {
-                    await SyncAplosTaxTagsToPex(_logger, mapping, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, $"Exception during {nameof(SyncAplosTaxTagsToPex)} for business: {mapping.PEXBusinessAcctId}.");
-                }
-
-                mapping.LastSyncUtc = utcNow;
-                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
-
+                _logger.LogInformation("C# Queue trigger function completed.");
             }
-
-            _logger.LogInformation("C# Queue trigger function completed.");
+            finally
+            {
+                mapping.LastSyncUtc = utcNow;
+                mapping.IsSyncing = false;
+                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+            }
         }
 
         private async Task SyncAplosTagsToPex(ILogger _logger, Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
@@ -901,9 +909,9 @@ namespace AplosConnector.Common.Services
             if (!mapping.SyncTransactions && !mapping.SyncInvoices) return default;
 
             var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
-            var startDate = startDateUtc.ToEst();
+            var startDate = startDateUtc.ToStartOfDay(TimeZones.EST);
             var endDateUtc = GetEndDateUtc(mapping.EndDateUtc, utcNow);
-            var endDate = endDateUtc.ToEst();
+            var endDate = endDateUtc.ToEndOfDay(TimeZones.EST);
 
             if (startDate.Date >= endDate.Date)
             {
@@ -1200,7 +1208,7 @@ namespace AplosConnector.Common.Services
                             {
                                 syncCount++;
                                 _logger.LogInformation($"Synced transaction {transaction.TransactionId}");
-                                var syncedNoteText = $"{PexCardConst.SyncedWithAplosNote} on {DateTime.UtcNow.ToEst():MM/dd/yyyy h:mm tt}";
+                                var syncedNoteText = $"{PexCardConst.SyncedWithAplosNote} on {DateTime.UtcNow:O}";
                                 await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText, cancellationToken);
                             }
                             else if (transactionSyncResult == TransactionSyncResult.Failed)
@@ -1275,9 +1283,9 @@ namespace AplosConnector.Common.Services
             if (!mapping.SyncTransfers && !mapping.SyncPexFees && !mapping.SyncRebates && !mapping.SyncInvoices) return;
 
             var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
-            var startDate = startDateUtc.ToEst();
+            var startDate = startDateUtc.ToStartOfDay(TimeZones.EST);
             var endDateUtc = GetEndDateUtc(mapping.EndDateUtc, utcNow);
-            var endDate = endDateUtc.ToEst();
+            var endDate = endDateUtc.ToEndOfDay(TimeZones.EST);
 
             if (startDate.Date >= endDate.Date)
             {
@@ -1293,6 +1301,7 @@ namespace AplosConnector.Common.Services
             var allBusinessAccountTransactions = await _pexApiClient.GetBusinessAccountTransactions(mapping.PEXExternalAPIToken, syncTimePeriod.Start, syncTimePeriod.End, cancelToken: cancellationToken);
 
             await SyncTransfers(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, cancellationToken);
+
             await SyncPexFees(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, additionalFeeTransactions, cancellationToken);
 
             await SyncRebates(_logger, mapping, allBusinessAccountTransactions, aplosTransactions, cancellationToken);
@@ -1465,8 +1474,8 @@ namespace AplosConnector.Common.Services
 
                         foreach (var invoiceAllocationModel in invoiceAllocations)
                         {
-                            var isFeeAllocation = invoiceAllocationModel.TagValue == null 
-                                && (invoiceAllocationModel.TransactionTypeCategory == TransactionCategory.CardAccountFee 
+                            var isFeeAllocation = invoiceAllocationModel.TagValue == null
+                                && (invoiceAllocationModel.TransactionTypeCategory == TransactionCategory.CardAccountFee
                                     || invoiceAllocationModel.TransactionTypeCategory == TransactionCategory.BusinessAccountFee);
 
 
@@ -1483,7 +1492,7 @@ namespace AplosConnector.Common.Services
                             var allocationTagValue = new AllocationTagValue
                             {
                                 Amount = invoiceAllocationModel.TotalAmount,
-                                Allocation = new List<TagValueItem> {new() { Value = allocationValue } }
+                                Allocation = new List<TagValueItem> { new() { Value = allocationValue } }
                             };
 
                             var pexTagValues = new PexTagValuesModel
@@ -1522,7 +1531,7 @@ namespace AplosConnector.Common.Services
                                 continue;
                             }
 
-                            var amount = invoicePayment.Type == PaymentType.RebateCredit ? - invoicePayment.Amount : invoicePayment.Amount;
+                            var amount = invoicePayment.Type == PaymentType.RebateCredit ? -invoicePayment.Amount : invoicePayment.Amount;
 
                             var allocationTagValue = new AllocationTagValue
                             {
@@ -2051,8 +2060,19 @@ namespace AplosConnector.Common.Services
 
         private static bool FilterRebateTransactions(TransactionModel t)
         {
-            return t.Description.Contains("Rebate Credit") ||
-                   t.Description.StartsWith("Prepaid customer rebate payout to business");
+            return
+                // new way to identify rebates. but possibly 'only in prod'... (-___-")
+                t.TransactionTypeCategory == "BusinessRebate" ||
+
+                // Charge Rebates
+                // https://pexcard.visualstudio.com/Balance%20Engine/_git/Balance%20Engine?path=/BalanceEngine.Core/Services/RebateService.cs&version=GBmaster&line=599&lineEnd=600&lineStartColumn=1&lineEndColumn=1&lineStyle=plain&_a=contents
+                // https://pexcard.visualstudio.com/Balance%20Engine/_git/Balance%20Engine?path=%2FBalanceEngine.Models%2FEnums%2FPaymentType.cs&version=GBmaster&_a=contents
+                t.Description.Equals("Rebate Credit") ||
+                t.Description.Equals("Rebate Credit Reversal") ||
+
+                // Prepaid Rebates
+                // https://pexcard.visualstudio.com/Balance%20Engine/_git/Balance%20Engine?path=/BalanceEngine.Core/Services/RebateService.cs&version=GBmaster&line=261&lineEnd=262&lineStartColumn=1&lineEndColumn=1&lineStyle=plain&_a=contents
+                t.Description.Equals("Rebate payout");
         }
 
         public DateTime GetStartDateUtc(Pex2AplosMappingModel model, DateTime utcNow, SyncSettingsModel settings)

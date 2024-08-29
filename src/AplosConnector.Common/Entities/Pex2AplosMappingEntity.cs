@@ -15,6 +15,7 @@ namespace AplosConnector.Common.Entities
         }
 
         public bool AutomaticSync { get; set; }
+        public bool IsSyncing { get; set; }
         public bool IsManualSync { get; set; }
         public string PEXExternalAPIToken { get; set; }
         public int PEXBusinessAcctId { get; set; }

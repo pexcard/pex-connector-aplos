@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using LazyCache;
 using AplosConnector.Common.VendorCards;
 using AplosConnector.Common.Services.Abstractions;
+using Aplos.Api.Client;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -175,6 +176,7 @@ namespace AplosConnector.Web.Controllers
             {
                 Email = mapping.PEXEmailAccount,
                 Name = mapping.PEXNameAccount,
+                IsSyncing = mapping.IsSyncing,
                 LastSync = mapping.LastSyncUtc,
                 SyncingSetup = mapping.SyncInvoices || mapping.SyncTransactions || mapping.SyncTransfers || mapping.SyncPexFees || mapping.SyncTags || mapping.SyncFundsToPex || mapping.SyncTaxTagToPex
             };
@@ -220,7 +222,8 @@ namespace AplosConnector.Web.Controllers
                 }
                 else
                 {
-                    connectionDetail.AplosConnection = await _aplosIntegrationService.ValidateAplosApiCredentials(mapping, cancellationToken);
+                    connectionDetail.AplosConnection = true;
+                    await _aplosIntegrationService.GetAplosAccounts(mapping, AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE, cancellationToken);
                 }
             }
             catch (Exception)
