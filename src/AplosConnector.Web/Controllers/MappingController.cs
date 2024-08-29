@@ -161,11 +161,14 @@ namespace AplosConnector.Web.Controllers
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
             if (mapping == null) return NotFound();
 
-            mapping.IsManualSync = true;
+            if (!mapping.IsSyncing)
+            {
+                mapping.IsManualSync = true;
 
-            await _aplosIntegrationService.Sync(mapping, CancellationToken.None);
+                await Task.Factory.StartNew(async () => await _aplosIntegrationService.Sync(mapping, CancellationToken.None));
 
-            //await _mappingQueue.EnqueueMapping(mapping, CancellationToken.None);
+                //await _mappingQueue.EnqueueMapping(mapping, CancellationToken.None);
+            }
 
             return Ok();
         }

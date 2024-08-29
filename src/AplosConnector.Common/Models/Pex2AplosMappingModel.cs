@@ -15,6 +15,7 @@ namespace AplosConnector.Common.Models
         public void UpdateFromSettings(MappingSettingsModel mapping)
         {
             AutomaticSync = mapping.AutomaticSync;
+            IsSyncing = mapping.IsSyncing;
             IsManualSync = mapping.IsManualSync;
             CreatedUtc = mapping.ConnectedOn;
             SyncApprovedOnly = mapping.SyncApprovedOnly;
@@ -86,6 +87,7 @@ namespace AplosConnector.Common.Models
             return new MappingSettingsModel
             {
                 AutomaticSync = AutomaticSync,
+                IsSyncing = IsSyncing,
                 IsManualSync = IsManualSync,
                 ConnectedOn = CreatedUtc,
                 SyncApprovedOnly = SyncApprovedOnly,
@@ -149,6 +151,7 @@ namespace AplosConnector.Common.Models
         }
 
         public bool AutomaticSync { get; set; }
+        public bool IsSyncing { get; set; }
         public bool IsManualSync { get; set; }
         public string PEXExternalAPIToken { get; set; }
         public int PEXBusinessAcctId { get; set; }

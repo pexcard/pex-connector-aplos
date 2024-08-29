@@ -1,5 +1,4 @@
-﻿using AplosConnector.Common.Extensions;
-using System;
+﻿using System;
 using Xunit;
 
 namespace AplosConnector.Common.Tests
@@ -42,7 +41,7 @@ namespace AplosConnector.Common.Tests
             DateTime expectedDate = DateTime.Parse(expectedDateS);
 
             //Act
-            DateTime actualDate = inputDate.ToEst();
+            DateTime actualDate = inputDate.ToEST();
 
             //Assert
             Assert.Equal(expectedDate, actualDate);
