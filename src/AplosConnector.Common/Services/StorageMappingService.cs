@@ -163,7 +163,7 @@ namespace AplosConnector.Common.Services
                 result = new Pex2AplosMappingModel
                 {
                     AutomaticSync = model.AutomaticSync,
-                    IsSyncing = model.IsManualSync,
+                    IsSyncing = model.IsSyncing,
                     IsManualSync = model.IsManualSync,
                     CreatedUtc = model.CreatedUtc,
                     PEXBusinessAcctId = model.PEXBusinessAcctId,
