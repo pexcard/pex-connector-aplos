@@ -577,7 +577,7 @@ namespace AplosConnector.Common.Services
                     continue;
                 }
 
-                var pexTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, cancellationToken);
+                var pexTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, true, cancellationToken);
                 if (pexTag == null)
                 {
                     _logger.LogWarning($"{nameof(tagMapping.PexTagId)} is unavailable in business: {mapping.PEXBusinessAcctId}");
@@ -596,7 +596,7 @@ namespace AplosConnector.Common.Services
 
                 try
                 {
-                    pexTag.UpsertTagOptions(aplosTagsToSync, out syncCount);
+                    pexTag.UpdateTagOptions(aplosTagsToSync, out syncCount);
 
                     await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTag.Id, pexTag, cancellationToken);
                     syncStatus = SyncStatus.Success;
@@ -631,7 +631,7 @@ namespace AplosConnector.Common.Services
                 return;
             }
 
-            var pexTaxTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexTaxTagId, cancellationToken);
+            var pexTaxTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexTaxTagId, true, cancellationToken);
             if (pexTaxTag == null)
             {
                 _logger.LogWarning($"{nameof(mapping.PexTaxTagId)} is unavailable in business: {mapping.PEXBusinessAcctId}");
@@ -647,7 +647,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                pexTaxTag.UpsertTagOptions(aplosTaxTagsToSync, out syncCount);
+                pexTaxTag.UpdateTagOptions(aplosTaxTagsToSync, out syncCount);
                 await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTaxTag.Id, pexTaxTag, cancellationToken);
                 syncStatus = SyncStatus.Success;
             }
@@ -782,7 +782,7 @@ namespace AplosConnector.Common.Services
 
             _logger.LogInformation($"Syncing funds for business: {mapping.PEXBusinessAcctId}");
 
-            var fundsTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId, cancellationToken);
+            var fundsTag = await _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId, true, cancellationToken);
             if (fundsTag == null)
             {
                 _logger.LogWarning($"{nameof(mapping.PexFundsTagId)} is unavailable in business: {mapping.PEXBusinessAcctId}");
@@ -797,7 +797,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                fundsTag.UpsertTagOptions(aplosFunds, out syncCount);
+                fundsTag.UpdateTagOptions(aplosFunds, out syncCount);
 
                 await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, fundsTag.Id, fundsTag, cancellationToken);
                 syncStatus = SyncStatus.Success;
@@ -862,7 +862,7 @@ namespace AplosConnector.Common.Services
             }
 
             var accountsTag =
-                await _pexApiClient.GetDropdownTag(model.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, cancellationToken);
+                await _pexApiClient.GetDropdownTag(model.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, true, cancellationToken);
             if (accountsTag == null)
             {
                 _logger.LogWarning($"Expense accounts tag (Id '{expenseAccountMapping.ExpenseAccountsPexTagId}' is unavailable in business: {model.PEXBusinessAcctId}");
@@ -876,7 +876,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                accountsTag.UpsertTagOptions(accounts, out syncCount);
+                accountsTag.UpdateTagOptions(accounts, out syncCount);
 
                 await _pexApiClient.UpdateDropdownTag(model.PEXExternalAPIToken, accountsTag.Id, accountsTag, cancellationToken);
                 syncStatus = SyncStatus.Success;
@@ -949,20 +949,20 @@ namespace AplosConnector.Common.Services
             {
                 var dropdownTagTasks = new List<Task<TagDropdownDetailsModel>>
                 {
-                    _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId, cancellationToken),
+                    _pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId, true, cancellationToken),
                 };
                 if (mapping.ExpenseAccountMappings != null)
                 {
                     foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
                     {
-                        dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, cancellationToken));
+                        dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, true, cancellationToken));
                     }
                 }
                 if (mapping.TagMappings != null)
                 {
                     foreach (var tagMapping in mapping.TagMappings)
                     {
-                        dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, cancellationToken));
+                        dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, true, cancellationToken));
                     }
                 }
                 await Task.WhenAll(dropdownTagTasks);
@@ -1209,7 +1209,7 @@ namespace AplosConnector.Common.Services
                                 syncCount++;
                                 _logger.LogInformation($"Synced transaction {transaction.TransactionId}");
                                 var syncedNoteText = $"{PexCardConst.SyncedWithAplosNote} on {DateTime.UtcNow:O}";
-                                await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText, cancellationToken);
+                                await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText, true, cancellationToken);
                             }
                             else if (transactionSyncResult == TransactionSyncResult.Failed)
                             {
