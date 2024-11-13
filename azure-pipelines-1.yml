@@ -24,7 +24,7 @@ variables:
 - name: buildconfiguration
   value: 'Debug'
 - name: dotnetVersion
-  value: '6.0'
+  value: '8.0'
 - name: DOTNET_ROLL_FORWARD
   value: 'Major' # needed for sonarcloud scanner
 
