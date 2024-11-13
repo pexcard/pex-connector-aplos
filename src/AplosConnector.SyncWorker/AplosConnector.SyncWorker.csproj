@@ -25,6 +25,9 @@
     <ProjectReference Include="..\AplosConnector.Common\AplosConnector.Common.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <FunctionsPreservedDependencies Include="System.Memory.Data.dll" />
+  </ItemGroup>
+  <ItemGroup>
     <None Update="host.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
