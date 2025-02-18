@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Aplos.Api.Client\Aplos.Api.Client.csproj" />
     <ProjectReference Include="..\AplosConnector.Common\AplosConnector.Common.csproj" />
+    <ProjectReference Include="..\PexCard.App.Infrastructure.AzureServiceBus\PexCard.App.Infrastructure.AzureServiceBus.csproj" />
   </ItemGroup>
   <ItemGroup>
     <FunctionsPreservedDependencies Include="System.Memory.Data.dll" />

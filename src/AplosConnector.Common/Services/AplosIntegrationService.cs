@@ -89,6 +89,10 @@ namespace AplosConnector.Common.Services
             else if (mapping.PEXExternalAPIToken != session.ExternalToken)
             {
                 mapping.PEXExternalAPIToken = session.ExternalToken;
+                mapping.LastRenewedUtc = DateTime.UtcNow;
+                mapping.ExpirationEmailLastDate = null;
+                mapping.ExpirationEmailCount = 0;
+                mapping.IsTokenExpired = false;
                 await _mappingStorage.UpdateAsync(mapping, cancellationToken);
             }
 
@@ -463,6 +467,27 @@ namespace AplosConnector.Common.Services
                 {
                     _logger.LogWarning($"C# Queue trigger function completed. Business account ID is {mapping.PEXBusinessAcctId}");
                     return;
+                }
+                else
+                {
+                    try
+                    {
+                        await _pexApiClient.GetBusinessProfile(mapping.PEXExternalAPIToken, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (ex.Message.Contains("Token expired or does not exist"))
+                        {
+                            mapping.LastSyncUtc = utcNow;
+                            mapping.IsSyncing = false;
+                            mapping.IsTokenExpired = true;
+                            await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+
+                            _logger.LogWarning(ex, $"Token expired exception occurred. IsTokenExpired flag is updated for business {mapping.PEXBusinessAcctId}. {ex}");
+
+                            return;
+                        }
+                    }
                 }
 
                 using (_logger.BeginScope(GetLoggingScopeForSync(mapping)))

@@ -110,6 +110,10 @@ namespace AplosConnector.Common.Services
                     MapVendorCards = model.MapVendorCards,
                     UseNormalizedMerchantNames = model.UseNormalizedMerchantNames,
                     PostDateType = model.PostDateType.ToString(),
+
+                    ExpirationEmailCount = model.ExpirationEmailCount,
+                    ExpirationEmailLastDate = model.ExpirationEmailLastDate,
+                    IsTokenExpired = model.IsTokenExpired
                 };
             }
 
@@ -234,6 +238,10 @@ namespace AplosConnector.Common.Services
                     MapVendorCards = model.MapVendorCards,
                     UseNormalizedMerchantNames = model.UseNormalizedMerchantNames,
                     PostDateType = !string.IsNullOrEmpty(model.PostDateType) ? Enum.Parse<PostDateType>(model.PostDateType) : PostDateType.Transaction,
+
+                    ExpirationEmailCount = model.ExpirationEmailCount,
+                    ExpirationEmailLastDate = model.ExpirationEmailLastDate,
+                    IsTokenExpired = model.IsTokenExpired
                 };
             }
 

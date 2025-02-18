@@ -22,5 +22,9 @@ namespace AplosConnector.Common.Models.Settings
 
         public bool EnforceAplosPartnerVerification { get; set; }
         public Uri AplosPartnerVerificationUrl { get; set; }
+
+        public string AzureServiceBusTopicName { get; set; }
+        public int EmailMaxCount { get; set; }
+        public int EmailPeriodicityDays { get; set; }
     }
 }

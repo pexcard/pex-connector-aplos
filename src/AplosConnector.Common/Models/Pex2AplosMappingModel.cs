@@ -75,6 +75,10 @@ namespace AplosConnector.Common.Models
             MapVendorCards = mapping.MapVendorCards;
             UseNormalizedMerchantNames = mapping.UseNormalizedMerchantNames;
             PostDateType = mapping.PostDateType;
+
+            ExpirationEmailLastDate = mapping.ExpirationEmailLastDate;
+            ExpirationEmailCount = mapping.ExpirationEmailCount;
+            IsTokenExpired = mapping.IsTokenExpired;
         }
 
         private static string GetPexTaxTagId(IEnumerable<TagMappingModel> tagMappings)
@@ -147,6 +151,10 @@ namespace AplosConnector.Common.Models
                 MapVendorCards = MapVendorCards,
                 UseNormalizedMerchantNames = UseNormalizedMerchantNames,
                 PostDateType = PostDateType,
+
+                ExpirationEmailLastDate = ExpirationEmailLastDate,
+                ExpirationEmailCount = ExpirationEmailCount,
+                IsTokenExpired = IsTokenExpired
             };
         }
 
@@ -212,6 +220,10 @@ namespace AplosConnector.Common.Models
         public bool UseNormalizedMerchantNames { get; set; }
 
         public PostDateType PostDateType { get; set; }
+
+        public DateTime? ExpirationEmailLastDate { get; set; }
+        public int ExpirationEmailCount { get; set; }
+        public bool IsTokenExpired { get; set; }
 
         public DateTime GetLastRenewedDateUtc()
         {
