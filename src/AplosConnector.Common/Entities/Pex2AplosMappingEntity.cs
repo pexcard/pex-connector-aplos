@@ -81,6 +81,10 @@ namespace AplosConnector.Common.Entities
         public bool UseNormalizedMerchantNames { get; set; }
         public string PostDateType { get; set; }
 
+        public DateTime? ExpirationEmailLastDate { get; set; }
+        public int ExpirationEmailCount { get; set; }
+        public bool IsTokenExpired { get; set; }
+
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }

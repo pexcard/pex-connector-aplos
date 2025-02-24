@@ -142,13 +142,8 @@ namespace AplosConnector.Web.Controllers
             try
             {
                 var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
-                var userProfile = await _pexApiClient.GetMyAdminProfile(session.ExternalToken);
-
-                mapping.PEXExternalAPIToken = session.ExternalToken;
-                mapping.PEXEmailAccount = userProfile?.Admin?.Email;
-                mapping.PEXNameAccount = $"{userProfile?.Admin?.FirstName} {userProfile?.Admin?.LastName}";
-
-                await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
+               
+                await UpdateExternalApiToken(session, mapping, cancellationToken);
             }
             catch (Exception e)
             {
@@ -274,18 +269,28 @@ namespace AplosConnector.Web.Controllers
             var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
             if (session == null) return Unauthorized();
 
-            var userProfile = await _pexApiClient.GetMyAdminProfile(session.ExternalToken);
-
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
             mapping ??= new Pex2AplosMappingModel();
 
-            mapping.PEXExternalAPIToken = session.ExternalToken;
-            mapping.PEXEmailAccount = userProfile?.Admin?.Email;
-            mapping.PEXNameAccount = $"{userProfile?.Admin?.FirstName} {userProfile?.Admin?.LastName}";
+            await UpdateExternalApiToken(session, mapping, cancellationToken);
 
             var order = await _vendorCardStorage.GetAllVendorCardsOrderedAsync(mapping, cancellationToken);
 
             return Ok(order);
+        }
+
+        private async Task UpdateExternalApiToken(PexOAuthSessionModel session, Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        {
+            var userProfile = await _pexApiClient.GetMyAdminProfile(session.ExternalToken, cancellationToken);
+            mapping.PEXExternalAPIToken = session.ExternalToken;
+            mapping.LastRenewedUtc = DateTime.UtcNow;
+            mapping.PEXEmailAccount = userProfile?.Admin?.Email;
+            mapping.PEXNameAccount = $"{userProfile?.Admin?.FirstName} {userProfile?.Admin?.LastName}";
+            mapping.ExpirationEmailLastDate = null;
+            mapping.ExpirationEmailCount = 0;
+            mapping.IsTokenExpired = false;
+
+            await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
         }
     }
 }

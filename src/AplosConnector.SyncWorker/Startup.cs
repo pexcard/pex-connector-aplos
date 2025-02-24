@@ -23,6 +23,7 @@ using Azure.Data.Tables;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Azure.Storage.Queues;
 using Azure.Identity;
+using PexCard.App.Infrastructure.AzureServiceBus.DependencyInjection;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 namespace AplosConnector.SyncWorker
@@ -82,6 +83,10 @@ namespace AplosConnector.SyncWorker
             vendorCardTableClient.CreateIfNotExistsAsync();
             builder.Services.AddSingleton<IVendorCardStorage>(provider => new VendorCardStorage(vendorCardTableClient,
                 provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardStorage>>()));
+
+            builder.Services.AddAzureServiceBusSender(
+                Environment.GetEnvironmentVariable("AzureServiceBusUrl", EnvironmentVariableTarget.Process),
+                Environment.GetEnvironmentVariable("AzureServiceBusTopicName", EnvironmentVariableTarget.Process));
 
             var queueServiceClient = new QueueServiceClient(storageConnectionString);
             builder.Services.TryAddSingleton(queueServiceClient);

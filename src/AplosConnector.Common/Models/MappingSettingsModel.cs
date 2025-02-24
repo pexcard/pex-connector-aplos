@@ -95,5 +95,9 @@ namespace AplosConnector.Common.Models
         public bool UseNormalizedMerchantNames { get; set; }
 
         public PostDateType PostDateType { get; set; }
+
+        public DateTime? ExpirationEmailLastDate { get; set; }
+        public int ExpirationEmailCount { get; set; }
+        public bool IsTokenExpired { get; set; }
     }
 }

@@ -9,6 +9,10 @@ using System.Threading;
 using PexCard.Api.Client.Core.Exceptions;
 using System.Net;
 using AplosConnector.Common.Storage;
+using AplosConnector.Common.Models.Settings;
+using Microsoft.Extensions.Options;
+using PexCard.App.Infrastructure.AzureServiceBus.Messages;
+using PexCard.App.Infrastructure.AzureServiceBus;
 
 namespace AplosConnector.SyncWorker
 {
@@ -20,18 +24,24 @@ namespace AplosConnector.SyncWorker
         private readonly List<string> _inUseExternalApiTokens = new();
         private readonly SyncHistoryStorage _syncHistoryStorage;
         private readonly ILogger<TokenRefresher> _log;
+        private readonly AppSettingsModel _appSettings;
+        private readonly IAzureServiceBusSender _sender;
 
         public TokenRefresher(Pex2AplosMappingStorage mappingStorage, 
             PexOAuthSessionStorage sessionStorage, 
             IPexApiClient pexApiClient, 
             SyncHistoryStorage syncHistoryStorage,
-            ILogger<TokenRefresher> log)
+            ILogger<TokenRefresher> log,
+            IOptions<AppSettingsModel> appSettings,
+            IAzureServiceBusSender sender)
         {
             _mappingStorage = mappingStorage;
             _sessionStorage = sessionStorage;
             _pexApiClient = pexApiClient;
             _syncHistoryStorage = syncHistoryStorage;
             _log = log;
+            _sender = sender;
+            _appSettings = appSettings?.Value;
         }
 
         [FunctionName("TokenRefresher")]
@@ -52,6 +62,12 @@ namespace AplosConnector.SyncWorker
             var mappings = await _mappingStorage.GetAllMappings(cancellationToken);
             foreach (var mapping in mappings)
             {
+                if (mapping.IsTokenExpired)
+                {
+                    await SendTokenExpiredEmail(mapping, cancellationToken);
+                    continue;
+                }
+
                 try
                 {
                     var externalToken = await RenewExternalToken(mapping, cancellationToken);
@@ -59,6 +75,9 @@ namespace AplosConnector.SyncWorker
                     {
                         mapping.PEXExternalAPIToken = externalToken;
                         mapping.LastRenewedUtc = DateTime.UtcNow;
+                        mapping.ExpirationEmailLastDate = null;
+                        mapping.ExpirationEmailCount = 0;
+                        mapping.IsTokenExpired = false;
                         await _mappingStorage.UpdateAsync(mapping, cancellationToken);
                         _log.LogInformation($"Token for business {mapping.PEXBusinessAcctId} is refreshed.");
                     }
@@ -69,9 +88,65 @@ namespace AplosConnector.SyncWorker
                 }
                 catch (Exception ex)
                 {
-                    _log.LogError(ex,
-                        $"Exception during renew external token for business {mapping.PEXBusinessAcctId}. {ex}");
+                    _log.LogError(ex, $"Exception during renew external token for business {mapping.PEXBusinessAcctId}. {ex}");
+
+                    if (ex.Message.Contains("Token expired or does not exist"))
+                    {
+                        mapping.IsTokenExpired = true;
+                        await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+
+                        await SendTokenExpiredEmail(mapping, cancellationToken);
+                    }
                 }
+            }
+        }
+
+        private async Task SendTokenExpiredEmail(Pex2AplosMappingModel mapping, CancellationToken token)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(mapping.PEXEmailAccount))
+                {
+                    var isAllowedByDate = mapping.ExpirationEmailLastDate == null
+                                          || (mapping.ExpirationEmailLastDate.HasValue
+                                              && mapping.ExpirationEmailLastDate.Value.AddDays(_appSettings.EmailPeriodicityDays) < DateTime.Now);
+
+                    var isAllowedByCount = mapping.ExpirationEmailCount < _appSettings.EmailMaxCount;
+
+                    if (isAllowedByDate && isAllowedByCount)
+                    {
+                        var templateParams = new Dictionary<string, object>
+                    {
+                        { "APP_NAME", "Aplos" },
+                        { "USER_NAME", mapping.PEXNameAccount },
+                        { "APP_URL", "https://dashboard.pexcard.com/apps/app/aplos" }
+                    };
+
+                        var emailTemplateMessage = new EmailTemplateMessage
+                        {
+                            FromAddress = "support@pexcard.com",
+                            ToAddress = mapping.PEXEmailAccount,
+                            TemplateParams = templateParams,
+                            TemplateName = "marketplace-app-token-expired-no-action"
+                        };
+
+                        await _sender.SendMessageAsync(emailTemplateMessage);
+
+                        _log.LogInformation($"Token expiration email has been sent to the administrator {mapping.PEXEmailAccount} of the business: {mapping.PEXBusinessAcctId}.");
+
+                        mapping.ExpirationEmailLastDate = DateTime.Now.ToUniversalTime();
+                        mapping.ExpirationEmailCount++;
+                        await _mappingStorage.UpdateAsync(mapping, token);
+                    }
+                }
+                else
+                {
+                    _log.LogWarning($"Cannot send token expiration email, administrator's email is missing for the business: {mapping.PEXBusinessAcctId}.");
+                }
+            }
+            catch (Exception e)
+            {
+                _log.LogError(e, $"Exception while sending token expiration email {mapping.PEXEmailAccount} for the business {mapping.PEXBusinessAcctId}. {e}");
             }
         }
 
