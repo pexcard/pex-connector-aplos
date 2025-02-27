@@ -119,7 +119,7 @@ namespace AplosConnector.SyncWorker
                     {
                         { "APP_NAME", "Aplos" },
                         { "USER_NAME", mapping.PEXNameAccount },
-                        { "APP_URL", "https://dashboard.pexcard.com/apps/app/aplos" }
+                        { "APP_URL", "https://dashboard.pexcard.com/apps/app/aplosprod" }
                     };
 
                         var emailTemplateMessage = new EmailTemplateMessage
