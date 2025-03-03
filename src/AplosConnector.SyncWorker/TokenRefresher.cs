@@ -103,6 +103,11 @@ namespace AplosConnector.SyncWorker
 
         private async Task SendTokenExpiredEmail(Pex2AplosMappingModel mapping, CancellationToken token)
         {
+            if (mapping.GetLastRenewedDateUtc() < DateTime.UtcNow.AddMonths(-6))
+            {
+                return;
+            }
+
             try
             {
                 if (!string.IsNullOrEmpty(mapping.PEXEmailAccount))
