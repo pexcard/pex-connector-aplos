@@ -112,6 +112,7 @@ namespace AplosConnector.Common.Services
                     PostDateType = model.PostDateType.ToString(),
 
                     ExpirationEmailCount = model.ExpirationEmailCount,
+                    TotalExpirationEmailCount = model.TotalExpirationEmailCount,
                     ExpirationEmailLastDate = model.ExpirationEmailLastDate,
                     IsTokenExpired = model.IsTokenExpired
                 };
@@ -240,6 +241,7 @@ namespace AplosConnector.Common.Services
                     PostDateType = !string.IsNullOrEmpty(model.PostDateType) ? Enum.Parse<PostDateType>(model.PostDateType) : PostDateType.Transaction,
 
                     ExpirationEmailCount = model.ExpirationEmailCount,
+                    TotalExpirationEmailCount = model.TotalExpirationEmailCount,
                     ExpirationEmailLastDate = model.ExpirationEmailLastDate,
                     IsTokenExpired = model.IsTokenExpired
                 };

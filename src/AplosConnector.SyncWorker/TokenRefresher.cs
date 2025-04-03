@@ -103,7 +103,7 @@ namespace AplosConnector.SyncWorker
 
         private async Task SendTokenExpiredEmail(Pex2AplosMappingModel mapping, CancellationToken token)
         {
-            if (mapping.GetLastRenewedDateUtc() < DateTime.UtcNow.AddMonths(-6))
+            if (mapping.GetLastRenewedDateUtc() < DateTime.UtcNow.AddMonths(-9))
             {
                 return;
             }
@@ -141,6 +141,7 @@ namespace AplosConnector.SyncWorker
 
                         mapping.ExpirationEmailLastDate = DateTime.Now.ToUniversalTime();
                         mapping.ExpirationEmailCount++;
+                        mapping.TotalExpirationEmailCount++;
                         await _mappingStorage.UpdateAsync(mapping, token);
                     }
                 }
