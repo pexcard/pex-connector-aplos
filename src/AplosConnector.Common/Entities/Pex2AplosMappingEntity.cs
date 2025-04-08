@@ -83,6 +83,7 @@ namespace AplosConnector.Common.Entities
 
         public DateTime? ExpirationEmailLastDate { get; set; }
         public int ExpirationEmailCount { get; set; }
+        public int TotalExpirationEmailCount { get; set; }
         public bool IsTokenExpired { get; set; }
 
         public string PartitionKey { get; set; }
