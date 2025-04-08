@@ -1,11 +1,11 @@
-﻿using System;
+﻿using AplosConnector.Common.Entities;
+using AplosConnector.Common.Models;
+using Azure.Data.Tables;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AplosConnector.Common.Entities;
-using AplosConnector.Common.Models;
-using Azure.Data.Tables;
 
 namespace AplosConnector.Common.Storage
 {
@@ -20,7 +20,7 @@ namespace AplosConnector.Common.Storage
             var entity = new SyncHistoryEntity(model)
             {
                 PartitionKey = model.PEXBusinessAcctId.ToString(),
-                RowKey = $"{model.PEXBusinessAcctId}-{model.SyncType}-{model.CreatedUtc.Ticks}"
+                RowKey = Guid.NewGuid().ToString(),
             };
             await TableClient.AddEntityAsync(entity, cancellationToken);
         }
