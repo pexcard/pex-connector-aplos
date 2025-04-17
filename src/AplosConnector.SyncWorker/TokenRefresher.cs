@@ -129,7 +129,7 @@ namespace AplosConnector.SyncWorker
 
                         var emailTemplateMessage = new EmailTemplateMessage
                         {
-                            FromAddress = "support@pexcard.com",
+                            FromAddress = "adminsupport@pexcard.com",
                             ToAddress = mapping.PEXEmailAccount,
                             TemplateParams = templateParams,
                             TemplateName = "marketplace-app-token-expired-no-action"
