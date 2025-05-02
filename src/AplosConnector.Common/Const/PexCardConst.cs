@@ -1,7 +1,10 @@
-﻿namespace AplosConnector.Common.Const
+﻿using System;
+
+namespace AplosConnector.Common.Const
 {
     public static class PexCardConst
     {
-        public const string SyncedWithAplosNote = "Synced with Aplos";
+        [Obsolete("DO NOT USE")]
+        public const string OLD_SyncedWithAplosNote = "Synced with Aplos";
     }
 }

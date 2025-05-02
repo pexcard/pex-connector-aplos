@@ -1007,7 +1007,7 @@ namespace AplosConnector.Common.Services
 
                 var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
                 allCardholderTransactions.AddRange(cardholderTransactions);
-                var transactions = FilterTransactions(mapping, cardholderTransactions);
+                var transactions = FilterCardholderTransactions(mapping, cardholderTransactions).ToList();
 
                 _logger.LogInformation($"Syncing {transactions.Count} filtered transactions for business: {mapping.PEXBusinessAcctId}");
 
@@ -1233,7 +1233,7 @@ namespace AplosConnector.Common.Services
                             {
                                 syncCount++;
                                 _logger.LogInformation($"Synced transaction {transaction.TransactionId}");
-                                var syncedNoteText = $"{PexCardConst.SyncedWithAplosNote} on {DateTime.UtcNow:O}";
+                                var syncedNoteText = $"{GetSyncedNote(transaction)} on {DateTime.UtcNow:O}";
                                 await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText, true, cancellationToken);
                             }
                             else if (transactionSyncResult == TransactionSyncResult.Failed)
@@ -1281,21 +1281,27 @@ namespace AplosConnector.Common.Services
             return AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE;
         }
 
-        private static List<TransactionModel> FilterTransactions(Pex2AplosMappingModel mapping, CardholderTransactions transactions)
+        private static IEnumerable<TransactionModel> FilterCardholderTransactions(Pex2AplosMappingModel mapping, CardholderTransactions transactions)
         {
-            if (mapping.PEXFundingSource == FundingSource.Credit)
+            foreach (var transaction in transactions.SelectTransactionsToSync(mapping.SyncApprovedOnly))
             {
-                // TODO Move to pex-sdk-dotnet TransactionsListExtension ?
-                var result = transactions?.Where(t =>
-                        (string.IsNullOrEmpty(PexCardConst.SyncedWithAplosNote) ||
-                         !(t.TransactionNotes?.Exists(n => n.NoteText?.ToLower().Contains(PexCardConst.SyncedWithAplosNote.ToLower()) == true) ?? false)) &&
-                        (!mapping.SyncApprovedOnly || string.Equals(t.MetadataApprovalStatus, "Approved", StringComparison.InvariantCultureIgnoreCase)))
-                    .ToList();
+                if (transaction.TransactionNotes.Any(x => x.NoteText.Contains(PexCardConst.OLD_SyncedWithAplosNote)))
+                {
+                    continue;
+                }
 
-                return result ?? new List<TransactionModel>();
+                if (transaction.TransactionNotes.Any(x => x.NoteText.Contains(GetSyncedNote(transaction))))
+                {
+                    continue;
+                }
+
+                yield return transaction;
             }
+        }
 
-            return transactions.SelectTransactionsToSync(mapping.SyncApprovedOnly, PexCardConst.SyncedWithAplosNote);
+        private static string GetSyncedNote(TransactionModel transaction)
+        {
+            return $"Synced transaction #{transaction.TransactionId} to Aplos";
         }
 
         private async Task SyncBusinessAccountTransactions(
