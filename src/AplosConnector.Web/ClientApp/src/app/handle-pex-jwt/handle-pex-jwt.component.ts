@@ -18,16 +18,9 @@ export class HandlePexJwtComponent implements OnInit {
     this.auth.exchangeJWTForSession(jwt)
       .pipe(
         concatMap((token) => this.auth.login(token.token)),
-        concatMap(() => this.auth.headlessMode),
       ).subscribe({
-        next: (headlessMode) => {
-          let segments: string[] = [];
-          if (headlessMode) {
-            segments.push('headless');
-          }
-          segments.push('connect');
-
-          void this.router.navigate(segments);
+        next: () => {
+          void this.router.navigate(['connect']);
         },
         error: (error) => {
           console.error('Error handling PEX jwt login:', error);
