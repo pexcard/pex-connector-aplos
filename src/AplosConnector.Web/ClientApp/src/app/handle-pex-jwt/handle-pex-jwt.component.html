@@ -1,3 +1,13 @@
-<p>
-  Transferring your PEX session to the connector.
-</p>
+<div *ngIf="!loginFailed" class="page-status">
+  <clr-spinner [clrMedium]="true"></clr-spinner>
+  <span>Transferring your session...</span>
+</div>
+<div *ngIf="loginFailed">
+  <clr-alert [clrAlertType]="'danger'" [clrAlertSizeSmall]="false" [clrAlertClosed]="false">
+    <clr-alert-item>
+      <span class="alert-text">
+        Session transfer failed. Please try again.
+      </span>
+    </clr-alert-item>
+  </clr-alert>
+</div>
