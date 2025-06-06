@@ -25,8 +25,6 @@ variables:
   value: 'Debug'
 - name: dotnetVersion
   value: '8.0'
-- name: DOTNET_ROLL_FORWARD
-  value: 'Major' # needed for sonarcloud scanner
 
 steps:
 - task: UseDotNet@2
@@ -34,13 +32,8 @@ steps:
     packageType: 'sdk'
     version: '$(dotnetVersion).x'
 
-- task: SonarCloudPrepare@1
-  inputs:
-    SonarCloud: 'SonarCloud - tbaker'
-    organization: 'pex'
-    projectKey: '$(appName)'
-    projectName: '$(appName)'
-    projectVersion: '$(Build.BuildNumber)'
+- task: NuGetAuthenticate@1
+  displayName: "NuGet Authenticate"
 
 - script: dotnet build src --configuration $(buildConfiguration)
   displayName: 'dotnet build $(buildConfiguration)'
@@ -63,12 +56,6 @@ steps:
     NODE_OPTIONS=--openssl-legacy-provider npm install
     NODE_OPTIONS=--openssl-legacy-provider npm run build -- --configuration production
   displayName: 'npm install and ng build'
-
-- task: SonarCloudAnalyze@1
-
-- task: SonarCloudPublish@1
-  inputs:
-    pollingTimeoutSec: '300'
 
 - task: Bash@3
   displayName: "Mend"

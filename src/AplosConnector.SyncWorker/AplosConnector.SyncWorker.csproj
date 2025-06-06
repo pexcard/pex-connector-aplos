@@ -3,30 +3,46 @@
     <TargetFramework>net8.0</TargetFramework>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <!--CVE-2020-1045-->
-    <PackageReference Include="Azure.Core" Version="1.44.1" />
+    <Content Include="..\AplosConnector.Web\appsettings.json" Link="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\AplosConnector.Web\appsettings.Production.json" Link="appsettings.Production.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\AplosConnector.Web\appsettings.QA.json" Link="appsettings.QA.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+	  <FrameworkReference Include="Microsoft.AspNetCore.App" />
+	  <PackageReference Include="Azure.Core" Version="1.44.1" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.2.2" />
-    <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="5.3.2" />
-    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.6.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.3.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.2" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" Version="5.5.2" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.4" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="PexCard.Api.Client" Version="1.86.0" />
     <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.2" />
     <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\Aplos.Api.Client\Aplos.Api.Client.csproj" />
     <ProjectReference Include="..\AplosConnector.Common\AplosConnector.Common.csproj" />
     <ProjectReference Include="..\PexCard.App.Infrastructure.AzureServiceBus\PexCard.App.Infrastructure.AzureServiceBus.csproj" />
   </ItemGroup>
   <ItemGroup>
     <FunctionsPreservedDependencies Include="System.Memory.Data.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\AplosConnector.Web\cert.pfx" Link="cert.pfx" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">

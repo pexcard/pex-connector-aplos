@@ -1,8 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
@@ -12,6 +9,8 @@ using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Models;
 using System.Threading;
 using AplosConnector.Common.Storage;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Functions.Worker;
 
 namespace AplosConnector.SyncWorker
 {
@@ -21,23 +20,23 @@ namespace AplosConnector.SyncWorker
 
         private readonly Pex2AplosMappingStorage _mappingStorage;
         private readonly IPexApiClient _pexApiClient;
-        private readonly ILogger _logger;
 
         public PopulateAplosAccountIds(
             Pex2AplosMappingStorage mappingStorage,
-            IPexApiClient pexApiClient,
-            ILogger<PopulateAplosAccountIds> logger)
+            IPexApiClient pexApiClient)
         {
             _mappingStorage = mappingStorage;
             _pexApiClient = pexApiClient;
-            _logger = logger;
         }
 
-        [FunctionName(FUNCTION_NAME)]
+        [Function(FUNCTION_NAME)]
         public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function,"post", Route = null)] HttpRequest req, CancellationToken cancellationToken)
+            [HttpTrigger(AuthorizationLevel.Function,"post", Route = null)] HttpRequest req,
+            FunctionContext context,
+            CancellationToken cancellationToken)
         {
-            _logger.LogInformation($"Starting function {FUNCTION_NAME}");
+            var log = context.GetLogger<PopulateAplosAccountIds>();
+            log.LogInformation($"Starting function {FUNCTION_NAME}");
 
             bool overwriteEnabled;
             bool.TryParse(req.Query[nameof(overwriteEnabled)], out overwriteEnabled);
@@ -63,47 +62,45 @@ namespace AplosConnector.SyncWorker
                 mappings = await _mappingStorage.GetAllMappings(cancellationToken);
             }
 
-            
-            _logger.LogInformation($"Found {mappings.Count()} business(es) to process");
+
+            log.LogInformation($"Found {mappings.Count()} business(es) to process");
 
             response.BusinessesFound = mappings.Count();
 
             foreach (Pex2AplosMappingModel mapping in mappings)
             {
-                using (_logger.BeginScope($"{nameof(mapping.PEXBusinessAcctId)}{nameof(mapping.AplosAccountId)}", mapping.PEXBusinessAcctId, mapping.AplosAccountId))
+                using (log.BeginScope($"{nameof(mapping.PEXBusinessAcctId)}{nameof(mapping.AplosAccountId)}", mapping.PEXBusinessAcctId, mapping.AplosAccountId))
                 {
-                    _logger.LogInformation($"Starting to process business");
+                    log.LogInformation($"Starting to process business");
 
                     try
                     {
                         PartnerModel partnerInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken, cancellationToken);
-                        using (_logger.BeginScope($"{nameof(partnerInfo.PartnerName)}{nameof(partnerInfo.PartnerBusinessId)}", partnerInfo.PartnerName, partnerInfo.PartnerBusinessId))
+                        using (log.BeginScope($"{nameof(partnerInfo.PartnerName)}{nameof(partnerInfo.PartnerBusinessId)}", partnerInfo.PartnerName, partnerInfo.PartnerBusinessId))
                         {
-                            _logger.LogInformation($"Got partner info");
+                            log.LogInformation($"Got partner info");
 
                             if (mapping.AplosAccountId != partnerInfo.PartnerBusinessId)
                             {
                                 if (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && !overwriteEnabled)
                                 {
-                                    _logger.LogInformation($"Skipping because {nameof(mapping.AplosAccountId)} already has a value");
+                                    log.LogInformation($"Skipping because {nameof(mapping.AplosAccountId)} already has a value");
                                     continue;
                                 }
 
-                                _logger.LogInformation($"Updating {nameof(mapping.AplosAccountId)} from '{mapping.AplosAccountId}' to '{partnerInfo.PartnerBusinessId}'");
+                                log.LogInformation($"Updating {nameof(mapping.AplosAccountId)} from '{mapping.AplosAccountId}' to '{partnerInfo.PartnerBusinessId}'");
 
                                 mapping.AplosAccountId = partnerInfo.PartnerBusinessId;
                                 await _mappingStorage.UpdateAsync(mapping, cancellationToken);
-
                                 response.BusinessesUpdated++;
                             }
-
-                            _logger.LogInformation($"Finished processing business");
+                            log.LogInformation("Finished processing business");
                         }
                     }
                     catch (Exception ex)
                     {
                         response.BusinessesErrored++;
-                        _logger.LogWarning(ex, $"Error processing business");
+                        log.LogWarning(ex, $"Error processing business");
                     }
                 }
             }

@@ -1,18 +1,18 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Extensions.Logging;
 using AplosConnector.Common.Models;
 using PexCard.Api.Client.Core;
 using System.Threading;
 using PexCard.Api.Client.Core.Exceptions;
-using System.Net;
 using AplosConnector.Common.Storage;
 using AplosConnector.Common.Models.Settings;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Options;
 using PexCard.App.Infrastructure.AzureServiceBus.Messages;
 using PexCard.App.Infrastructure.AzureServiceBus;
+using Microsoft.Extensions.Logging;
 
 namespace AplosConnector.SyncWorker
 {
@@ -23,7 +23,6 @@ namespace AplosConnector.SyncWorker
         private readonly IPexApiClient _pexApiClient;
         private readonly List<string> _inUseExternalApiTokens = new();
         private readonly SyncHistoryStorage _syncHistoryStorage;
-        private readonly ILogger<TokenRefresher> _log;
         private readonly AppSettingsModel _appSettings;
         private readonly IAzureServiceBusSender _sender;
 
@@ -31,7 +30,6 @@ namespace AplosConnector.SyncWorker
             PexOAuthSessionStorage sessionStorage, 
             IPexApiClient pexApiClient, 
             SyncHistoryStorage syncHistoryStorage,
-            ILogger<TokenRefresher> log,
             IOptions<AppSettingsModel> appSettings,
             IAzureServiceBusSender sender)
         {
@@ -39,38 +37,38 @@ namespace AplosConnector.SyncWorker
             _sessionStorage = sessionStorage;
             _pexApiClient = pexApiClient;
             _syncHistoryStorage = syncHistoryStorage;
-            _log = log;
             _sender = sender;
             _appSettings = appSettings?.Value;
         }
 
-        [FunctionName("TokenRefresher")]
+        [Function("TokenRefresher")]
         public async Task Run(
             [TimerTrigger("0 0 2,14 * * *", RunOnStartup = false)] TimerInfo myTimer,
-            CancellationToken cancellationToken,
-            ILogger log)
+            FunctionContext context,
+            CancellationToken cancellationToken)
         {
+            var log = context.GetLogger<TokenRefresher>();
             log.LogInformation($"Running function to refresh tokens and clean up sessions executed at: {DateTime.UtcNow}");
-            await RefreshTokens(cancellationToken);
-            await CleanupSessions(cancellationToken);
-            await CleanupSyncResults(cancellationToken);
+            await RefreshTokens(cancellationToken, log);
+            await CleanupSessions(cancellationToken, log);
+            await CleanupSyncResults(cancellationToken, log);
         }
 
-        private async Task RefreshTokens(CancellationToken cancellationToken)
+        private async Task RefreshTokens(CancellationToken cancellationToken, ILogger log)
         {
-            _log.LogInformation("Refreshing Tokens");
+            log.LogInformation("Refreshing Tokens");
             var mappings = await _mappingStorage.GetAllMappings(cancellationToken);
             foreach (var mapping in mappings)
             {
                 if (mapping.IsTokenExpired)
                 {
-                    await SendTokenExpiredEmail(mapping, cancellationToken);
+                    await SendTokenExpiredEmail(mapping, cancellationToken, log);
                     continue;
                 }
 
                 try
                 {
-                    var externalToken = await RenewExternalToken(mapping, cancellationToken);
+                    var externalToken = await RenewExternalToken(mapping, cancellationToken, log);
                     if (!mapping.PEXExternalAPIToken.Equals(externalToken, StringComparison.InvariantCultureIgnoreCase))
                     {
                         mapping.PEXExternalAPIToken = externalToken;
@@ -79,7 +77,7 @@ namespace AplosConnector.SyncWorker
                         mapping.ExpirationEmailCount = 0;
                         mapping.IsTokenExpired = false;
                         await _mappingStorage.UpdateAsync(mapping, cancellationToken);
-                        _log.LogInformation($"Token for business {mapping.PEXBusinessAcctId} is refreshed.");
+                        log.LogInformation($"Token for business {mapping.PEXBusinessAcctId} is refreshed.");
                     }
                     if (!_inUseExternalApiTokens.Contains(mapping.PEXExternalAPIToken))
                     {
@@ -88,20 +86,20 @@ namespace AplosConnector.SyncWorker
                 }
                 catch (Exception ex)
                 {
-                    _log.LogError(ex, $"Exception during renew external token for business {mapping.PEXBusinessAcctId}. {ex}");
+                    log.LogError(ex, $"Exception during renew external token for business {mapping.PEXBusinessAcctId}. {ex}");
 
                     if (ex.Message.Contains("Token expired or does not exist"))
                     {
                         mapping.IsTokenExpired = true;
                         await _mappingStorage.UpdateAsync(mapping, cancellationToken);
 
-                        await SendTokenExpiredEmail(mapping, cancellationToken);
+                        await SendTokenExpiredEmail(mapping, cancellationToken, log);
                     }
                 }
             }
         }
 
-        private async Task SendTokenExpiredEmail(Pex2AplosMappingModel mapping, CancellationToken token)
+        private async Task SendTokenExpiredEmail(Pex2AplosMappingModel mapping, CancellationToken token, ILogger log)
         {
             if (mapping.GetLastRenewedDateUtc() < DateTime.UtcNow.AddMonths(-9))
             {
@@ -121,12 +119,11 @@ namespace AplosConnector.SyncWorker
                     if (isAllowedByDate && isAllowedByCount)
                     {
                         var templateParams = new Dictionary<string, object>
-                    {
-                        { "APP_NAME", "Aplos" },
-                        { "USER_NAME", mapping.PEXNameAccount },
-                        { "APP_URL", "https://dashboard.pexcard.com/apps/app/aplosprod" }
-                    };
-
+                        {
+                            { "APP_NAME", "Aplos" },
+                            { "USER_NAME", mapping.PEXNameAccount },
+                            { "APP_URL", "https://dashboard.pexcard.com/apps/app/aplosprod" }
+                        };
                         var emailTemplateMessage = new EmailTemplateMessage
                         {
                             FromAddress = "adminsupport@pexcard.com",
@@ -137,7 +134,7 @@ namespace AplosConnector.SyncWorker
 
                         await _sender.SendMessageAsync(emailTemplateMessage);
 
-                        _log.LogInformation($"Token expiration email has been sent to the administrator {mapping.PEXEmailAccount} of the business: {mapping.PEXBusinessAcctId}.");
+                        log.LogInformation($"Token expiration email has been sent to the administrator {mapping.PEXEmailAccount} of the business: {mapping.PEXBusinessAcctId}.");
 
                         mapping.ExpirationEmailLastDate = DateTime.Now.ToUniversalTime();
                         mapping.ExpirationEmailCount++;
@@ -147,18 +144,18 @@ namespace AplosConnector.SyncWorker
                 }
                 else
                 {
-                    _log.LogWarning($"Cannot send token expiration email, administrator's email is missing for the business: {mapping.PEXBusinessAcctId}.");
+                    log.LogWarning($"Cannot send token expiration email, administrator's email is missing for the business: {mapping.PEXBusinessAcctId}.");
                 }
             }
             catch (Exception e)
             {
-                _log.LogError(e, $"Exception while sending token expiration email {mapping.PEXEmailAccount} for the business {mapping.PEXBusinessAcctId}. {e}");
+                log.LogError(e, $"Exception while sending token expiration email {mapping.PEXEmailAccount} for the business {mapping.PEXBusinessAcctId}. {e}");
             }
         }
 
-        private async Task CleanupSessions(CancellationToken cancellationToken)
+        private async Task CleanupSessions(CancellationToken cancellationToken, ILogger log)
         {
-            _log.LogInformation("Cleaning up sessions");
+            log.LogInformation("Cleaning up sessions");
             var sessions = await _sessionStorage.GetAllSessions(cancellationToken);
             foreach (var session in sessions)
             {
@@ -183,14 +180,14 @@ namespace AplosConnector.SyncWorker
                 }
                 catch (Exception e)
                 {
-                    _log.LogError(e, $"Exception during clean-up of session '{session.SessionGuid}'. {e}");
+                    log.LogError(e, $"Exception during clean-up of session '{session.SessionGuid}'. {e}");
                 }
             }
         }
 
-        private async Task CleanupSyncResults(CancellationToken cancellationToken)
+        private async Task CleanupSyncResults(CancellationToken cancellationToken, ILogger log)
         {
-            _log.LogInformation("Cleaning up Sync History");
+            log.LogInformation("Cleaning up Sync History");
             var syncHistoryResults = await _syncHistoryStorage.GetOldResults(DateTime.UtcNow.AddYears(-3), cancellationToken);
             foreach (var result in syncHistoryResults)
             {
@@ -198,21 +195,20 @@ namespace AplosConnector.SyncWorker
             }
         }
 
-        private async Task<string> RenewExternalToken(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        private async Task<string> RenewExternalToken(Pex2AplosMappingModel mapping, CancellationToken cancellationToken, ILogger log)
         {
             if (mapping.GetLastRenewedDateUtc() < DateTime.UtcNow.AddMonths(-6))
             {
-                _log.LogWarning($"External API token is older than 6 months and could not be renewed for business: {mapping.PEXBusinessAcctId}");
+                log.LogWarning($"External API token is older than 6 months and could not be renewed for business: {mapping.PEXBusinessAcctId}");
                 return mapping.PEXExternalAPIToken;
             }
 
             if (mapping.GetLastRenewedDateUtc() < DateTime.UtcNow.AddMonths(-5).AddDays(-1)) //Wait an extra day in case of timing issues (server time differences, DST complications, etc.)
             {
-                _log.LogInformation($"Renewing external API token for business: {mapping.PEXBusinessAcctId}");
+                log.LogInformation($"Renewing external API token for business: {mapping.PEXBusinessAcctId}");
                 var response = await _pexApiClient.RenewExternalToken(mapping.PEXExternalAPIToken, cancellationToken);
                 return response.Token;
             }
-
             return mapping.PEXExternalAPIToken;
         }
     }
