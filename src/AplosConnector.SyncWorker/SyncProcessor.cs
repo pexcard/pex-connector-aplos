@@ -1,4 +1,3 @@
-using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using AplosConnector.Common.Models;
 using System.Threading.Tasks;
@@ -6,25 +5,27 @@ using AplosConnector.Common.Services.Abstractions;
 using System;
 using System.Threading;
 using AplosConnector.Common.Storage;
+using Microsoft.Azure.Functions.Worker;
 
 namespace AplosConnector.SyncWorker
 {
     public class SyncProcessor
     {
-        private readonly ILogger _logger;
         private readonly IAplosIntegrationService _aplosIntegrationService;
 
-        public SyncProcessor(ILogger<SyncProcessor> logger,
-                             IAplosIntegrationService aplosIntegrationService)
+        public SyncProcessor(IAplosIntegrationService aplosIntegrationService)
         {
-            _logger = logger;
             _aplosIntegrationService = aplosIntegrationService;
         }
 
-        [FunctionName(nameof(SyncProcessor))]
-        public async Task Run([QueueTrigger( Pex2AplosMappingQueue.QUEUE_NAME)] Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        [Function(nameof(SyncProcessor))]
+        public async Task Run(
+            [QueueTrigger(Pex2AplosMappingQueue.QUEUE_NAME)] Pex2AplosMappingModel mapping,
+            FunctionContext context,
+            CancellationToken cancellationToken)
         {
-            _logger.LogInformation($"Beginning Azure Function {nameof(SyncProcessor)} for {nameof(mapping.PEXBusinessAcctId)} {mapping.PEXBusinessAcctId}.");
+            var logger = context.GetLogger<SyncProcessor>();
+            logger.LogInformation($"Beginning Azure Function {nameof(SyncProcessor)} for {nameof(mapping.PEXBusinessAcctId)} {mapping.PEXBusinessAcctId}.");
 
             try
             {
@@ -32,10 +33,10 @@ namespace AplosConnector.SyncWorker
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error running Azure Function {nameof(SyncProcessor)} for {nameof(mapping.PEXBusinessAcctId)} {mapping.PEXBusinessAcctId}.");
+                logger.LogError(ex, $"Error running Azure Function {nameof(SyncProcessor)} for {nameof(mapping.PEXBusinessAcctId)} {mapping.PEXBusinessAcctId}.");
             }
 
-            _logger.LogInformation($"Completed Azure Function {nameof(SyncProcessor)} for {nameof(mapping.PEXBusinessAcctId)} {mapping.PEXBusinessAcctId}.");
+            logger.LogInformation($"Completed Azure Function {nameof(SyncProcessor)} for {nameof(mapping.PEXBusinessAcctId)} {mapping.PEXBusinessAcctId}.");
         }
     }
 }
