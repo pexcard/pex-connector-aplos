@@ -37,11 +37,11 @@ steps:
     Write-Host 'Decoding the encryption certificate'
     $base64 = "$(microservices-appsettings)"
     $bytes = [System.Convert]::FromBase64String($base64)
-    [System.IO.File]::WriteAllBytes("$(system.defaultworkingdirectory)src/AplosConnector.Web/cert.pfx", $bytes)
+    [System.IO.File]::WriteAllBytes("$(system.defaultworkingdirectory)/src/AplosConnector.Web/cert.pfx", $bytes)
   displayName: 'Decode and save encryption certificate'
 - powershell: |
     Write-Host 'Check encryption certificate'
-    Get-Item "$(system.defaultworkingdirectory)src/AplosConnector.Web/cert.pfx" | Format-List *
+    Get-Item "$(system.defaultworkingdirectory)/src/AplosConnector.Web/cert.pfx" | Format-List *
   displayName: 'Check encryption certificate' 
 
 - task: UseDotNet@2
