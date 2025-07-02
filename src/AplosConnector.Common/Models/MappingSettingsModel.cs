@@ -87,6 +87,9 @@ namespace AplosConnector.Common.Models
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
+        public AplosTagMappingModel[] TransferTagMappings { get; set; }
+        public AplosTagMappingModel[] FeeTagMappings { get; set; }
+        public AplosTagMappingModel[] RebateTagMappings { get; set; }
         public FundingSource PEXFundingSource { get; set; }
 
         public double? SyncTransactionsIntervalDays { get; set; }

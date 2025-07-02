@@ -1395,6 +1395,9 @@ namespace AplosConnector.Common.Services
                                 AplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber
                             };
 
+                            // Apply default tag values from rebate tag mappings
+                            ApplyTagMappingsToTagValues(pexTagValues, mapping.RebateTagMappings, _logger);
+
                             allocationDetails.Add((allocation, pexTagValues));
                         }
 
@@ -1534,6 +1537,9 @@ namespace AplosConnector.Common.Services
                                 AplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber
                             };
 
+                            // Apply default tag values from transfer tag mappings for invoices
+                            ApplyTagMappingsToTagValues(pexTagValues, mapping.TransferTagMappings, _logger);
+
                             allocationDetails.Add((allocationTagValue, pexTagValues));
                             totalAllocationsAmount += invoiceAllocationModel.TotalAmount;
                         }
@@ -1578,6 +1584,9 @@ namespace AplosConnector.Common.Services
                                 AplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber,
                                 AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
                             };
+
+                            // Apply default tag values from rebate tag mappings for invoice rebates
+                            ApplyTagMappingsToTagValues(pexTagValues, mapping.RebateTagMappings, _logger);
 
                             allocationDetails.Add((allocationTagValue, pexTagValues));
                         }
@@ -1777,6 +1786,9 @@ namespace AplosConnector.Common.Services
                                 AplosTransactionAccountNumber = model.TransfersAplosTransactionAccountNumber
                             };
 
+                            // Apply transfer tag mappings for default tag values
+                            ApplyTagMappingsToTagValues(pexTagValues, model.TransferTagMappings, _logger);
+
                             allocationDetails.Add((allocation, pexTagValues));
                         }
 
@@ -1886,6 +1898,9 @@ namespace AplosConnector.Common.Services
                                 AplosTaxTagId = model.PexFeesAplosTaxTagId,
                                 AplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber
                             };
+                            
+                            // Apply default tag values from fee tag mappings
+                            ApplyTagMappingsToTagValues(pexTagValues, model.FeeTagMappings, _logger);
 
                             allocationDetails.Add((allocation, pexTagValues));
                         }
@@ -2149,5 +2164,28 @@ namespace AplosConnector.Common.Services
         }
 
         #endregion
+
+        private void ApplyTagMappingsToTagValues(PexTagValuesModel pexTagValues, AplosTagMappingModel[] tagMappings, ILogger logger)
+        {
+            if (tagMappings?.Any() == true)
+            {
+                pexTagValues.AplosTagIds = new List<string>();
+
+                logger.LogInformation($"Processing {tagMappings.Length} Aplos tag mappings");
+
+                foreach (var tagMapping in tagMappings)
+                {
+                    if (!string.IsNullOrEmpty(tagMapping.DefaultAplosTagValue))
+                    {
+                        logger.LogInformation($"Using default Aplos tag value '{tagMapping.DefaultAplosTagValue}' for tag category '{tagMapping.AplosTagId}'.");
+                        pexTagValues.AplosTagIds.Add(tagMapping.DefaultAplosTagValue);
+                    }
+                }
+            }
+            else
+            {
+                logger.LogInformation($"No Aplos tag mappings to process.");
+            }
+        }
     }
 }

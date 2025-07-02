@@ -154,6 +154,10 @@ export interface SettingsModel {
   mapVendorCards: boolean;
   useNormalizedMerchantNames: boolean;
   postDateType: PostDateType;
+
+  transferTagMappings: AplosTagMappingModel[];
+  feeTagMappings: AplosTagMappingModel[];
+  rebateTagMappings: AplosTagMappingModel[];
 }
 
 export interface ExpenseAccountMappingModel {
@@ -183,4 +187,9 @@ export enum FundingSource {
 export enum PostDateType {
   Transaction = 0,
   Settlement = 1
+}
+
+export interface AplosTagMappingModel {
+  aplosTagId: string;
+  defaultAplosTagValue: string;
 }

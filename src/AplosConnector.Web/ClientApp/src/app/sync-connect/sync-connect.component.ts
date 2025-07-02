@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild } from "@angular/core";
 import { Router, ActivatedRoute } from "@angular/router";
 import { ClrWizard } from "@clr/angular";
-import { UntypedFormGroup, UntypedFormArray, UntypedFormControl, Validators } from "@angular/forms";
+import { UntypedFormGroup, UntypedFormArray, UntypedFormControl, Validators, FormArray, FormGroup, FormControl } from "@angular/forms";
 
 import { AuthService } from "../services/auth.service";
 import {
@@ -36,6 +36,41 @@ export class SyncConnectComponent implements OnInit {
 
   private _open = true;
   @ViewChild('wizard', { static: true }) wizard: ClrWizard;
+  defaultCategoryForm: UntypedFormGroup = new UntypedFormGroup({
+    transferTagMappings: new UntypedFormArray([
+      new UntypedFormGroup({
+        aplosTagId: new UntypedFormControl(),
+        defaultAplosTagValue: new UntypedFormControl()
+      })
+    ]),
+    feeTagMappings: new UntypedFormArray([
+      new UntypedFormGroup({
+        aplosTagId: new UntypedFormControl(),
+        defaultAplosTagValue: new UntypedFormControl()
+      })
+    ]),
+    rebateTagMappings: new UntypedFormArray([
+      new UntypedFormGroup({
+        aplosTagId: new UntypedFormControl(),
+        defaultAplosTagValue: new UntypedFormControl()
+      })
+    ]),
+    defaultAplosFundId: new UntypedFormControl(),
+    defaultAplosTransactionAccountNumber: new UntypedFormControl(),
+    transfersAplosContactId: new UntypedFormControl(),
+    transfersAplosFundId: new UntypedFormControl(),
+    transfersAplosTransactionAccountNumber: new UntypedFormControl(),
+    pexFeesAplosContactId: new UntypedFormControl(),
+    pexFeesAplosFundId: new UntypedFormControl(),
+    pexFeesAplosTransactionAccountNumber: new UntypedFormControl(),
+    pexFeesAplosTaxTag: new UntypedFormControl(),
+    pexRebatesAplosContactId: new UntypedFormControl(),
+    pexRebatesAplosFundId: new UntypedFormControl(),
+    pexRebatesAplosTransactionAccountNumber: new UntypedFormControl(),
+    pexRebatesAplosTaxTag: new UntypedFormControl()
+  });
+
+
   expenseAccountForm: UntypedFormGroup = new UntypedFormGroup({
     expenseAccounts: new UntypedFormArray([
       new UntypedFormGroup({
@@ -74,6 +109,7 @@ export class SyncConnectComponent implements OnInit {
   aplosLiabilityAccounts: AplosAccount[] = [];
   aplosFunds: AplosObject[] = [];
   aplosTagCategories: AplosObject[] = [];
+  aplosTagsByCategoryId: { [categoryId: string]: AplosObject[] } = {};
   aplosTags: { [id: string] : AplosObject[]; } = {};
   aplosTaxTagCategories: AplosApiTaxTagCategoryDetail[] = [];
   hasTagsAvailable = true;
@@ -129,7 +165,10 @@ export class SyncConnectComponent implements OnInit {
     pexFundingSource: FundingSource.Unknown,
     mapVendorCards: true,
     useNormalizedMerchantNames: true,
-    postDateType: PostDateType.Transaction
+    postDateType: PostDateType.Transaction,
+    transferTagMappings: [],
+    feeTagMappings: [],
+    rebateTagMappings: []
   };
 
   getExpenseAccountFormElements() {
@@ -386,20 +425,53 @@ export class SyncConnectComponent implements OnInit {
   errorLoadingAplosTagCategories = false;
   getTagCategories() {
     this.loadingAplosTagCategories = true;
-    this.errorLoadingAplosTagCategories = false;
-
+    this.errorLoadingAplosTagCategories = false;    
     return this.aplos.getTagCategories(this.sessionId).subscribe(
       aplosTagCategories => {
         console.log('getting TagCategories', aplosTagCategories);
         this.aplosTagCategories = [ ...aplosTagCategories];
         this.loadingAplosTagCategories = false;
         console.log('got TagCategories', this.aplosTagCategories);
+        // Load tags for each category
+        this.loadTagsForAllCategories();
       },
       () => {
         this.loadingAplosTagCategories = false;
         this.errorLoadingAplosTagCategories = true;
       }
+    );  }
+
+  loadTagsForAllCategories() {
+    this.aplosTagCategories.forEach(category => {
+      this.loadTagsForCategory(category.id.toString());
+    });
+  }
+
+  loadTagsForCategory(categoryId: string) {
+    this.aplos.getTags(this.sessionId, categoryId).subscribe(
+      tags => {
+        this.aplosTagsByCategoryId[categoryId] = tags;
+        console.log(`Loaded tags for category ${categoryId}:`, tags);
+        // Initialize form after all categories have been processed
+        this.checkAndInitializeForm();
+      },
+      error => {
+        console.error(`Error loading tags for category ${categoryId}:`, error);
+      }
     );
+  }
+
+  checkAndInitializeForm() {
+    // Check if we have tags for all categories, then initialize the form
+    const allCategoriesLoaded = this.aplosTagCategories.every(category => 
+      this.aplosTagsByCategoryId[category.id.toString()]
+    );
+    
+    if (allCategoriesLoaded) {
+      this.initializeTransferTagMappings();
+      this.initializeFeeTagMappings();
+      this.initializeRebateTagMappings();
+    }
   }
 
   loadingAplosTags = false;
@@ -434,6 +506,10 @@ export class SyncConnectComponent implements OnInit {
         this.aplosTaxTagCategories = [ ...aplosTaxTagCategories];
         this.loadingAplosTaxTags = false;
         console.log('got TaxTags', this.aplosTaxTagCategories);
+        // Initialize the form array with the loaded categories
+        this.initializeTransferTagMappings();
+        this.initializeFeeTagMappings();
+        this.initializeRebateTagMappings();
       },
       () => {
         this.loadingAplosTaxTags = false;
@@ -498,6 +574,12 @@ export class SyncConnectComponent implements OnInit {
       this.getTaxTagCategories();
       this.initExpenseAccountMappingFormFromSettings(this.settingsModel);
       this.initTagMappingFormFromSettings(this.settingsModel);
+      this.initDefaultCategoryFormFromSettings(this.settingsModel);
+      
+      // Initialize tag mappings from settings
+      this.initializeTransferTagMappings();
+      this.initializeFeeTagMappings();
+      this.initializeRebateTagMappings();
 
       if (this.settingsModel.tagMappings.length > 0) {
         this.settingsModel.tagMappings.forEach(
@@ -541,6 +623,49 @@ export class SyncConnectComponent implements OnInit {
     }
   }
 
+  initDefaultCategoryFormFromSettings(settings: SettingsModel) {
+    // Initialize form controls with values from settingsModel
+    this.defaultCategoryForm.patchValue({
+      defaultAplosFundId: settings.defaultAplosFundId,
+      defaultAplosTransactionAccountNumber: settings.defaultAplosTransactionAccountNumber,
+      transfersAplosContactId: settings.transfersAplosContactId,
+      transfersAplosFundId: settings.transfersAplosFundId,
+      transfersAplosTransactionAccountNumber: settings.transfersAplosTransactionAccountNumber,
+      pexFeesAplosContactId: settings.pexFeesAplosContactId,
+      pexFeesAplosFundId: settings.pexFeesAplosFundId,
+      pexFeesAplosTransactionAccountNumber: settings.pexFeesAplosTransactionAccountNumber,
+      pexFeesAplosTaxTag: settings.pexFeesAplosTaxTag,
+      pexRebatesAplosContactId: settings.pexRebatesAplosContactId,
+      pexRebatesAplosFundId: settings.pexRebatesAplosFundId,
+      pexRebatesAplosTransactionAccountNumber: settings.pexRebatesAplosTransactionAccountNumber,
+      pexRebatesAplosTaxTag: settings.pexRebatesAplosTaxTag
+    });
+  }
+
+  updateSettingsFromDefaultCategoryForm() {
+    // Update settingsModel with values from form controls
+    const formValue = this.defaultCategoryForm.value;
+    
+    // Only update defaultAplosFundId if it's being used in the transaction options form
+    // (when tags are not available and sync transactions is enabled)
+    if (!this.hasTagsAvailable && this.settingsModel.syncTransactions) {
+      this.settingsModel.defaultAplosFundId = formValue.defaultAplosFundId;
+      this.settingsModel.defaultAplosTransactionAccountNumber = formValue.defaultAplosTransactionAccountNumber;
+    }
+    
+    this.settingsModel.transfersAplosContactId = formValue.transfersAplosContactId;
+    this.settingsModel.transfersAplosFundId = formValue.transfersAplosFundId;
+    this.settingsModel.transfersAplosTransactionAccountNumber = formValue.transfersAplosTransactionAccountNumber;
+    this.settingsModel.pexFeesAplosContactId = formValue.pexFeesAplosContactId;
+    this.settingsModel.pexFeesAplosFundId = formValue.pexFeesAplosFundId;
+    this.settingsModel.pexFeesAplosTransactionAccountNumber = formValue.pexFeesAplosTransactionAccountNumber;
+    this.settingsModel.pexFeesAplosTaxTag = formValue.pexFeesAplosTaxTag;
+    this.settingsModel.pexRebatesAplosContactId = formValue.pexRebatesAplosContactId;
+    this.settingsModel.pexRebatesAplosFundId = formValue.pexRebatesAplosFundId;
+    this.settingsModel.pexRebatesAplosTransactionAccountNumber = formValue.pexRebatesAplosTransactionAccountNumber;
+    this.settingsModel.pexRebatesAplosTaxTag = formValue.pexRebatesAplosTaxTag;
+  }
+
   private validatePexSetup() {
     this.pex.validatePexSetup(this.sessionId).subscribe(
       (result) => {
@@ -554,15 +679,14 @@ export class SyncConnectComponent implements OnInit {
       }
     );
   }
-
   onVendorCommit() {
-    this.saveSettings(false).subscribe(() => {
+    this.saveContactOptionsSettings().subscribe(() => {
       this.savingSettings = false;
     });
   }
 
   onSettingsCommit() {
-    this.saveSettings(false).subscribe(() => {
+    this.saveSyncSelectionSettings().subscribe(() => {
       this.savingSettings = false;
     });
   }
@@ -581,7 +705,7 @@ export class SyncConnectComponent implements OnInit {
 
         console.info(result);
 
-        this.saveSettings().subscribe(() => {
+        this.saveAplosCredentialsSettings().subscribe(() => {
           this.savingSettings = false;
 
           this.verifyingAplosAuthentication = true;
@@ -610,53 +734,15 @@ export class SyncConnectComponent implements OnInit {
       );
   }
 
-  saveSettings(closeWizard: boolean = false) {
-    this.savingSettings = true;
-    if (this.settingsModel.syncTransactionsCreateContact) {
-      this.settingsModel.defaultAplosContactId = 0;
-    } else {
-      this.settingsModel.useNormalizedMerchantNames = false;
-    }
-    console.log('saving settings', this.settingsModel);
-    return this.mapping.saveSettings(this.sessionId, this.settingsModel);
-  }
-
   onTagMappingCommit() {
-    if (this.expenseAccountForm.valid) {
-      let accounts: ExpenseAccountMappingModel[] = [];
-      let hasMultipleMappings = this.expenseAccountForm.value.expenseAccounts.length > 1;
-      this.expenseAccountForm.value.expenseAccounts.forEach(element => {
-        accounts.push({
-          expenseAccountsPexTagId: element.expenseAccount,
-          syncExpenseAccounts: hasMultipleMappings ? false : element.syncExpenseAccountToPex,
-          defaultAplosTransactionAccountNumber: element.defaultAplosTransactionAccountNumber
-        });
-      });
-
-      this.settingsModel.expenseAccountMappings = accounts;
-
-      let tagMappings: TagMappingModel[] = [];
-      this.tagMappingForm.value.tagMappings.forEach(element => {
-        if (element.aplosTag && element.pexTag) {
-          tagMappings.push({
-            aplosTagId: element.aplosTag,
-            pexTagId: element.pexTag,
-            syncToPex: element.syncToPex,
-            defaultAplosTagId: element.defaultAplosTag
-          });
-        }
-      });
-
-      this.settingsModel.tagMappings = tagMappings;
-
-      this.saveSettings(false).subscribe(() => {
-        this.savingSettings = false;
-      });
-    }
+    // Update both expense account mappings and tag mappings using dedicated methods
+    this.saveMappingOptionsSettings().subscribe(() => {
+      this.savingSettings = false;
+    });
   }
 
   onDefaultCategoryCommit() {
-    this.saveSettings(true).subscribe(() => {
+    this.saveTransactionOptionsSettings().subscribe(() => {
       this.savingSettings = false;
     });
   }
@@ -705,7 +791,231 @@ export class SyncConnectComponent implements OnInit {
   onTagMappingCancel() {
     this.open = false;
   }
+  getTransferTagMappingFormElements() {
+    return this.defaultCategoryForm.get('transferTagMappings') as FormArray;
+  }  
+  
+  initializeTransferTagMappings() {
+    const transferTagMappingsArray = this.defaultCategoryForm.get('transferTagMappings') as FormArray;
+    
+    // Clear existing form controls
+    while (transferTagMappingsArray.length !== 0) {
+      transferTagMappingsArray.removeAt(0);
+    }
+    
+    // Add a form group for each aplos tag category
+    this.aplosTagCategories.forEach(category => {
+      // Find existing setting for this category
+      const existingMapping = this.settingsModel.transferTagMappings?.find(
+        mapping => mapping.aplosTagId === category.id.toString()
+      );
+      
+      const formGroup = new UntypedFormGroup({
+        aplosTagCategoryId: new UntypedFormControl(category.id.toString()),
+        aplosTagCategoryName: new UntypedFormControl(category.name),
+        defaultAplosTagValue: new UntypedFormControl(existingMapping?.defaultAplosTagValue || '')
+      });
+      transferTagMappingsArray.push(formGroup);
+    });
+  }
+  
+  getTagValuesForCategory(categoryId: string): AplosObject[] {
+    return this.aplosTagsByCategoryId[categoryId] || [];
+  }
 
+  updateSettingsFromTransferTagMappingsForm() {
+    const formArray = this.getTransferTagMappingFormElements();
+    this.settingsModel.transferTagMappings = [];
+    
+    formArray.controls.forEach(control => {
+      const categoryId = control.get('aplosTagCategoryId')?.value;
+      const selectedValue = control.get('defaultAplosTagValue')?.value;
+      
+      if (categoryId && selectedValue) {
+        this.settingsModel.transferTagMappings.push({
+          aplosTagId: categoryId,
+          defaultAplosTagValue: selectedValue
+        });
+      }
+    });
+    
+    console.log('Updated transferTagMappings:', this.settingsModel.transferTagMappings);
+  }
+
+  getFeeTagMappingFormElements() {
+    return this.defaultCategoryForm.get('feeTagMappings') as FormArray;
+  }
+
+  getRebateTagMappingFormElements() {
+    return this.defaultCategoryForm.get('rebateTagMappings') as FormArray;
+  }
+
+  initializeFeeTagMappings() {
+    const feeTagMappingsArray = this.defaultCategoryForm.get('feeTagMappings') as FormArray;
+    
+    // Clear existing form controls
+    while (feeTagMappingsArray.length !== 0) {
+      feeTagMappingsArray.removeAt(0);
+    }
+    
+    // Add a form group for each aplos tag category
+    this.aplosTagCategories.forEach(category => {
+      // Find existing setting for this category
+      const existingMapping = this.settingsModel.feeTagMappings?.find(
+        mapping => mapping.aplosTagId === category.id.toString()
+      );
+      
+      const formGroup = new UntypedFormGroup({
+        aplosTagCategoryId: new UntypedFormControl(category.id.toString()),
+        aplosTagCategoryName: new UntypedFormControl(category.name),
+        defaultAplosTagValue: new UntypedFormControl(existingMapping?.defaultAplosTagValue || '')
+      });
+      feeTagMappingsArray.push(formGroup);
+    });
+  }
+
+  initializeRebateTagMappings() {
+    const rebateTagMappingsArray = this.defaultCategoryForm.get('rebateTagMappings') as FormArray;
+    
+    // Clear existing form controls
+    while (rebateTagMappingsArray.length !== 0) {
+      rebateTagMappingsArray.removeAt(0);
+    }
+    
+    // Add a form group for each aplos tag category
+    this.aplosTagCategories.forEach(category => {
+      // Find existing setting for this category
+      const existingMapping = this.settingsModel.rebateTagMappings?.find(
+        mapping => mapping.aplosTagId === category.id.toString()
+      );
+      
+      const formGroup = new UntypedFormGroup({
+        aplosTagCategoryId: new UntypedFormControl(category.id.toString()),
+        aplosTagCategoryName: new UntypedFormControl(category.name),
+        defaultAplosTagValue: new UntypedFormControl(existingMapping?.defaultAplosTagValue || '')
+      });
+      rebateTagMappingsArray.push(formGroup);
+    });
+  }
+
+  updateSettingsFromFeeTagMappingsForm() {
+    const formArray = this.getFeeTagMappingFormElements();
+    this.settingsModel.feeTagMappings = [];
+    
+    formArray.controls.forEach(control => {
+      const categoryId = control.get('aplosTagCategoryId')?.value;
+      const selectedValue = control.get('defaultAplosTagValue')?.value;
+      
+      if (categoryId && selectedValue) {
+        this.settingsModel.feeTagMappings.push({
+          aplosTagId: categoryId,
+          defaultAplosTagValue: selectedValue
+        });
+      }
+    });
+    
+    console.log('Updated feeTagMappings:', this.settingsModel.feeTagMappings);
+  }
+
+  updateSettingsFromRebateTagMappingsForm() {
+    const formArray = this.getRebateTagMappingFormElements();
+    this.settingsModel.rebateTagMappings = [];
+    
+    formArray.controls.forEach(control => {
+      const categoryId = control.get('aplosTagCategoryId')?.value;
+      const selectedValue = control.get('defaultAplosTagValue')?.value;
+      
+      if (categoryId && selectedValue) {
+        this.settingsModel.rebateTagMappings.push({
+          aplosTagId: categoryId,
+          defaultAplosTagValue: selectedValue
+        });
+      }
+    });
+    console.log('Updated rebateTagMappings:', this.settingsModel.rebateTagMappings);
+  }
+
+  updateSettingsFromTagMappingForm() {
+    // Update regular tag mappings from tagMappingForm
+    let tagMappings: TagMappingModel[] = [];
+    if (this.tagMappingForm.value.tagMappings) {
+      this.tagMappingForm.value.tagMappings.forEach(element => {
+        if (element.aplosTag && element.pexTag) {
+          tagMappings.push({
+            aplosTagId: element.aplosTag,
+            pexTagId: element.pexTag,
+            syncToPex: element.syncToPex,
+            defaultAplosTagId: element.defaultAplosTag
+          });
+        }
+      });
+    }
+    this.settingsModel.tagMappings = tagMappings;
+    console.log('Updated tagMappings:', this.settingsModel.tagMappings);
+  }
+
+  updateSettingsFromExpenseAccountForm() {
+    // Update expense account mappings from expenseAccountForm
+    if (this.expenseAccountForm.valid && this.expenseAccountForm.value.expenseAccounts) {
+      let accounts: ExpenseAccountMappingModel[] = [];
+      let hasMultipleMappings = this.expenseAccountForm.value.expenseAccounts.length > 1;
+      this.expenseAccountForm.value.expenseAccounts.forEach(element => {
+        accounts.push({
+          expenseAccountsPexTagId: element.expenseAccount,
+          syncExpenseAccounts: hasMultipleMappings ? false : element.syncExpenseAccountToPex,
+          defaultAplosTransactionAccountNumber: element.defaultAplosTransactionAccountNumber
+        });
+      });
+      this.settingsModel.expenseAccountMappings = accounts;
+    }
+    console.log('Updated expenseAccountMappings:', this.settingsModel.expenseAccountMappings);
+  }
+
+  saveAplosCredentialsSettings() {
+    this.savingSettings = true;
+    // Only update Aplos credentials related settings
+    console.log('saving Aplos credentials settings', this.settingsModel);
+    return this.mapping.saveSettings(this.sessionId, this.settingsModel);
+  }
+
+  saveSyncSelectionSettings() {
+    this.savingSettings = true;
+    // Only update sync selection related settings
+    console.log('saving sync selection settings', this.settingsModel);
+    return this.mapping.saveSettings(this.sessionId, this.settingsModel);
+  }
+
+  saveContactOptionsSettings() {
+    this.savingSettings = true;
+    // Only update contact options related settings
+    if (this.settingsModel.syncTransactionsCreateContact) {
+      this.settingsModel.defaultAplosContactId = 0;
+    } else {
+      this.settingsModel.useNormalizedMerchantNames = false;
+    }
+    console.log('saving contact options settings', this.settingsModel);
+    return this.mapping.saveSettings(this.sessionId, this.settingsModel);
+  }
+
+  saveMappingOptionsSettings() {
+    this.savingSettings = true;
+    // Update expense account mappings and tag mappings from forms
+    this.updateSettingsFromExpenseAccountForm();
+    this.updateSettingsFromTagMappingForm();
+    console.log('saving mapping options settings', this.settingsModel);
+    return this.mapping.saveSettings(this.sessionId, this.settingsModel);
+  }
+
+  saveTransactionOptionsSettings() {
+    this.savingSettings = true;
+    // Update default category form and tag mappings from forms
+    this.updateSettingsFromDefaultCategoryForm();
+    this.updateSettingsFromTransferTagMappingsForm();
+    this.updateSettingsFromFeeTagMappingsForm();
+    this.updateSettingsFromRebateTagMappingsForm();
+    console.log('saving transaction options settings', this.settingsModel);
+    return this.mapping.saveSettings(this.sessionId, this.settingsModel);
+  }
 }
 
 export interface OauthResponse {

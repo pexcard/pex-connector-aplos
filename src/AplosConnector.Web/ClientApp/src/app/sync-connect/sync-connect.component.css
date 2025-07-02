@@ -17,3 +17,33 @@
 .display-inline {
   display: inline;
 }
+
+.table {
+  margin-top: 10px;
+}
+
+.table th {
+  vertical-align: middle;
+  padding: 10px;
+}
+
+.table h4 {
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+
+.table td {
+  vertical-align: middle;
+  padding: 3px;
+}
+
+.table-no-top-margin {
+  margin-top: -1px !important;
+}
+
+.caption-border {
+  border: 1px solid #cccccc;
+  margin-bottom: -1px;
+  background-color: #fafafa;
+  padding: 3px;
+}
