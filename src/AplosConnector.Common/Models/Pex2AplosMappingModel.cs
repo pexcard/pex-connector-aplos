@@ -71,6 +71,9 @@ namespace AplosConnector.Common.Models
 
             ExpenseAccountMappings = mapping.ExpenseAccountMappings;
             TagMappings = mapping.TagMappings;
+            TransferTagMappings = mapping.TransferTagMappings;
+            FeeTagMappings = mapping.FeeTagMappings;
+            RebateTagMappings = mapping.RebateTagMappings;
             PEXFundingSource = mapping.PEXFundingSource;
             MapVendorCards = mapping.MapVendorCards;
             UseNormalizedMerchantNames = mapping.UseNormalizedMerchantNames;
@@ -144,6 +147,9 @@ namespace AplosConnector.Common.Models
 
                 ExpenseAccountMappings = ExpenseAccountMappings,
                 TagMappings = TagMappings,
+                TransferTagMappings = TransferTagMappings,
+                FeeTagMappings = FeeTagMappings,
+                RebateTagMappings = RebateTagMappings,
                 PEXFundingSource = PEXFundingSource,
 
                 SyncTransactionsIntervalDays = SyncTransactionsIntervalDays,
@@ -211,6 +217,9 @@ namespace AplosConnector.Common.Models
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
+        public AplosTagMappingModel[] TransferTagMappings { get; set; }
+        public AplosTagMappingModel[] FeeTagMappings { get; set; }
+        public AplosTagMappingModel[] RebateTagMappings { get; set; }
 
         public string PEXEmailAccount { get; set; }
         public string PEXNameAccount { get; set; }

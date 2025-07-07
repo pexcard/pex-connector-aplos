@@ -99,6 +99,9 @@ namespace AplosConnector.Common.Services
 
                     ExpenseAccountMappings = JsonConvert.SerializeObject(model.ExpenseAccountMappings),
                     TagMappings = JsonConvert.SerializeObject(model.TagMappings),
+                    TransferTagMappings = JsonConvert.SerializeObject(model.TransferTagMappings),
+                    FeeTagMappings = JsonConvert.SerializeObject(model.FeeTagMappings),
+                    RebateTagMappings = JsonConvert.SerializeObject(model.RebateTagMappings),
 
                     PexTaxTagId = model.PexTaxTagId,
 
@@ -226,11 +229,20 @@ namespace AplosConnector.Common.Services
 
                     ExpenseAccountMappings = model.ExpenseAccountMappings == null
                         ? null
-                        : JsonConvert.DeserializeObject<ExpenseAccountMappingModel[]>(model.ExpenseAccountMappings),
-
-                    TagMappings = model.TagMappings == null
+                        : JsonConvert.DeserializeObject<ExpenseAccountMappingModel[]>(model.ExpenseAccountMappings),                    TagMappings = model.TagMappings == null
                         ? null
                         : JsonConvert.DeserializeObject<TagMappingModel[]>(model.TagMappings),
+                    TransferTagMappings = model.TransferTagMappings == null
+                        ? null
+                        : JsonConvert.DeserializeObject<AplosTagMappingModel[]>(model.TransferTagMappings),
+
+                    FeeTagMappings = model.FeeTagMappings == null
+                        ? null
+                        : JsonConvert.DeserializeObject<AplosTagMappingModel[]>(model.FeeTagMappings),
+
+                    RebateTagMappings = model.RebateTagMappings == null
+                        ? null
+                        : JsonConvert.DeserializeObject<AplosTagMappingModel[]>(model.RebateTagMappings),
 
                     PexTaxTagId = model.PexTaxTagId,
 
