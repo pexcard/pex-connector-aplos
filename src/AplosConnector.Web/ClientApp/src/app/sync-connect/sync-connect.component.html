@@ -395,22 +395,21 @@
       </ul>
 
       <table class="table">
-        <caption>
-          Fund
-        </caption>
+        <caption>Fund</caption>
         <thead>
           <tr>
-            <th class="left">Field</th>
-            <th class="left">Sync</th>
-            <th class="left">PEX Tag</th>
-            <th *ngIf="isPrepaid" class="left">Default</th>
+            <th class="left clr-col-2">Field</th>
+            <th class="left clr-col-1">Sync</th>
+            <th class="left clr-col-4">PEX Tag</th>
+            <th *ngIf="isPrepaid" class="left clr-col-4">Default</th>
+            <th class="clr-col-1"></th>
           </tr>
         </thead>
 
         <tbody>
           <tr>
-            <td class="left">Fund</td>
-            <td>
+            <td class="left clr-col-2">Fund</td>
+            <td class="clr-col-1">
               <clr-toggle-wrapper>
                 <input type="checkbox"
                        clrToggle
@@ -419,10 +418,10 @@
                        [(ngModel)]="settingsModel.syncFundsToPex" />
               </clr-toggle-wrapper>
             </td>
-            <td class="left">
+            <td class="left clr-col-4">
               <div class="clr-select-wrapper">
                 <select id="pexFundsTagId"
-                        class="clr-select"
+                        class="clr-select clr-col-12"
                         name="pexFundsTagId"
                         required
                         [(ngModel)]="settingsModel.pexFundsTagId">
@@ -431,10 +430,10 @@
                 </select>
               </div>
             </td>
-            <td *ngIf="isPrepaid" class="left">
+            <td *ngIf="isPrepaid" class="left clr-col-4">
               <div class="clr-select-wrapper">
                 <select id="defaultAplosFundId"
-                        class="clr-select select"
+                        class="clr-select select clr-col-12"
                         name="defaultAplosFundId"
                         [(ngModel)]="settingsModel.defaultAplosFundId">
                   <option [value]="0"></option>
@@ -442,6 +441,7 @@
                 </select>
               </div>
             </td>
+            <td class="clr-col-1"></td>
           </tr>
         </tbody>
       </table>
@@ -454,11 +454,11 @@
         <caption>Expense Account</caption>
         <thead>
           <tr>
-            <th class="left">Field</th>
-            <th class="left" *ngIf="getExpenseAccountFormElements().length == 1">Sync</th>
-            <th class="left">PEX Tag</th>
-            <th class="left">Default</th>
-            <th>
+            <th class="left clr-col-2">Field</th>
+            <th class="left clr-col-1" *ngIf="getExpenseAccountFormElements().length == 1">Sync</th>
+            <th class="left clr-col-4">PEX Tag</th>
+            <th class="left clr-col-4">Default</th>
+            <th class="clr-col-1">
               <button type="button" class="btn btn-primary btn-sm btn-icon" aria-label="add" (click)="addExpenseAccountElement()">
                 <clr-icon shape="plus" size="12"></clr-icon>
               </button>
@@ -468,17 +468,17 @@
 
         <tbody formArrayName="expenseAccounts">
           <tr *ngFor="let expenseAccount of getExpenseAccountFormElements().controls; let i = index" [formGroupName]="i">
-            <td class="left">Account</td>
-            <td *ngIf="getExpenseAccountFormElements().length == 1">
+            <td class="left clr-col-2">Account</td>
+            <td class="clr-col-1" *ngIf="getExpenseAccountFormElements().length == 1">
               <clr-toggle-wrapper>
                 <input type="checkbox"
                        formControlName="syncExpenseAccountToPex"
                        clrToggle />
               </clr-toggle-wrapper>
             </td>
-            <td class="left">
+            <td class="left clr-col-4">
               <div class="clr-select-wrapper">
-                <select class="clr-select"
+                <select class="clr-select clr-col-12"
                         required
                         formControlName="expenseAccount">
                   <option></option>
@@ -486,9 +486,9 @@
                 </select>
               </div>
             </td>
-            <td class="left">
+            <td class="left clr-col-4">
               <div class="clr-select-wrapper">
-                <select class="clr-select select"
+                <select class="clr-select select clr-col-12"
                         formControlName="defaultAplosTransactionAccountNumber"
                         [(ngModel)]="settingsModel.defaultAplosTransactionAccountNumber">
                   <option [value]="0"></option>
@@ -496,7 +496,7 @@
                 </select>
               </div>
             </td>            
-            <td>
+            <td class="clr-col-1">
               <button type="button" class="btn btn-danger btn-sm btn-icon" aria-label="add" (click)="deleteExpenseAccountElement(i)" *ngIf="this.getExpenseAccountFormElements().length > 1">
                 <clr-icon shape="trash" size="12"></clr-icon>
               </button>
@@ -511,11 +511,11 @@
           <caption>Tags</caption>
           <thead>
             <tr>
-              <th class="left">Field</th>
-              <th class="left">Sync</th>
-              <th class="left">PEX Tag</th>
-              <th class="left">Default</th>
-              <th>
+              <th class="left clr-col-2">Field</th>
+              <th class="left clr-col-1">Sync</th>
+              <th class="left clr-col-4">PEX Tag</th>
+              <th class="left clr-col-4">Default</th>
+              <th class="clr-col-1">
                 <button type="button" class="btn btn-primary btn-sm btn-icon" aria-label="add" (click)="addTagMappingElement()">
                   <clr-icon shape="plus" size="12"></clr-icon>
                 </button>
@@ -524,32 +524,32 @@
           </thead>
           <tbody formArrayName="tagMappings">
             <tr *ngFor="let tagMapping of getTagMappingFormElements().controls; let i = index" [formGroupName]="i">
-              <td class="left">
+              <td class="left clr-col-2">
                 <div class="clr-select-wrapper">
-                  <select class="clr-select" formControlName="aplosTag" (change)="onAplosCategoryChange(i)">
+                  <select class="clr-select clr-col-12" formControlName="aplosTag" (change)="onAplosCategoryChange(i)">
                     <option></option>
                     <option [value]="tag.id" *ngFor="let tag of aplosTagCategories">{{tag.name}}</option>
                     <option *ngIf="settingsModel.syncTaxTagToPex" value="990">990</option>
                   </select>
                 </div>
               </td>
-              <td>
+              <td class="clr-col-1">
                 <clr-toggle-wrapper>
                   <input type="checkbox" formControlName="syncToPex" clrToggle />
                 </clr-toggle-wrapper>
               </td>
-              <td class="left">
+              <td class="left clr-col-4">
                 <div class="clr-select-wrapper">
-                  <select class="clr-select"
+                  <select class="clr-select clr-col-12"
                           formControlName="pexTag">
                     <option></option>
                     <option [value]="tag.id" *ngFor="let tag of getDropDownTags()">{{tag.name}}</option>
                   </select>
                 </div>
               </td>
-              <td *ngIf="tagMapping.value.aplosTag == '990'" class="left">
+              <td *ngIf="tagMapping.value.aplosTag == '990'" class="left clr-col-4">
                 <div class="clr-select-wrapper">
-                  <select class="clr-select" 
+                  <select class="clr-select clr-col-12" 
                           formControlName="defaultAplosTag">
                     <option></option>
                     <optgroup  *ngFor="let aplosTaxTagCategory of aplosTaxTagCategories" label="{{aplosTaxTagCategory.name}}">
@@ -558,9 +558,9 @@
                   </select>
                 </div>
               </td>
-              <td *ngIf="tagMapping.value.aplosTag != '990'" class="left">
+              <td *ngIf="tagMapping.value.aplosTag != '990'" class="left clr-col-4">
                 <div class="clr-select-wrapper">
-                  <select class="clr-select" 
+                  <select class="clr-select clr-col-12" 
                           formControlName="defaultAplosTag">
                     <option></option>
                     <option [value]="aplosTag.id" 
@@ -570,7 +570,7 @@
                   </select>
                 </div>
               </td>
-              <td>
+              <td class="clr-col-1">
                 <button type="button" class="btn btn-danger btn-sm btn-icon" aria-label="add" (click)="deleteTagMappingElement(i)">
                   <clr-icon shape="trash" size="12"></clr-icon>
                 </button>
