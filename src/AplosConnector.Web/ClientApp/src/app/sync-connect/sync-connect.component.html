@@ -613,7 +613,7 @@
 
       <!-- Purchases -->
       <table class="table" *ngIf="!hasTagsAvailable  && settingsModel.syncTransactions">
-        <caption>Purchases:</caption>
+        <caption>Purchases</caption>
         <thead>
           <tr>
             <th class="left">Field</th>
@@ -622,7 +622,7 @@
         </thead>
         <tbody>
           <tr>
-            <td class="left">Fund:</td>
+            <td class="left">Fund</td>
             <td class="left">
               <div class="clr-select-wrapper">
                   <select
@@ -638,7 +638,7 @@
             </td>
           </tr>
           <tr>
-            <td class="left">Transaction Account:</td>
+            <td class="left">Transaction Account</td>
             <td class="left">
               <div class="clr-select-wrapper">
                 <select
@@ -661,8 +661,8 @@
 
         <table class="table">
           <caption>
-            <h4 *ngIf="isPrepaid">Transfers:</h4>
-            <h4 *ngIf="isCredit">Bill Payments:</h4>
+            <h4 *ngIf="isPrepaid">Transfers</h4>
+            <h4 *ngIf="isCredit">Bill Payments</h4>
           </caption>
           
           <thead>
@@ -675,8 +675,8 @@
           <tbody>
             <tr>
               <td class="left  clr-col-4">
-                <span *ngIf="isPrepaid">Contact:</span>
-                <span *ngIf="isCredit">Payee:</span>
+                <span *ngIf="isPrepaid">Contact</span>
+                <span *ngIf="isCredit">Payee</span>
               </td>
               <td class="left">
                 <div class="clr-select-wrapper">
@@ -694,7 +694,7 @@
             </tr>
             
             <tr *ngIf="isPrepaid">
-              <td class="left clr-col-4">Fund:</td>
+              <td class="left clr-col-4">Fund</td>
               <td class="left">
                 <div class="clr-select-wrapper">
                   <select
@@ -711,7 +711,7 @@
             </tr>
 
             <tr>
-              <td class="left clr-col-4">Bank Account:</td>
+              <td class="left clr-col-4">Bank Account</td>
               <td class="left">
                 <div class="clr-select-wrapper">
                   <select
@@ -733,8 +733,8 @@
 
         <table class="table table-no-top-margin">
           <caption class="left caption-border">
-            <span *ngIf="isPrepaid">Transfer tags default values:</span>
-            <span *ngIf="isCredit">Bill payment tags default values:</span>
+            <span *ngIf="isPrepaid">Transfer tags default values</span>
+            <span *ngIf="isCredit">Bill payment tags default values</span>
           </caption>
           <tbody formArrayName="transferTagMappings">
             <tr *ngFor="let tagMapping of getTransferTagMappingFormElements().controls; let i = index" [formGroupName]="i">
@@ -760,7 +760,7 @@
 
         <table class="table">
           <caption>
-            <h4>Fees:</h4>
+            <h4>Fees</h4>
           </caption>
           <thead>
             <tr>
@@ -770,7 +770,7 @@
           </thead>
           <tbody>
             <tr>
-              <td class="left  clr-col-4">Contact:</td>
+              <td class="left  clr-col-4">Contact</td>
               <td class="left">
                 <div class="clr-select-wrapper">
                   <select
@@ -787,7 +787,7 @@
             </tr>
             
             <tr>
-              <td class="left clr-col-4">Fund:</td>
+              <td class="left clr-col-4">Fund</td>
               <td class="left">
                 <div class="clr-select-wrapper">
                   <select
@@ -804,7 +804,7 @@
             </tr>
 
             <tr>
-              <td class="left clr-col-4">Account:</td>
+              <td class="left clr-col-4">Account</td>
               <td class="left">
                 <div class="clr-select-wrapper">
                   <select
@@ -821,7 +821,7 @@
             </tr>
 
             <tr *ngIf="settingsModel.syncTaxTagToPex">
-              <td class="left clr-col-4">990 Tag Option:</td>
+              <td class="left clr-col-4">990 Tag Option</td>
               <td class="left">
                 <div class="clr-select-wrapper">
                   <select
@@ -842,7 +842,7 @@
         </table>
 
         <table class="table table-no-top-margin">
-          <caption class="caption-border">Fee tags default values:</caption>
+          <caption class="caption-border">Fee tags default values</caption>
           <tbody formArrayName="feeTagMappings">
             <tr *ngFor="let tagMapping of getFeeTagMappingFormElements().controls; let i = index" [formGroupName]="i">
               <td class="left">{{tagMapping.get('aplosTagCategoryName')?.value}}</td>
@@ -867,7 +867,7 @@
 
         <table class="table">
           <caption>
-            <h4>Rebates:</h4>
+            <h4>Rebates</h4>
           </caption>
           <thead>
             <tr>
@@ -877,7 +877,7 @@
           </thead>
           <tbody>
             <tr>
-              <td class="left  clr-col-4">Contact:</td>
+              <td class="left  clr-col-4">Contact</td>
               <td class="left">
                 <div class="clr-select-wrapper">
                   <select
@@ -894,7 +894,7 @@
             </tr>
             
             <tr>
-              <td class="left clr-col-4">Fund:</td>
+              <td class="left clr-col-4">Fund</td>
               <td class="left">
                 <div class="clr-select-wrapper">
                   <select
@@ -911,7 +911,7 @@
             </tr>
 
             <tr>
-              <td class="left clr-col-4">Account:</td>
+              <td class="left clr-col-4">Account</td>
               <td class="left">
                 <div class="clr-select-wrapper">
                   <select
@@ -929,7 +929,7 @@
             </tr>
 
             <tr *ngIf="settingsModel.syncTaxTagToPex">
-              <td class="left clr-col-4">990 Tag Option:</td>
+              <td class="left clr-col-4">990 Tag Option</td>
               <td class="left">
                 <div class="clr-select-wrapper">
                   <select
@@ -950,7 +950,7 @@
         </table>
 
         <table class="table table-no-top-margin">
-          <caption class="caption-border">Rebate tags default values:</caption>
+          <caption class="caption-border">Rebate tags default values</caption>
           <tbody formArrayName="rebateTagMappings">
             <tr *ngFor="let tagMapping of getRebateTagMappingFormElements().controls; let i = index" [formGroupName]="i">
               <td class="left">{{tagMapping.get('aplosTagCategoryName')?.value}}</td>
