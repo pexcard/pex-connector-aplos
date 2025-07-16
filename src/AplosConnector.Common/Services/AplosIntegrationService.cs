@@ -1586,7 +1586,7 @@ namespace AplosConnector.Common.Services
                             };
 
                             // Apply default tag values from rebate tag mappings for invoice rebates
-                            ApplyTagMappingsToTagValues(pexTagValues, mapping.RebateTagMappings, _logger);
+                            ApplyTagMappingsToTagValues(pexTagValues, mapping.TransferTagMappings, _logger);
 
                             allocationDetails.Add((allocationTagValue, pexTagValues));
                         }
