@@ -57,6 +57,11 @@ steps:
     versionSpec: '20.19.x'
   displayName: 'Install node.js'
 
+- script: |
+    cd src/AplosConnector.Web/ClientApp
+    npm install --legacy-peer-deps
+  displayName: 'npm install with legacy peer deps'
+
 - script: dotnet publish src --configuration $(buildConfiguration)
   displayName: 'dotnet publish $(buildConfiguration)'
 
