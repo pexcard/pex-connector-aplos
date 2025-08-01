@@ -47,14 +47,14 @@ steps:
 
 - task: NodeTool@0
   inputs:
-    versionSpec: '18.x'
+    versionSpec: '20.x'
   displayName: 'Install node.js'
 
 - script: |
     npm install -g @angular/cli
     cd src/AplosConnector.Web/ClientApp
-    NODE_OPTIONS=--openssl-legacy-provider npm install
-    NODE_OPTIONS=--openssl-legacy-provider npm run build -- --configuration production
+    npm install
+    npm run build -- --configuration production
   displayName: 'npm install and ng build'
 
 - task: Bash@3
