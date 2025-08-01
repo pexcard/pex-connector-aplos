@@ -9,9 +9,10 @@ import { MappingService } from "../services/mapping.service";
 import { CreateVendorCard, PexConnectionDetailModel, PexService } from "../services/pex.service";
 
 @Component({
-  selector: "app-vendors-select",
-  templateUrl: "./vendors-select.component.html",
-  styleUrls: ["./vendors-select.component.css"]
+    selector: "app-vendors-select",
+    templateUrl: "./vendors-select.component.html",
+    styleUrls: ["./vendors-select.component.css"],
+    standalone: false
 })
 export class VendorsSelectComponent implements OnInit, OnDestroy {
   sessionId: string;

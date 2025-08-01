@@ -20,9 +20,10 @@ import { catchError, switchMap, tap } from "rxjs/operators";
 import { of, throwError } from "rxjs";
 
 @Component({
-  selector: 'app-sync-connect',
-  templateUrl: './sync-connect.component.html',
-  styleUrls: ['./sync-connect.component.css']
+    selector: 'app-sync-connect',
+    templateUrl: './sync-connect.component.html',
+    styleUrls: ['./sync-connect.component.css'],
+    standalone: false
 })
 export class SyncConnectComponent implements OnInit {
   constructor(

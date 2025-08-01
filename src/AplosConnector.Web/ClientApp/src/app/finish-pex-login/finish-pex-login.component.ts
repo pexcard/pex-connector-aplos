@@ -3,9 +3,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
 @Component({
-  selector: 'app-finish-pex-login',
-  templateUrl: './finish-pex-login.component.html',
-  styleUrls: ['./finish-pex-login.component.css']
+    selector: 'app-finish-pex-login',
+    templateUrl: './finish-pex-login.component.html',
+    styleUrls: ['./finish-pex-login.component.css'],
+    standalone: false
 })
 export class FinishPexLoginComponent implements OnInit {
 

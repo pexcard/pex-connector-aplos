@@ -3,9 +3,10 @@ import { AuthService } from "../services/auth.service";
 import { PexConnectionDetailModel, PexService, VendorCardOrdered } from "../services/pex.service";
 
 @Component({
-  selector: "app-vendors-manage",
-  templateUrl: "./vendors-manage.component.html",
-  styleUrls: ["./vendors-manage.component.css"]
+    selector: "app-vendors-manage",
+    templateUrl: "./vendors-manage.component.html",
+    styleUrls: ["./vendors-manage.component.css"],
+    standalone: false
 })
 export class VendorsManageComponent implements OnInit {
   

@@ -6,9 +6,10 @@ import { interval, of, Subscription } from 'rxjs';
 import { concatMap, timeout, catchError } from 'rxjs/operators';
 
 @Component({
-  selector: 'app-sync-history',
-  templateUrl: './sync-history.component.html',
-  styleUrls: ['./sync-history.component.css']
+    selector: 'app-sync-history',
+    templateUrl: './sync-history.component.html',
+    styleUrls: ['./sync-history.component.css'],
+    standalone: false
 })
 export class SyncHistoryComponent implements OnInit, OnDestroy {
   sessionId = '';
