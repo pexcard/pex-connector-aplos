@@ -1,6 +1,6 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
-import {HttpClientModule} from '@angular/common/http'
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -24,36 +24,29 @@ import { CommonModule, CurrencyPipe } from '@angular/common';
 import { SelectListComponent } from './select-list/select-list.component';
 import { TruncateModule } from '@yellowspot/ng-truncate';
 
-@NgModule({
-  declarations: [
-    AppComponent,
-    ConnectComponent,
-    FinishPexLoginComponent,
-    HealthComponent,
-    FinishAplosLoginComponent,
-    LoadingPlaceholderComponent,
-    SyncHistoryComponent,
-    HandlePexJwtComponent,
-    AplosAccountPipe,
-    LoginComponent,
-    SyncConnectComponent,
-    SyncManageComponent,
-    VendorsManageComponent,
-    VendorsSelectComponent,
-    SelectListComponent
-  ],
-  imports: [
-    BrowserModule,
-    AppRoutingModule,
-    HttpClientModule,
-    FormsModule,
-    ClarityModule,
-    BrowserAnimationsModule,
-    ReactiveFormsModule,
-    CommonModule,
-    TruncateModule
-  ],
-  providers: [CurrencyPipe],
-  bootstrap: [AppComponent]
-})
+@NgModule({ declarations: [
+        AppComponent,
+        ConnectComponent,
+        FinishPexLoginComponent,
+        HealthComponent,
+        FinishAplosLoginComponent,
+        LoadingPlaceholderComponent,
+        SyncHistoryComponent,
+        HandlePexJwtComponent,
+        AplosAccountPipe,
+        LoginComponent,
+        SyncConnectComponent,
+        SyncManageComponent,
+        VendorsManageComponent,
+        VendorsSelectComponent,
+        SelectListComponent
+    ],
+    bootstrap: [AppComponent], imports: [BrowserModule,
+        AppRoutingModule,
+        FormsModule,
+        ClarityModule,
+        BrowserAnimationsModule,
+        ReactiveFormsModule,
+        CommonModule,
+        TruncateModule], providers: [CurrencyPipe, provideHttpClient(withInterceptorsFromDi())] })
 export class AppModule { }

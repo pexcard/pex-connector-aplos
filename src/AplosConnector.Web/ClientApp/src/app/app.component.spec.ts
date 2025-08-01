@@ -2,21 +2,20 @@ import { TestBed, async } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { AppComponent } from './app.component';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
-import {HttpClientTestingModule} from '@angular/common/http/testing'
+import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { ClarityModule } from '@clr/angular';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 describe('AppComponent', () => {
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      imports: [
-        RouterTestingModule, HttpClientTestingModule, ClarityModule
-      ],
-      schemas:[CUSTOM_ELEMENTS_SCHEMA],
-      declarations: [
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+    declarations: [
         AppComponent
-      ],
-      providers: [{ provide: 'BASE_URL', useValue: 'http://mock.url' }]
-    }).compileComponents();
+    ],
+    imports: [RouterTestingModule, ClarityModule],
+    providers: [{ provide: 'BASE_URL', useValue: 'http://mock.url' }, provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()]
+}).compileComponents();
   }));
 
   it('should create the app', () => {

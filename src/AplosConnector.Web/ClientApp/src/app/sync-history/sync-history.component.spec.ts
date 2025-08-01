@@ -1,8 +1,9 @@
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 
 import { SyncHistoryComponent } from './sync-history.component';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 describe('SyncHistoryComponent', () => {
   let component: SyncHistoryComponent;
@@ -10,12 +11,14 @@ describe('SyncHistoryComponent', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [SyncHistoryComponent],
-      imports: [RouterTestingModule, HttpClientTestingModule],
-      providers: [
-        { provide: 'BASE_URL', useValue: 'http://localhost:5001' }
-      ]
-    })
+    declarations: [SyncHistoryComponent],
+    imports: [RouterTestingModule],
+    providers: [
+        { provide: 'BASE_URL', useValue: 'http://localhost:5001' },
+        provideHttpClient(withInterceptorsFromDi()),
+        provideHttpClientTesting()
+    ]
+})
       .compileComponents();
   }));
 

@@ -3,7 +3,8 @@ import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 import { FinishPexLoginComponent } from './finish-pex-login.component';
 import { ActivatedRoute } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 
 const mockActivatedRoute = {
   params: {
@@ -18,10 +19,10 @@ describe('FinishPexLoginComponent', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ FinishPexLoginComponent ],
-      imports:[RouterTestingModule, HttpClientTestingModule],
-      providers: [{ provide: ActivatedRoute, useValue: mockActivatedRoute }, { provide: 'BASE_URL', useValue: 'http://mock.url' }],
-    })
+    declarations: [FinishPexLoginComponent],
+    imports: [RouterTestingModule],
+    providers: [{ provide: ActivatedRoute, useValue: mockActivatedRoute }, { provide: 'BASE_URL', useValue: 'http://mock.url' }, provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()]
+})
     .compileComponents();
   }));
 
