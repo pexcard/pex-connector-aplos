@@ -11,7 +11,7 @@ describe('AplosService', () => {
 }));
 
   it('should be created', () => {
-    const service: AplosService = TestBed.get(AplosService);
+    const service: AplosService = TestBed.inject(AplosService);
     expect(service).toBeTruthy();
   });
 });

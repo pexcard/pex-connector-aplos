@@ -11,7 +11,7 @@ describe('MappingService', () => {
 }));
 
   it('should be created', () => {
-    const service: MappingService = TestBed.get(MappingService);
+    const service: MappingService = TestBed.inject(MappingService);
     expect(service).toBeTruthy();
   });
 });
