@@ -1,4 +1,37 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* Fix for Angular 19 CSS custom property initialization issue with Clarity UI */
+:root {
+  /* Clarity UI Font Variables - Fix for empty custom properties in Angular 19 */
+  --clr-metropolis-font-family: "Metropolis", "Avenir Next", Avenir, "Helvetica Neue", Arial, sans-serif;
+  --clr-body-font: 14px;
+  --clr-font: var(--clr-metropolis-font-family);
+  --clr-font-size: 14px;
+  --clr-font-weight: 400;
+  --clr-line-height: 24px;
+  
+  /* Additional Clarity UI font variables that may be missing */
+  --clr-h1-font-family: var(--clr-metropolis-font-family);
+  --clr-h2-font-family: var(--clr-metropolis-font-family);
+  --clr-h3-font-family: var(--clr-metropolis-font-family);
+  --clr-h4-font-family: var(--clr-metropolis-font-family);
+  --clr-h5-font-family: var(--clr-metropolis-font-family);
+  --clr-h6-font-family: var(--clr-metropolis-font-family);
+  
+  /* Body font styling to ensure proper application */
+  --clr-body-font-family: var(--clr-metropolis-font-family);
+  --clr-body-font-size: 14px;
+  --clr-body-font-weight: 400;
+  --clr-body-line-height: 24px;
+}
+
+/* Ensure body element uses Clarity UI fonts */
+body {
+  font-family: var(--clr-metropolis-font-family) !important;
+  font-size: var(--clr-body-font-size) !important;
+  font-weight: var(--clr-body-font-weight) !important;
+  line-height: var(--clr-body-line-height) !important;
+}
 .pex-color {
     color: #249CE0;
   }
