@@ -1234,7 +1234,7 @@ namespace AplosConnector.Common.Services
                                 syncCount++;
                                 _logger.LogInformation($"Synced transaction {transaction.TransactionId}");
                                 var syncedNoteText = $"{GetSyncedNote(transaction)} on {DateTime.UtcNow:O}";
-                                await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText, true, cancellationToken);
+                                await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText, true);
                             }
                             else if (transactionSyncResult == TransactionSyncResult.Failed)
                             {
