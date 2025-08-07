@@ -36,3 +36,36 @@
   .focus-fix :focus:not(.focus-visible) {
     outline: none;
   }
+
+  /* Custom button styles to match original appearance */
+  .btn-primary {
+    background-color: #0077b8 !important;
+    color: white !important;
+    border: 1px solid #0077b8 !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 0.125rem !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    cursor: pointer !important;
+  }
+
+  .btn-primary:hover {
+    background-color: #005a8b !important;
+    border-color: #005a8b !important;
+  }
+
+  .btn-success {
+    background-color: #2e8500 !important;
+    color: white !important;
+    border: 1px solid #2e8500 !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 0.125rem !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    cursor: pointer !important;
+  }
+
+  .btn-success:hover {
+    background-color: #266b00 !important;
+    border-color: #266b00 !important;
+  }
