@@ -1476,15 +1476,22 @@ namespace AplosConnector.Common.Services
             // For testing
             if (mapping.PEXBusinessAcctId == 5631779)
             {
-                var notes = aplosTransactions.Select(t => $"Transaction Id: {t.Id}, Note: {t.Note}");
-                var notesData = JsonConvert.SerializeObject(notes);
-                _logger.LogWarning($"StartDate: {startDate}, Business Id {mapping.PEXBusinessAcctId}, Aplos Transactions count = {aplosTransactions.Count}, notesData {notesData}");
-
                 var ids = JsonConvert.SerializeObject(invoices.Select(i => i.InvoiceId));
                 _logger.LogWarning($"StartDate: {startDate}, Business Id {mapping.PEXBusinessAcctId}, PEX invoices count = {invoices.Count}, Ids {ids}");
                 var data = JsonConvert.SerializeObject(invoices);
                 _logger.LogWarning($"StartDate: {startDate},Business Id {mapping.PEXBusinessAcctId}, PEX invoices count = {invoices.Count}, Data {data}");
 
+                foreach (var invoice in invoices)
+                {
+                    var invoiceId = invoice.InvoiceId.ToString();
+                    var transactionInfo = aplosTransactions
+                        .Where(t => (t.Memo != null && t.Memo.Contains(invoiceId)) || (t.Note != null && t.Note.Contains(invoiceId)))
+                        .Select(t => $"Transaction Id: {t.Id}, Note: {t.Note}, Memo: {t.Memo}");
+
+                    var transactionInfoData = JsonConvert.SerializeObject(transactionInfo);
+
+                    _logger.LogWarning($"Aplos Invoice transaction - Business Id {mapping.PEXBusinessAcctId}, invoiceId = {invoice.InvoiceId}, transactionInfoData {transactionInfoData}");
+                }
             }
 
             var invoicesToSync = invoices
