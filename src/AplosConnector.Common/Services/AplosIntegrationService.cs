@@ -4,7 +4,6 @@ using Aplos.Api.Client.Exceptions;
 using Aplos.Api.Client.Models;
 using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
-
 using AplosConnector.Common.Const;
 using AplosConnector.Common.Enums;
 using AplosConnector.Common.Models;
@@ -13,18 +12,14 @@ using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Common.Storage;
 using AplosConnector.Common.VendorCards;
-
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
 using Newtonsoft.Json;
-
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Enums;
 using PexCard.Api.Client.Core.Exceptions;
 using PexCard.Api.Client.Core.Extensions;
 using PexCard.Api.Client.Core.Models;
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -1473,27 +1468,6 @@ namespace AplosConnector.Common.Services
 
             var invoices = await _pexApiClient.GetInvoices(mapping.PEXExternalAPIToken, startDate, cancellationToken);
 
-            // For testing
-            if (mapping.PEXBusinessAcctId == 5631779)
-            {
-                var ids = JsonConvert.SerializeObject(invoices.Select(i => i.InvoiceId));
-                _logger.LogWarning($"StartDate: {startDate}, Business Id {mapping.PEXBusinessAcctId}, PEX invoices count = {invoices.Count}, Ids {ids}");
-                var data = JsonConvert.SerializeObject(invoices);
-                _logger.LogWarning($"StartDate: {startDate},Business Id {mapping.PEXBusinessAcctId}, PEX invoices count = {invoices.Count}, Data {data}");
-
-                foreach (var invoice in invoices)
-                {
-                    var invoiceId = invoice.InvoiceId.ToString();
-                    var transactionInfo = aplosTransactions
-                        .Where(t => (t.Memo != null && t.Memo.Contains(invoiceId)) || (t.Note != null && t.Note.Contains(invoiceId)))
-                        .Select(t => $"Transaction Id: {t.Id}, Note: {t.Note}, Memo: {t.Memo}");
-
-                    var transactionInfoData = JsonConvert.SerializeObject(transactionInfo);
-
-                    _logger.LogWarning($"Aplos Invoice transaction - Business Id {mapping.PEXBusinessAcctId}, invoiceId = {invoice.InvoiceId}, transactionInfoData {transactionInfoData}");
-                }
-            }
-
             var invoicesToSync = invoices
                 .Where(i =>
                     i.Status == InvoiceStatus.Closed
@@ -1501,27 +1475,10 @@ namespace AplosConnector.Common.Services
                     && !WasPexTransactionSyncedToAplos(aplosTransactions, i.InvoiceId.ToString()))
                 .ToList();
 
-            // For testing
-            if (mapping.PEXBusinessAcctId == 5631779)
-            {
-                var ids = JsonConvert.SerializeObject(invoicesToSync.Select(i => i.InvoiceId));
-                _logger.LogWarning($"StartDate: {startDate}, Business Id {mapping.PEXBusinessAcctId}, PEX to sync invoices count = {invoicesToSync.Count}, Ids {ids}");
-                var data = JsonConvert.SerializeObject(invoicesToSync);
-                _logger.LogWarning($"StartDate: {startDate}, Business Id {mapping.PEXBusinessAcctId}, PEX to sync invoices count = {invoicesToSync.Count}, Data {data}");
-            }
-
-
             var syncCount = 0;
             var failureCount = 0;
 
             var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
-
-            // For testing
-            if (mapping.PEXBusinessAcctId == 5631779)
-            {
-                var data = JsonConvert.SerializeObject(aplosFunds);
-                _logger.LogWarning($"StartDate: {startDate}, Business Id {mapping.PEXBusinessAcctId}, AplosFundsData {data}");
-            }
 
             foreach (var invoiceModel in invoicesToSync)
             {
@@ -1545,15 +1502,6 @@ namespace AplosConnector.Common.Services
                         List<InvoiceAllocationModel> invoiceAllocations;
 
                         invoiceAllocations = await _pexApiClient.GetInvoiceAllocations(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
-
-                        // For testing
-                        if (mapping.PEXBusinessAcctId == 5631779)
-                        {
-                            var invoiceAllocationsData = JsonConvert.SerializeObject(invoiceAllocations);
-
-                            _logger.LogWarning($"Business Id {mapping.PEXBusinessAcctId}, invoiceId = {invoiceModel.InvoiceId}, invoiceAllocationsData {invoiceAllocationsData}");
-
-                        }
 
                         var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
                         var totalAllocationsAmount = 0m;
