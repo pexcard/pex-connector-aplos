@@ -1962,8 +1962,9 @@ namespace AplosConnector.Common.Services
         public bool WasPexTransactionSyncedToAplos(IEnumerable<AplosApiTransactionDetail> aplosTransactions, string pexTransactionId)
         {
             return aplosTransactions.Any(aplosTransaction =>
-                    (!string.IsNullOrEmpty(aplosTransaction.Note) && aplosTransaction.Note.Contains(pexTransactionId))
-                || (!string.IsNullOrEmpty(aplosTransaction.Memo) && aplosTransaction.Memo.Contains(pexTransactionId)));
+                (!string.IsNullOrEmpty(aplosTransaction.Note) && aplosTransaction.Note.StartsWith(pexTransactionId))
+                ||  
+                (!string.IsNullOrEmpty(aplosTransaction.Memo) && aplosTransaction.Memo.StartsWith(pexTransactionId)));
         }
 
         private readonly ConcurrentDictionary<int, CardholderDetailsModel> _cardholderDetailsCache =
