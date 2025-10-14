@@ -1221,14 +1221,10 @@ namespace AplosConnector.Common.Services
                             }
                             catch (Exception ex)
                             {
+                                transactionSyncResult = TransactionSyncResult.Failed;
                                 _logger.LogError(ex, $"Error syncing transaction {transaction.TransactionId}.");
                             }
 
-                            if (transactionSyncResult != TransactionSyncResult.NotEligible)
-                            {
-                                _logger.LogWarning($"Sync not eligible for transaction {transaction.TransactionId}");
-                                eligibleCount++;
-                            }
                             if (transactionSyncResult == TransactionSyncResult.Success)
                             {
                                 syncCount++;
@@ -1238,14 +1234,14 @@ namespace AplosConnector.Common.Services
                             }
                             else if (transactionSyncResult == TransactionSyncResult.Failed)
                             {
-                                _logger.LogError($"Failed syncing transaction {transaction.TransactionId}.");
                                 failureCount++;
+                                _logger.LogError($"Failed syncing transaction {transaction.TransactionId}.");
                             }
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, $"Error processing transaction {transaction.TransactionId}.");
                             failureCount++;
+                            _logger.LogError(ex, $"Error processing transaction {transaction.TransactionId}.");
                         }
                     }
                 }
@@ -1414,7 +1410,7 @@ namespace AplosConnector.Common.Services
                         }
                         catch (Exception ex)
                         {
-                            failureCount++;
+                            transactionSyncResult = TransactionSyncResult.Failed;
                             _logger.LogError(ex, $"Error syncing rebate {transaction.TransactionId}.");
                         }
 
@@ -1431,6 +1427,7 @@ namespace AplosConnector.Common.Services
                     }
                     catch (Exception ex)
                     {
+                        failureCount++;
                         _logger.LogError(ex, $"Error processing rebate {transaction.TransactionId}.");
                     }
                 }
@@ -1605,25 +1602,25 @@ namespace AplosConnector.Common.Services
                         }
                         catch (Exception ex)
                         {
+                            transactionSyncResult = TransactionSyncResult.Failed;
                             _logger.LogError(ex, $"Error syncing invoice {invoiceModel.InvoiceId}.");
-                            failureCount++;
                         }
 
                         if (transactionSyncResult == TransactionSyncResult.Success)
                         {
-                            _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
                             syncCount++;
+                            _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
                         }
                         else if (transactionSyncResult == TransactionSyncResult.Failed)
                         {
-                            _logger.LogError($"Failed syncing invoice {invoiceModel.InvoiceId}.");
                             failureCount++;
+                            _logger.LogError($"Failed syncing invoice {invoiceModel.InvoiceId}.");
                         }
                     }
                     catch (PexApiClientException ex)
                     {
-                        _logger.LogError(ex, $"Error processing invoice {invoiceModel.InvoiceId}.");
                         failureCount++;
+                        _logger.LogError(ex, $"Error processing invoice {invoiceModel.InvoiceId}.");
                     }
                 }
             }
@@ -1805,6 +1802,7 @@ namespace AplosConnector.Common.Services
                         }
                         catch (Exception ex)
                         {
+                            transactionSyncResult = TransactionSyncResult.Failed;
                             _logger.LogError(ex, $"Error syncing transfer {transaction.TransactionId}.");
                         }
 
@@ -1816,10 +1814,12 @@ namespace AplosConnector.Common.Services
                         else if (transactionSyncResult == TransactionSyncResult.Failed)
                         {
                             failureCount++;
+                            _logger.LogError($"Failed syncing transfer {transaction.TransactionId}.");
                         }
                     }
                     catch (Exception ex)
                     {
+                        failureCount++;
                         _logger.LogError(ex, $"Error processing transfer {transaction.TransactionId}.");
                     }
                 }
@@ -1898,7 +1898,7 @@ namespace AplosConnector.Common.Services
                                 AplosTaxTagId = model.PexFeesAplosTaxTagId,
                                 AplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber
                             };
-                            
+
                             // Apply default tag values from fee tag mappings
                             ApplyTagMappingsToTagValues(pexTagValues, model.FeeTagMappings, _logger);
 
@@ -1918,6 +1918,7 @@ namespace AplosConnector.Common.Services
                         }
                         catch (Exception ex)
                         {
+                            transactionSyncResult = TransactionSyncResult.Failed;
                             _logger.LogError(ex, $"Error syncing PEX account fee {transaction.TransactionId}.");
                         }
 
@@ -1929,10 +1930,12 @@ namespace AplosConnector.Common.Services
                         else if (transactionSyncResult == TransactionSyncResult.Failed)
                         {
                             failureCount++;
+                            _logger.LogError($"Failed syncing PEX account fee {transaction.TransactionId}.");
                         }
                     }
                     catch (Exception ex)
                     {
+                        failureCount++;
                         _logger.LogError(ex, $"Error processing PEX account fee {transaction.TransactionId}.");
                     }
                 }
@@ -1963,7 +1966,7 @@ namespace AplosConnector.Common.Services
         {
             return aplosTransactions.Any(aplosTransaction =>
                 (!string.IsNullOrEmpty(aplosTransaction.Note) && aplosTransaction.Note.StartsWith(pexTransactionId))
-                ||  
+                ||
                 (!string.IsNullOrEmpty(aplosTransaction.Memo) && aplosTransaction.Memo.StartsWith(pexTransactionId)));
         }
 
