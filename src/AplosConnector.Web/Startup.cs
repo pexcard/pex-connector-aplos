@@ -30,6 +30,7 @@ using Azure.Data.Tables;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Azure.Storage.Queues;
 using Azure.Identity;
+using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 
 namespace AplosConnector.Web
 {
