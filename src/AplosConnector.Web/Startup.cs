@@ -50,7 +50,11 @@ namespace AplosConnector.Web
                 .AddNewtonsoftJson();
 
             var applicationInsightsKey = _configuration.GetValue<string>("ApplicationInsightsKey");
-            services.AddApplicationInsightsTelemetry(applicationInsightsKey);
+            services.AddApplicationInsightsTelemetry(new ApplicationInsightsServiceOptions
+            {
+                InstrumentationKey = applicationInsightsKey,
+                EnableAdaptiveSampling = false,
+            });
 
             services.AddOptions();
 
