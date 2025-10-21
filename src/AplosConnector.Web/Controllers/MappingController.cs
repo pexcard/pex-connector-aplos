@@ -214,5 +214,31 @@ namespace AplosConnector.Web.Controllers
 
             return Ok();
         }
+
+        [HttpPut, Route("UpdateAplosAccessToken")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateAplosAccessToken(string sessionId, [FromBody] UpdateAplosAccessTokenModel model, CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
+
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
+            if (session == null) return Unauthorized();
+
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
+            if (mapping == null)
+            {
+                return NotFound();
+            }
+
+            mapping.AplosAccessToken = model.AplosAccessToken;
+            mapping.AplosAccessTokenExpiresAt = model.AplosAccessTokenExpiresAt;
+
+            await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
+
+            return Ok();
+        }
     }
 }
