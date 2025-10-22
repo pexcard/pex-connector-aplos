@@ -967,7 +967,6 @@ namespace AplosConnector.Common.Services
 
             var syncCount = 0;
             var failureCount = 0;
-            var eligibleCount = 0;
 
             var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
             var aplosAccountCategory = GetAplosAccountCategory();
@@ -1271,15 +1270,17 @@ namespace AplosConnector.Common.Services
 
             var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} transactions from PEX.";
             SyncStatus syncStatus;
-            if (syncCount == 0 && eligibleCount > 0 && failureCount > 0)
+            if (failureCount == 0)
             {
-                syncStatus = SyncStatus.Failed;
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
             }
             else
             {
-                syncStatus = syncCount == eligibleCount && failureCount == 0
-                    ? SyncStatus.Success
-                    : SyncStatus.Partial;
+                syncStatus = SyncStatus.Failed;
             }
             var result = new SyncResultModel
             {
@@ -1457,13 +1458,17 @@ namespace AplosConnector.Common.Services
 
             var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} rebates from PEX.";
             SyncStatus syncStatus;
-            if (syncCount == 0 && failureCount > 0)
+            if (failureCount == 0)
             {
-                syncStatus = SyncStatus.Failed;
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
             }
             else
             {
-                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+                syncStatus = SyncStatus.Failed;
             }
             var result = new SyncResultModel
             {
@@ -1649,13 +1654,17 @@ namespace AplosConnector.Common.Services
 
             var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} invoices from PEX.";
             SyncStatus syncStatus;
-            if (syncCount == 0 && failureCount > 0)
+            if (failureCount == 0)
             {
-                syncStatus = SyncStatus.Failed;
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
             }
             else
             {
-                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+                syncStatus = SyncStatus.Failed;
             }
             var result = new SyncResultModel
             {
@@ -1859,13 +1868,17 @@ namespace AplosConnector.Common.Services
 
             var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} transfers from PEX.";
             SyncStatus syncStatus;
-            if (syncCount == 0 && failureCount > 0)
+            if (failureCount == 0)
             {
-                syncStatus = SyncStatus.Failed;
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
             }
             else
             {
-                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+                syncStatus = SyncStatus.Failed;
             }
             var result = new SyncResultModel
             {
@@ -1975,13 +1988,17 @@ namespace AplosConnector.Common.Services
 
             var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} PEX account fees from PEX.";
             SyncStatus syncStatus;
-            if (syncCount == 0 && failureCount > 0)
+            if (failureCount == 0)
             {
-                syncStatus = SyncStatus.Failed;
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
             }
             else
             {
-                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+                syncStatus = SyncStatus.Failed;
             }
             var result = new SyncResultModel
             {
