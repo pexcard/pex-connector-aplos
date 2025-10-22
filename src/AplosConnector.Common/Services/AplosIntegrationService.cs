@@ -394,19 +394,36 @@ namespace AplosConnector.Common.Services
                 }
             }
 
-            var noteBuilder = new StringBuilder(transaction.TransactionId.ToString());
-            if (cardholderDetails != null)
-            {
-                noteBuilder.Append($" | {cardholderDetails.ProfileAddress.ContactName}");
-            }
-
-            transaction.TransactionNotes?.ForEach(n => noteBuilder.Append($" | {n.NoteText}"));
-
             //Max length of note is 1000 chars (at least UI doesn't allow to enter more)
             const int noteMaxLength = 1000;
-            var aplosTransactionNote = noteBuilder.Length > noteMaxLength
-                ? noteBuilder.ToString(0, noteMaxLength)
+
+            var transactionIdString = transaction.TransactionId.ToString();
+            var transactionIdWithSeparator = $" | {transactionIdString}";
+            var maxContentLength = noteMaxLength - transactionIdWithSeparator.Length;
+
+            var noteBuilder = new StringBuilder();
+            if (cardholderDetails != null)
+            {
+                noteBuilder.Append($"{cardholderDetails.ProfileAddress.ContactName}");
+            }
+
+            transaction.TransactionNotes?.ForEach(n =>
+            {
+                if (noteBuilder.Length > 0)
+                {
+                    noteBuilder.Append(" | ");
+                }
+                noteBuilder.Append(n.NoteText);
+            });
+
+            // Truncate the content if needed to make room for transaction ID
+            var noteContent = noteBuilder.Length > maxContentLength
+                ? noteBuilder.ToString(0, maxContentLength)
                 : noteBuilder.ToString();
+
+            var aplosTransactionNote = string.IsNullOrEmpty(noteContent)
+                ? transactionIdString
+                : noteContent + transactionIdWithSeparator;
 
             var aplosTransaction = new AplosApiTransactionDetail
             {
@@ -1712,17 +1729,27 @@ namespace AplosConnector.Common.Services
                 }
             }
 
-            var noteBuilder = new StringBuilder(invoice.InvoiceId.ToString());
-            if (cardholderDetails != null)
-            {
-                noteBuilder.Append($" | {cardholderDetails.ProfileAddress.ContactName}");
-            }
-
             //Max length of note is 1000 chars (at least UI doesn't allow to enter more)
             const int noteMaxLength = 1000;
-            var aplosTransactionNote = noteBuilder.Length > noteMaxLength
-                ? noteBuilder.ToString(0, noteMaxLength)
+
+            var invoiceIdString = invoice.InvoiceId.ToString();
+            var invoiceIdWithSeparator = $" | {invoiceIdString}";
+            var maxContentLength = noteMaxLength - invoiceIdWithSeparator.Length;
+
+            var noteBuilder = new StringBuilder();
+            if (cardholderDetails != null)
+            {
+                noteBuilder.Append($"{cardholderDetails.ProfileAddress.ContactName}");
+            }
+
+            // Truncate the content if needed to make room for invoice ID
+            var noteContent = noteBuilder.Length > maxContentLength
+                ? noteBuilder.ToString(0, maxContentLength)
                 : noteBuilder.ToString();
+
+            var aplosTransactionNote = string.IsNullOrEmpty(noteContent)
+                ? invoiceIdString
+                : noteContent + invoiceIdWithSeparator;
 
             var aplosTransaction = new AplosApiTransactionDetail
             {
@@ -1970,9 +1997,9 @@ namespace AplosConnector.Common.Services
         public bool WasPexTransactionSyncedToAplos(IEnumerable<AplosApiTransactionDetail> aplosTransactions, string pexTransactionId)
         {
             return aplosTransactions.Any(aplosTransaction =>
-                (!string.IsNullOrEmpty(aplosTransaction.Note) && aplosTransaction.Note.StartsWith(pexTransactionId))
+                (!string.IsNullOrEmpty(aplosTransaction.Note) && (aplosTransaction.Note.StartsWith(pexTransactionId) || aplosTransaction.Note.EndsWith(pexTransactionId)))
                 ||
-                (!string.IsNullOrEmpty(aplosTransaction.Memo) && aplosTransaction.Memo.StartsWith(pexTransactionId)));
+                (!string.IsNullOrEmpty(aplosTransaction.Memo) && (aplosTransaction.Memo.StartsWith(pexTransactionId) || aplosTransaction.Memo.EndsWith(pexTransactionId))));
         }
 
         private readonly ConcurrentDictionary<int, CardholderDetailsModel> _cardholderDetailsCache =
