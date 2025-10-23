@@ -1514,7 +1514,7 @@ namespace AplosConnector.Common.Services
                     {
                         var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
 
-                        var totalPaymentsAmount = invoicePayments.Sum(p => p.Amount);
+                        var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
 
                         if (totalPaymentsAmount != invoiceModel.InvoiceAmount)
                         {
