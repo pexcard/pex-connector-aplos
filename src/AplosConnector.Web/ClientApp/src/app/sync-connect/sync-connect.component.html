@@ -401,7 +401,7 @@
             <th class="left clr-col-2">Field</th>
             <th class="left clr-col-1">Sync</th>
             <th class="left clr-col-4">PEX Tag</th>
-            <th class="left clr-col-4">Default</th>
+            <th *ngIf="isPrepaid" class="left clr-col-4">Default</th>
             <th class="clr-col-1"></th>
           </tr>
         </thead>
@@ -430,7 +430,7 @@
                 </select>
               </div>
             </td>
-            <td class="left clr-col-4">
+            <td *ngIf="isPrepaid" class="left clr-col-4">
               <div class="clr-select-wrapper">
                 <select id="defaultAplosFundId"
                         class="clr-select select clr-col-12"
