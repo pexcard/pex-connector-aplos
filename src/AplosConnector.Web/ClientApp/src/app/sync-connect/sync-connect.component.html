@@ -228,16 +228,14 @@
           Automatically import Rebates into Aplos.
         </label>
       </clr-toggle-wrapper>
-
-      <clr-toggle-wrapper *ngIf="isCredit">
+      <clr-toggle-wrapper *ngIf="isCredit" class="display-inline">
         <input
           type="checkbox"
           clrToggle
           name="syncInvoices"
           [(ngModel)]="settingsModel.syncInvoices"/>
-        <label>Automatically import PEX purchases with Fund and Account tags, fees, bill payments and rebates into Aplos.</label>
+        <label>Automatically import approved PEX purchases with Fund and Account tags, fees, bill payments and rebates into Aplos.</label>
       </clr-toggle-wrapper>
-
       <clr-toggle-wrapper>
         <input
           type="checkbox"
