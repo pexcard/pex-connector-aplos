@@ -24,6 +24,7 @@ namespace AplosConnector.Common.Entities
         public DateTime? LastSyncUtc { get; set; }
         public DateTime? LastRenewedUtc { get; set; }
         public bool SyncTags { get; set; }
+        public bool UpdateTagOptionNames { get; set; }
         public bool SyncTaxTagToPex { get; set; }
         public bool SyncTransactions { get; set; }
         public bool SyncTransfers { get; set; }

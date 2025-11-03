@@ -621,7 +621,7 @@ namespace AplosConnector.Common.Services
 
                 try
                 {
-                    pexTag.UpdateTagOptions(aplosTagsToSync, out syncCount);
+                    pexTag.UpdateTagOptions(aplosTagsToSync, out syncCount, updateNames: mapping.UpdateTagOptionNames);
 
                     await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTag.Id, pexTag, cancellationToken);
                     syncStatus = SyncStatus.Success;
@@ -672,7 +672,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                pexTaxTag.UpdateTagOptions(aplosTaxTagsToSync, out syncCount);
+                pexTaxTag.UpdateTagOptions(aplosTaxTagsToSync, out syncCount, updateNames: mapping.UpdateTagOptionNames);
                 await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, pexTaxTag.Id, pexTaxTag, cancellationToken);
                 syncStatus = SyncStatus.Success;
             }
@@ -822,7 +822,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                fundsTag.UpdateTagOptions(aplosFunds, out syncCount);
+                fundsTag.UpdateTagOptions(aplosFunds, out syncCount, updateNames: mapping.UpdateTagOptionNames);
 
                 await _pexApiClient.UpdateDropdownTag(mapping.PEXExternalAPIToken, fundsTag.Id, fundsTag, cancellationToken);
                 syncStatus = SyncStatus.Success;
@@ -901,7 +901,7 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                accountsTag.UpdateTagOptions(accounts, out syncCount);
+                accountsTag.UpdateTagOptions(accounts, out syncCount, updateNames: model.UpdateTagOptionNames);
 
                 await _pexApiClient.UpdateDropdownTag(model.PEXExternalAPIToken, accountsTag.Id, accountsTag, cancellationToken);
                 syncStatus = SyncStatus.Success;
