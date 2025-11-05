@@ -20,6 +20,7 @@ namespace AplosConnector.Common.Models
             CreatedUtc = mapping.ConnectedOn;
             SyncApprovedOnly = mapping.SyncApprovedOnly;
             SyncTags = mapping.SyncTags;
+            UpdateTagOptionNames = mapping.UpdateTagOptionNames;
             SyncTaxTagToPex = mapping.SyncTaxTagToPex;
             SyncTransactions = mapping.SyncTransactions;
             SyncTransfers = mapping.SyncTransfers;
@@ -99,6 +100,7 @@ namespace AplosConnector.Common.Models
                 ConnectedOn = CreatedUtc,
                 SyncApprovedOnly = SyncApprovedOnly,
                 SyncTags = SyncTags,
+                UpdateTagOptionNames = UpdateTagOptionNames,
                 SyncTaxTagToPex = SyncTaxTagToPex,
                 SyncTransactions = SyncTransactions,
                 SyncTransfers = SyncTransfers,
@@ -174,6 +176,7 @@ namespace AplosConnector.Common.Models
         public DateTime? LastSyncUtc { get; set; }
         public DateTime? LastRenewedUtc { get; set; }
         public bool SyncTags { get; set; }
+        public bool UpdateTagOptionNames { get; set; }
         public bool SyncTaxTagToPex { get; set; }
         public bool SyncTransactions { get; set; }
         public bool SyncTransfers { get; set; }
