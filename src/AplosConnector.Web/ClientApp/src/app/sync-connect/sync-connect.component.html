@@ -228,16 +228,14 @@
           Automatically import Rebates into Aplos.
         </label>
       </clr-toggle-wrapper>
-
-      <clr-toggle-wrapper *ngIf="isCredit">
+      <clr-toggle-wrapper *ngIf="isCredit" class="display-inline">
         <input
           type="checkbox"
           clrToggle
           name="syncInvoices"
           [(ngModel)]="settingsModel.syncInvoices"/>
-        <label>Automatically import PEX purchases with Fund and Account tags, fees, bill payments and rebates into Aplos.</label>
+        <label>Automatically import approved PEX purchases with Fund and Account tags, fees, bill payments and rebates into Aplos.</label>
       </clr-toggle-wrapper>
-
       <clr-toggle-wrapper>
         <input
           type="checkbox"
@@ -265,7 +263,7 @@
           <div class="card-text">
             Please choose an account you have set up to represent your PEX funds:
             <div class="clr-select-wrapper">
-              
+
               <select *ngIf="isPrepaid"
                 id="aplosRegisterAccountNumber"
                 class="clr-select"
@@ -274,7 +272,7 @@
                 <option></option>
                 <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAssetAccounts">{{aplosAccount | aplosAccount}}</option>
               </select>
-              
+
               <select *ngIf="isCredit"
                 id="aplosRegisterAccountNumber"
                 class="clr-select"
@@ -387,7 +385,7 @@
     </clr-spinner>
 
     <form clrForm #aplosFieldMappingForm="ngForm" [class.hide]="!savingSettings">
-      
+
       <ul class="circle-list">
         <li><p class="display-inline">Map each field name from Aplos on the left to a corresponding PEX Tag on the right. Only dropdown type Tags can be mapped.</p></li>
         <li><p class="display-inline">Enable the sync toggle for the fields you want to sync into PEX as tag option values from Aplos.</p></li>
@@ -495,7 +493,7 @@
                   <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount.name}}</option>
                 </select>
               </div>
-            </td>            
+            </td>
             <td class="clr-col-1">
               <button type="button" class="btn btn-danger btn-sm btn-icon" aria-label="add" (click)="deleteExpenseAccountElement(i)" *ngIf="this.getExpenseAccountFormElements().length > 1">
                 <clr-icon shape="trash" size="12"></clr-icon>
@@ -549,24 +547,24 @@
               </td>
               <td *ngIf="tagMapping.value.aplosTag == '990'" class="left clr-col-4">
                 <div class="clr-select-wrapper">
-                  <select class="clr-select clr-col-12" 
+                  <select class="clr-select clr-col-12"
                           formControlName="defaultAplosTag">
                     <option></option>
                     <optgroup  *ngFor="let aplosTaxTagCategory of aplosTaxTagCategories" label="{{aplosTaxTagCategory.name}}">
                       <option  [value]="aplosTaxTag.id" *ngFor="let aplosTaxTag of aplosTaxTagCategory.tax_tags">{{aplosTaxTag.name}} - {{aplosTaxTag.group_name}}</option>
-                    </optgroup>                          
+                    </optgroup>
                   </select>
                 </div>
               </td>
               <td *ngIf="tagMapping.value.aplosTag != '990'" class="left clr-col-4">
                 <div class="clr-select-wrapper">
-                  <select class="clr-select clr-col-12" 
+                  <select class="clr-select clr-col-12"
                           formControlName="defaultAplosTag">
                     <option></option>
-                    <option [value]="aplosTag.id" 
+                    <option [value]="aplosTag.id"
                       *ngFor="let aplosTag of aplosTags[tagMapping.value.aplosTag]">
                       {{aplosTag.name}}
-                    </option>                    
+                    </option>
                   </select>
                 </div>
               </td>
@@ -608,7 +606,7 @@
     <clr-spinner *ngIf="savingSettings">
         Saving...
     </clr-spinner>
-  
+
     <form clrForm [formGroup]="defaultCategoryForm" [class.hide]="!savingSettings">
 
       <!-- Purchases -->
@@ -664,14 +662,14 @@
             <h4 *ngIf="isPrepaid">Transfers</h4>
             <h4 *ngIf="isCredit">Bill Payments</h4>
           </caption>
-          
+
           <thead>
             <tr>
               <th class="left  clr-col-4">Field</th>
               <th class="left">Default</th>
             </tr>
           </thead>
-          
+
           <tbody>
             <tr>
               <td class="left  clr-col-4">
@@ -692,7 +690,7 @@
                 </div>
               </td>
             </tr>
-            
+
             <tr *ngIf="isPrepaid">
               <td class="left clr-col-4">Fund</td>
               <td class="left">
@@ -785,7 +783,7 @@
                 </div>
               </td>
             </tr>
-            
+
             <tr>
               <td class="left clr-col-4">Fund</td>
               <td class="left">
@@ -892,7 +890,7 @@
                 </div>
               </td>
             </tr>
-            
+
             <tr>
               <td class="left clr-col-4">Fund</td>
               <td class="left">

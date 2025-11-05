@@ -394,19 +394,36 @@ namespace AplosConnector.Common.Services
                 }
             }
 
-            var noteBuilder = new StringBuilder(transaction.TransactionId.ToString());
-            if (cardholderDetails != null)
-            {
-                noteBuilder.Append($" | {cardholderDetails.ProfileAddress.ContactName}");
-            }
-
-            transaction.TransactionNotes?.ForEach(n => noteBuilder.Append($" | {n.NoteText}"));
-
             //Max length of note is 1000 chars (at least UI doesn't allow to enter more)
             const int noteMaxLength = 1000;
-            var aplosTransactionNote = noteBuilder.Length > noteMaxLength
-                ? noteBuilder.ToString(0, noteMaxLength)
+
+            var transactionIdString = transaction.TransactionId.ToString();
+            var transactionIdWithSeparator = $" | {transactionIdString}";
+            var maxContentLength = noteMaxLength - transactionIdWithSeparator.Length;
+
+            var noteBuilder = new StringBuilder();
+            if (cardholderDetails != null)
+            {
+                noteBuilder.Append($"{cardholderDetails.ProfileAddress.ContactName}");
+            }
+
+            transaction.TransactionNotes?.ForEach(n =>
+            {
+                if (noteBuilder.Length > 0)
+                {
+                    noteBuilder.Append(" | ");
+                }
+                noteBuilder.Append(n.NoteText);
+            });
+
+            // Truncate the content if needed to make room for transaction ID
+            var noteContent = noteBuilder.Length > maxContentLength
+                ? noteBuilder.ToString(0, maxContentLength)
                 : noteBuilder.ToString();
+
+            var aplosTransactionNote = string.IsNullOrEmpty(noteContent)
+                ? transactionIdString
+                : noteContent + transactionIdWithSeparator;
 
             var aplosTransaction = new AplosApiTransactionDetail
             {
@@ -950,7 +967,6 @@ namespace AplosConnector.Common.Services
 
             var syncCount = 0;
             var failureCount = 0;
-            var eligibleCount = 0;
 
             var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
             var aplosAccountCategory = GetAplosAccountCategory();
@@ -1049,29 +1065,31 @@ namespace AplosConnector.Common.Services
                                         var allocationFundEntity = aplosFunds.FindMatchingEntity(allocationFundTagOptionValue, allocationFundTagOptionName, ':', _logger);
                                         if (allocationFundEntity == null)
                                         {
-                                            _logger.LogWarning($"Could not match PEX fund tag '{fundTagDefinition?.Name}' option ['{allocationFundTagOptionName}' : '{allocationFundTagOptionValue}'] with an Aplos fund entity.");
+                                            syncIneligibilityReason = $"Could not match PEX fund tag '{fundTagDefinition?.Name}' option ['{allocationFundTagOptionName}' : '{allocationFundTagOptionValue}'] with an Aplos fund entity on transaction {transaction.TransactionId}.";
+                                            break;
                                         }
                                         else
                                         {
                                             if (int.TryParse(allocationFundEntity.Id, out var aplosFundId))
                                             {
-                                                _logger.LogDebug($"Matched PEX fund tag '{fundTagDefinition?.Name}' option ['{allocationFundTagOptionName}' : '{allocationFundTagOptionValue}'] with Aplos fund entity '{allocationFundEntity.Name}' ({allocationFundEntity.Id}).");
+                                                _logger.LogDebug($"Matched PEX fund tag '{fundTagDefinition?.Name}' option ['{allocationFundTagOptionName}' : '{allocationFundTagOptionValue}'] with Aplos fund entity '{allocationFundEntity.Name}' ({allocationFundEntity.Id}) on transaction {transaction.TransactionId}.");
                                                 pexTagValues.AplosFundId = aplosFundId;
                                             }
                                             else
                                             {
-                                                _logger.LogWarning($"Could not parse Aplos {aplosAccountCategory} fund id '{allocationFundEntity.Id}' into a int.");
+                                                syncIneligibilityReason = $"Could not parse Aplos {aplosAccountCategory} fund id '{allocationFundEntity.Id}' into a int on transaction {transaction.TransactionId}.";
+                                                break;
                                             }
                                         }
                                     }
                                     else if (mapping.DefaultAplosFundId > 0)
                                     {
-                                        _logger.LogInformation($"Using default fund id '{mapping.DefaultAplosFundId}'.");
+                                        _logger.LogInformation($"Using default fund id '{mapping.DefaultAplosFundId}' on transaction {transaction.TransactionId}.");
                                         pexTagValues.AplosFundId = mapping.DefaultAplosFundId;
                                     }
                                     else
                                     {
-                                        _logger.LogInformation($"No PEX fund tag on allocation {allocation.Amount:C}.");
+                                        _logger.LogInformation($"No PEX fund tag on allocation {allocation.Amount:C} on transaction {transaction.TransactionId}.");
                                     }
 
                                     TagValueItem expenseAccountTag = null;
@@ -1096,18 +1114,20 @@ namespace AplosConnector.Common.Services
                                         var allocationExpenseAccountEntity = aplosExpenseAccounts.FindMatchingEntity(allocationExpenseAccountTagOptionValue, allocationExpenseAccountTagOptionName, ':', _logger);
                                         if (allocationExpenseAccountEntity == null)
                                         {
-                                            _logger.LogWarning($"Could not match PEX {aplosAccountCategory} account tag '{expenseAccountTagDefinition?.Name}' option ['{allocationExpenseAccountTagOptionName}' : '{allocationExpenseAccountTagOptionValue}'] with an Aplos expense account entity.");
+                                            syncIneligibilityReason = $"Could not match PEX {aplosAccountCategory} account tag '{expenseAccountTagDefinition?.Name}' option ['{allocationExpenseAccountTagOptionName}' : '{allocationExpenseAccountTagOptionValue}'] with an Aplos expense account entity on transaction {transaction.TransactionId}.";
+                                            break;
                                         }
                                         else
                                         {
                                             if (decimal.TryParse(allocationExpenseAccountEntity.Id, out var aplosTransactionAccountNumber))
                                             {
-                                                _logger.LogDebug($"Matched PEX {aplosAccountCategory} account tag '{expenseAccountTagDefinition?.Name}' option ['{allocationExpenseAccountTagOptionName}' : '{allocationExpenseAccountTagOptionValue}'] with Aplos expense account entity '{allocationExpenseAccountEntity.Name}' ({allocationExpenseAccountEntity.Id}).");
+                                                _logger.LogDebug($"Matched PEX {aplosAccountCategory} account tag '{expenseAccountTagDefinition?.Name}' option ['{allocationExpenseAccountTagOptionName}' : '{allocationExpenseAccountTagOptionValue}'] with Aplos expense account entity '{allocationExpenseAccountEntity.Name}' ({allocationExpenseAccountEntity.Id}) on transaction {transaction.TransactionId}.");
                                                 pexTagValues.AplosTransactionAccountNumber = aplosTransactionAccountNumber;
                                             }
                                             else
                                             {
-                                                _logger.LogWarning($"Could not parse Aplos {aplosAccountCategory} account id '{allocationExpenseAccountEntity.Id}' into a decimal.");
+                                                syncIneligibilityReason = $"Could not parse Aplos {aplosAccountCategory} account id '{allocationExpenseAccountEntity.Id}' into a decimal on transaction {transaction.TransactionId}.";
+                                                break;
                                             }
                                         }
                                     }
@@ -1132,7 +1152,7 @@ namespace AplosConnector.Common.Services
                                         {
                                             if (tagMapping.AplosTagId == "990")
                                             {
-                                                _logger.LogInformation($"Using default Aplos tax tag value '{tagMapping.DefaultAplosTagId}'.");
+                                                _logger.LogInformation($"Using default Aplos tax tag value '{tagMapping.DefaultAplosTagId}' on transaction {transaction.TransactionId}.");
                                                 pexTagValues.AplosTaxTagId = tagMapping.DefaultAplosTagId;
                                             }
                                             else
@@ -1147,12 +1167,12 @@ namespace AplosConnector.Common.Services
                                                     var allocationTagEntity = aplosTags.FindMatchingEntity(allocationTagOptionValue, allocationTagOptionName, ':', _logger);
                                                     if (allocationTagEntity != null)
                                                     {
-                                                        _logger.LogInformation($"Matched PEX tag '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with Aplos tag entity '{allocationTagEntity.Name}' ({allocationTagEntity.Id}).");
+                                                        _logger.LogInformation($"Matched PEX tag '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with Aplos tag entity '{allocationTagEntity.Name}' ({allocationTagEntity.Id}) on transaction {transaction.TransactionId}.");
                                                         pexTagValues.AplosTagIds.Add(allocationTagEntity.Id);
                                                     }
                                                     else
                                                     {
-                                                        _logger.LogDebug($"Could not match  '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with an Aplos tag entity.");
+                                                        _logger.LogDebug($"Could not match  '{allocationTagDefinition?.Name}' option ['{allocationTagOptionName}' : '{allocationTagOptionValue}'] with an Aplos tag entity on transaction {transaction.TransactionId}.");
                                                     }
                                                 }
                                                 else if (!string.IsNullOrEmpty(tagMapping.DefaultAplosTagId))
@@ -1203,6 +1223,7 @@ namespace AplosConnector.Common.Services
 
                             if (!string.IsNullOrEmpty(syncIneligibilityReason))
                             {
+                                failureCount++;
                                 _logger.LogWarning(syncIneligibilityReason);
                                 continue;
                             }
@@ -1221,31 +1242,27 @@ namespace AplosConnector.Common.Services
                             }
                             catch (Exception ex)
                             {
+                                transactionSyncResult = TransactionSyncResult.Failed;
                                 _logger.LogError(ex, $"Error syncing transaction {transaction.TransactionId}.");
                             }
 
-                            if (transactionSyncResult != TransactionSyncResult.NotEligible)
-                            {
-                                _logger.LogWarning($"Sync not eligible for transaction {transaction.TransactionId}");
-                                eligibleCount++;
-                            }
                             if (transactionSyncResult == TransactionSyncResult.Success)
                             {
                                 syncCount++;
                                 _logger.LogInformation($"Synced transaction {transaction.TransactionId}");
                                 var syncedNoteText = $"{GetSyncedNote(transaction)} on {DateTime.UtcNow:O}";
-                                await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText, true, cancellationToken);
+                                await _pexApiClient.AddTransactionNote(mapping.PEXExternalAPIToken, transaction, syncedNoteText, true, true, cancellationToken);
                             }
                             else if (transactionSyncResult == TransactionSyncResult.Failed)
                             {
-                                _logger.LogError($"Failed syncing transaction {transaction.TransactionId}.");
                                 failureCount++;
+                                _logger.LogError($"Failed syncing transaction {transaction.TransactionId}.");
                             }
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, $"Error processing transaction {transaction.TransactionId}.");
                             failureCount++;
+                            _logger.LogError(ex, $"Error processing transaction {transaction.TransactionId}.");
                         }
                     }
                 }
@@ -1253,15 +1270,17 @@ namespace AplosConnector.Common.Services
 
             var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} transactions from PEX.";
             SyncStatus syncStatus;
-            if (syncCount == 0 && eligibleCount > 0 && failureCount > 0)
+            if (failureCount == 0)
             {
-                syncStatus = SyncStatus.Failed;
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
             }
             else
             {
-                syncStatus = syncCount == eligibleCount && failureCount == 0
-                    ? SyncStatus.Success
-                    : SyncStatus.Partial;
+                syncStatus = SyncStatus.Failed;
             }
             var result = new SyncResultModel
             {
@@ -1414,7 +1433,7 @@ namespace AplosConnector.Common.Services
                         }
                         catch (Exception ex)
                         {
-                            failureCount++;
+                            transactionSyncResult = TransactionSyncResult.Failed;
                             _logger.LogError(ex, $"Error syncing rebate {transaction.TransactionId}.");
                         }
 
@@ -1431,6 +1450,7 @@ namespace AplosConnector.Common.Services
                     }
                     catch (Exception ex)
                     {
+                        failureCount++;
                         _logger.LogError(ex, $"Error processing rebate {transaction.TransactionId}.");
                     }
                 }
@@ -1438,13 +1458,17 @@ namespace AplosConnector.Common.Services
 
             var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} rebates from PEX.";
             SyncStatus syncStatus;
-            if (syncCount == 0 && failureCount > 0)
+            if (failureCount == 0)
             {
-                syncStatus = SyncStatus.Failed;
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
             }
             else
             {
-                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+                syncStatus = SyncStatus.Failed;
             }
             var result = new SyncResultModel
             {
@@ -1490,7 +1514,7 @@ namespace AplosConnector.Common.Services
                     {
                         var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
 
-                        var totalPaymentsAmount = invoicePayments.Sum(p => p.Amount);
+                        var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
 
                         if (totalPaymentsAmount != invoiceModel.InvoiceAmount)
                         {
@@ -1605,38 +1629,42 @@ namespace AplosConnector.Common.Services
                         }
                         catch (Exception ex)
                         {
+                            transactionSyncResult = TransactionSyncResult.Failed;
                             _logger.LogError(ex, $"Error syncing invoice {invoiceModel.InvoiceId}.");
-                            failureCount++;
                         }
 
                         if (transactionSyncResult == TransactionSyncResult.Success)
                         {
-                            _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
                             syncCount++;
+                            _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
                         }
                         else if (transactionSyncResult == TransactionSyncResult.Failed)
                         {
-                            _logger.LogError($"Failed syncing invoice {invoiceModel.InvoiceId}.");
                             failureCount++;
+                            _logger.LogError($"Failed syncing invoice {invoiceModel.InvoiceId}.");
                         }
                     }
                     catch (PexApiClientException ex)
                     {
-                        _logger.LogError(ex, $"Error processing invoice {invoiceModel.InvoiceId}.");
                         failureCount++;
+                        _logger.LogError(ex, $"Error processing invoice {invoiceModel.InvoiceId}.");
                     }
                 }
             }
 
             var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} invoices from PEX.";
             SyncStatus syncStatus;
-            if (syncCount == 0 && failureCount > 0)
+            if (failureCount == 0)
             {
-                syncStatus = SyncStatus.Failed;
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
             }
             else
             {
-                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+                syncStatus = SyncStatus.Failed;
             }
             var result = new SyncResultModel
             {
@@ -1710,17 +1738,27 @@ namespace AplosConnector.Common.Services
                 }
             }
 
-            var noteBuilder = new StringBuilder(invoice.InvoiceId.ToString());
-            if (cardholderDetails != null)
-            {
-                noteBuilder.Append($" | {cardholderDetails.ProfileAddress.ContactName}");
-            }
-
             //Max length of note is 1000 chars (at least UI doesn't allow to enter more)
             const int noteMaxLength = 1000;
-            var aplosTransactionNote = noteBuilder.Length > noteMaxLength
-                ? noteBuilder.ToString(0, noteMaxLength)
+
+            var invoiceIdString = invoice.InvoiceId.ToString();
+            var invoiceIdWithSeparator = $" | {invoiceIdString}";
+            var maxContentLength = noteMaxLength - invoiceIdWithSeparator.Length;
+
+            var noteBuilder = new StringBuilder();
+            if (cardholderDetails != null)
+            {
+                noteBuilder.Append($"{cardholderDetails.ProfileAddress.ContactName}");
+            }
+
+            // Truncate the content if needed to make room for invoice ID
+            var noteContent = noteBuilder.Length > maxContentLength
+                ? noteBuilder.ToString(0, maxContentLength)
                 : noteBuilder.ToString();
+
+            var aplosTransactionNote = string.IsNullOrEmpty(noteContent)
+                ? invoiceIdString
+                : noteContent + invoiceIdWithSeparator;
 
             var aplosTransaction = new AplosApiTransactionDetail
             {
@@ -1805,6 +1843,7 @@ namespace AplosConnector.Common.Services
                         }
                         catch (Exception ex)
                         {
+                            transactionSyncResult = TransactionSyncResult.Failed;
                             _logger.LogError(ex, $"Error syncing transfer {transaction.TransactionId}.");
                         }
 
@@ -1816,10 +1855,12 @@ namespace AplosConnector.Common.Services
                         else if (transactionSyncResult == TransactionSyncResult.Failed)
                         {
                             failureCount++;
+                            _logger.LogError($"Failed syncing transfer {transaction.TransactionId}.");
                         }
                     }
                     catch (Exception ex)
                     {
+                        failureCount++;
                         _logger.LogError(ex, $"Error processing transfer {transaction.TransactionId}.");
                     }
                 }
@@ -1827,13 +1868,17 @@ namespace AplosConnector.Common.Services
 
             var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} transfers from PEX.";
             SyncStatus syncStatus;
-            if (syncCount == 0 && failureCount > 0)
+            if (failureCount == 0)
             {
-                syncStatus = SyncStatus.Failed;
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
             }
             else
             {
-                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+                syncStatus = SyncStatus.Failed;
             }
             var result = new SyncResultModel
             {
@@ -1898,7 +1943,7 @@ namespace AplosConnector.Common.Services
                                 AplosTaxTagId = model.PexFeesAplosTaxTagId,
                                 AplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber
                             };
-                            
+
                             // Apply default tag values from fee tag mappings
                             ApplyTagMappingsToTagValues(pexTagValues, model.FeeTagMappings, _logger);
 
@@ -1918,6 +1963,7 @@ namespace AplosConnector.Common.Services
                         }
                         catch (Exception ex)
                         {
+                            transactionSyncResult = TransactionSyncResult.Failed;
                             _logger.LogError(ex, $"Error syncing PEX account fee {transaction.TransactionId}.");
                         }
 
@@ -1929,10 +1975,12 @@ namespace AplosConnector.Common.Services
                         else if (transactionSyncResult == TransactionSyncResult.Failed)
                         {
                             failureCount++;
+                            _logger.LogError($"Failed syncing PEX account fee {transaction.TransactionId}.");
                         }
                     }
                     catch (Exception ex)
                     {
+                        failureCount++;
                         _logger.LogError(ex, $"Error processing PEX account fee {transaction.TransactionId}.");
                     }
                 }
@@ -1940,13 +1988,17 @@ namespace AplosConnector.Common.Services
 
             var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} PEX account fees from PEX.";
             SyncStatus syncStatus;
-            if (syncCount == 0 && failureCount > 0)
+            if (failureCount == 0)
             {
-                syncStatus = SyncStatus.Failed;
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
             }
             else
             {
-                syncStatus = failureCount == 0 ? SyncStatus.Success : SyncStatus.Partial;
+                syncStatus = SyncStatus.Failed;
             }
             var result = new SyncResultModel
             {
@@ -1962,8 +2014,9 @@ namespace AplosConnector.Common.Services
         public bool WasPexTransactionSyncedToAplos(IEnumerable<AplosApiTransactionDetail> aplosTransactions, string pexTransactionId)
         {
             return aplosTransactions.Any(aplosTransaction =>
-                    (!string.IsNullOrEmpty(aplosTransaction.Note) && aplosTransaction.Note.Contains(pexTransactionId))
-                || (!string.IsNullOrEmpty(aplosTransaction.Memo) && aplosTransaction.Memo.Contains(pexTransactionId)));
+                (!string.IsNullOrEmpty(aplosTransaction.Note) && (aplosTransaction.Note.StartsWith(pexTransactionId) || aplosTransaction.Note.EndsWith(pexTransactionId)))
+                ||
+                (!string.IsNullOrEmpty(aplosTransaction.Memo) && (aplosTransaction.Memo.StartsWith(pexTransactionId) || aplosTransaction.Memo.EndsWith(pexTransactionId))));
         }
 
         private readonly ConcurrentDictionary<int, CardholderDetailsModel> _cardholderDetailsCache =

@@ -47,3 +47,7 @@
   background-color: #fafafa;
   padding: 3px;
 }
+
+.display-inline {
+  display: inline;
+}

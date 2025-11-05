@@ -30,6 +30,7 @@ using Azure.Data.Tables;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Azure.Storage.Queues;
 using Azure.Identity;
+using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 
 namespace AplosConnector.Web
 {
@@ -50,7 +51,11 @@ namespace AplosConnector.Web
                 .AddNewtonsoftJson();
 
             var applicationInsightsKey = _configuration.GetValue<string>("ApplicationInsightsKey");
-            services.AddApplicationInsightsTelemetry(applicationInsightsKey);
+            services.AddApplicationInsightsTelemetry(new ApplicationInsightsServiceOptions
+            {
+                InstrumentationKey = applicationInsightsKey,
+                EnableAdaptiveSampling = false,
+            });
 
             services.AddOptions();
 
