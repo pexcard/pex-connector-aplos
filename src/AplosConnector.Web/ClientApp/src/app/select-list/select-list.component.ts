@@ -5,7 +5,8 @@ import { debounceTime } from 'rxjs/operators';
 @Component({
   selector: 'app-select-list',
   templateUrl: './select-list.component.html',
-  styleUrls: ['./select-list.component.css']
+  styleUrls: ['./select-list.component.css'],
+  standalone: false
 })
 
 export class SelectListComponent implements OnInit, OnDestroy {

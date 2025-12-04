@@ -5,7 +5,8 @@ import { PexConnectionDetailModel, PexService } from "../services/pex.service";
 @Component({
   selector: "app-connect",
   templateUrl: "./connect.component.html",
-  styleUrls: ["./connect.component.css"]
+  styleUrls: ["./connect.component.css"],
+  standalone: false
 })
 export class ConnectComponent implements OnInit {
   sessionId: string;

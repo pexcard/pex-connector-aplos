@@ -8,7 +8,8 @@ import { concatMap, timeout, catchError } from 'rxjs/operators';
 @Component({
   selector: 'app-sync-history',
   templateUrl: './sync-history.component.html',
-  styleUrls: ['./sync-history.component.css']
+  styleUrls: ['./sync-history.component.css'],
+  standalone: false
 })
 export class SyncHistoryComponent implements OnInit, OnDestroy {
   sessionId = '';

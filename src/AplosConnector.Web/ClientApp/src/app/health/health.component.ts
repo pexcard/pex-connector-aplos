@@ -4,7 +4,8 @@ import { HealthService, HealthResult } from '../services/health.service';
 @Component({
   selector: 'app-health',
   templateUrl: './health.component.html',
-  styleUrls: ['./health.component.css']
+  styleUrls: ['./health.component.css'],
+  standalone: false
 })
 export class HealthComponent implements OnInit {
   loadingHealthData = false;

@@ -22,7 +22,8 @@ import { of, throwError } from "rxjs";
 @Component({
   selector: 'app-sync-connect',
   templateUrl: './sync-connect.component.html',
-  styleUrls: ['./sync-connect.component.css']
+  styleUrls: ['./sync-connect.component.css'],
+  standalone: false
 })
 export class SyncConnectComponent implements OnInit {
   constructor(
