@@ -4,7 +4,7 @@
       <div class="alert-items">
         <div class="alert-item static">
           <div class="alert-icon-wrapper">
-            <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+            <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
           </div>
           <span class="alert-text">Earn 1% rebates on all eligible Vendor card payments.</span>
           <div class="alert-actions">
@@ -38,15 +38,15 @@
         <div class="clr-col-auto">
              <strong>
             <span *ngIf="connection.pexConnection && connection.aplosConnection">
-              <clr-icon *ngIf="connection.pexConnection" shape="check" size="md" role="img" class="is-success"></clr-icon>
+              <cds-icon *ngIf="connection.pexConnection" shape="check" size="md" role="img" class="is-success"></cds-icon>
               Valid connections
             </span>
             <span *ngIf="!connection.pexConnection">
-              <clr-icon shape="times-circle" size="md" role="img" class="is-error"></clr-icon>
+              <cds-icon shape="times-circle" size="md" role="img" class="is-error"></cds-icon>
               Invalid PEX connection
             </span>
             <span *ngIf="!connection.aplosConnection">
-              <clr-icon shape="times-circle" size="md" role="img" class="is-error"></clr-icon>
+              <cds-icon shape="times-circle" size="md" role="img" class="is-error"></cds-icon>
               Invalid Aplos connection
             </span>
              </strong>
@@ -71,7 +71,7 @@
             [routerLink]="['../sync-connect']"
             class="btn btn-icon btn-primary-outline"
             aria-label="edit">
-            <clr-icon shape="cog"></clr-icon> EDIT
+            <cds-icon shape="cog"></cds-icon> EDIT
           </button>
            <button
             type="button"
@@ -79,10 +79,10 @@
             [clrLoading]="refreshingPexAccount"
             aria-label="Refresh"
             (click)="refreshPexAccount()">
-            <clr-icon shape="refresh"></clr-icon> REFRESH
+            <cds-icon shape="refresh"></cds-icon> REFRESH
            </button>
            <button type="button" class="btn btn-icon btn-danger-outline" aria-label="Disconnect" (click)="disconnectModal=true">
-            <clr-icon shape="disconnect"></clr-icon> DISCONNECT
+            <cds-icon shape="disconnect"></cds-icon> DISCONNECT
           </button>       
          </div>
        </div>
@@ -97,27 +97,27 @@
         <tr>
           <th>Sync tags</th>
             <td>
-              <clr-icon
+              <cds-icon
                 *ngIf="settings.syncTags"
                 shape="success-standard"
-                      class="is-solid is-success"></clr-icon>
-              <clr-icon
+                      class="is-solid is-success"></cds-icon>
+              <cds-icon
                 *ngIf="!settings.syncTags"
                 shape="ban"
-                      class="is-solid is-error"></clr-icon>
+                      class="is-solid is-error"></cds-icon>
             </td>
           </tr>
           <tr *ngIf="isPrepaid">
             <th>Sync transactions</th>
             <td>
-              <clr-icon
+              <cds-icon
                 *ngIf="settings.syncTransactions"
                 shape="success-standard"
-                      class="is-solid is-success"></clr-icon>
-              <clr-icon
+                      class="is-solid is-success"></cds-icon>
+              <cds-icon
                 *ngIf="!settings.syncTransactions"
                 shape="ban"
-                      class="is-solid is-error"></clr-icon>&nbsp;
+                      class="is-solid is-error"></cds-icon>&nbsp;
   
             <span *ngIf="settings.syncTransactions && settings.syncApprovedOnly">Approved</span>
               <span
@@ -127,60 +127,60 @@
           <tr *ngIf="isPrepaid">
             <th>Sync rebates</th>
             <td>
-              <clr-icon *ngIf="settings.syncRebates" shape="success-standard" class="is-solid is-success"></clr-icon>
-              <clr-icon *ngIf="!settings.syncRebates" shape="ban" class="is-solid is-error"></clr-icon>
+              <cds-icon *ngIf="settings.syncRebates" shape="success-standard" class="is-solid is-success"></cds-icon>
+              <cds-icon *ngIf="!settings.syncRebates" shape="ban" class="is-solid is-error"></cds-icon>
             </td>
           </tr>
           <tr *ngIf="isPrepaid">
             <th>Sync transfers</th>
             <td>
-              <clr-icon
+              <cds-icon
                 *ngIf="settings.syncTransfers"
                 shape="success-standard"
-                      class="is-solid is-success"></clr-icon>
-              <clr-icon
+                      class="is-solid is-success"></cds-icon>
+              <cds-icon
                 *ngIf="!settings.syncTransfers"
                 shape="ban"
-                      class="is-solid is-error"></clr-icon>
+                      class="is-solid is-error"></cds-icon>
             </td>
           </tr>
           <tr *ngIf="isPrepaid">
             <th>Sync fees</th>
             <td>
-              <clr-icon
+              <cds-icon
                 *ngIf="settings.syncPexFees"
                 shape="success-standard"
-                      class="is-solid is-success"></clr-icon>
-              <clr-icon
+                      class="is-solid is-success"></cds-icon>
+              <cds-icon
                 *ngIf="!settings.syncPexFees"
                 shape="ban"
-                      class="is-solid is-error"></clr-icon>
+                      class="is-solid is-error"></cds-icon>
             </td>
           </tr>
           <tr *ngIf="isCredit">
             <th>Sync purchases, bill payments, fees and rebates</th>
             <td>
-              <clr-icon
+              <cds-icon
                 *ngIf="settings.syncInvoices"
                 shape="success-standard"
-                      class="is-solid is-success"></clr-icon>
-              <clr-icon
+                      class="is-solid is-success"></cds-icon>
+              <cds-icon
                 *ngIf="!settings.syncInvoices"
                 shape="ban"
-                      class="is-solid is-error"></clr-icon>
+                      class="is-solid is-error"></cds-icon>
             </td>
           </tr>
         <tr>
           <th>Sync 990 tag</th>
             <td>
-              <clr-icon
+              <cds-icon
                 *ngIf="settings.syncTaxTagToPex"
                 shape="success-standard"
-                      class="is-solid is-success"></clr-icon>
-              <clr-icon
+                      class="is-solid is-success"></cds-icon>
+              <cds-icon
                 *ngIf="!settings.syncTaxTagToPex"
                 shape="ban"
-                      class="is-solid is-error"></clr-icon>
+                      class="is-solid is-error"></cds-icon>
             </td>
           </tr>                
           <tr>
@@ -209,7 +209,7 @@
             <div class="alert-items">
                 <div class="alert-item static">
                     <div class="alert-icon-wrapper">
-                        <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
+                        <cds-icon class="alert-icon" shape="exclamation-triangle"></cds-icon>
                     </div>
                     <span class="alert-text">
                         Your PEX account does not support Tags. To have this feature enabled and better integrate with Aplos, please contact adminsupport&#64;pexcard.com.
@@ -234,14 +234,14 @@
                   {{tagNameFund}}
               </td>
               <td>
-                <clr-icon
+                <cds-icon
                   *ngIf="settings.syncTags && settings.syncFundsToPex"
                   shape="success-standard"
-                      class="is-solid is-success"></clr-icon>
-                <clr-icon
+                      class="is-solid is-success"></cds-icon>
+                <cds-icon
                   *ngIf="!(settings.syncTags && settings.syncFundsToPex)"
                   shape="ban"
-                      class="is-solid is-error"></clr-icon>
+                      class="is-solid is-error"></cds-icon>
               </td>
             </tr>
             <tr *ngFor="let accountMapping of tagNameAccount">
@@ -250,14 +250,14 @@
                 {{accountMapping.expenseAccountsPexTagId}}
               </td>
               <td>
-                <clr-icon
+                <cds-icon
                   *ngIf="settings.syncTags && accountMapping.syncExpenseAccounts"
                   shape="success-standard"
-                      class="is-solid is-success"></clr-icon>
-                <clr-icon
+                      class="is-solid is-success"></cds-icon>
+                <cds-icon
                   *ngIf="!(settings.syncTags && accountMapping.syncExpenseAccounts)"
                   shape="ban"
-                      class="is-solid is-error"></clr-icon>
+                      class="is-solid is-error"></cds-icon>
               </td>
             </tr>
             <tr *ngFor="let tagMapping of tagMappings">
@@ -268,14 +268,14 @@
                 {{tagMapping.pexTagId}}
               </td>
               <td>
-                <clr-icon
+                <cds-icon
                   *ngIf="settings.syncTags && tagMapping.syncToPex"
                   shape="success-standard"
-                      class="is-solid is-success"></clr-icon>
-                <clr-icon
+                      class="is-solid is-success"></cds-icon>
+                <cds-icon
                   *ngIf="!(settings.syncTags && tagMapping.syncToPex)"
                   shape="ban"
-                      class="is-solid is-error"></clr-icon>
+                      class="is-solid is-error"></cds-icon>
               </td>
             </tr>
           </tbody>

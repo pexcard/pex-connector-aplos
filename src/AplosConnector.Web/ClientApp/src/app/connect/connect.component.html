@@ -11,7 +11,7 @@
     <div class="alert-items">
       <div class="alert-item static">
         <div class="alert-icon-wrapper">
-          <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+          <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
         </div>
         <span class="alert-text">
           For the optimal expense and reconciliation experience, we advise auto creating vendor cards from your Aplos vendor list and configuring nightly transaction syncing from PEX to Aplos.
@@ -24,28 +24,28 @@
       <div class="card clickable selector" [routerLink]="[vendorCardsRoute]">
         <div class="card-block">
           <div class="card-img selector-img">
-            <clr-icon shape="credit-card" size="96" class="pex-color"></clr-icon>
+            <cds-icon shape="credit-card" size="96" class="pex-color"></cds-icon>
           </div>
           <div class="card-text">
             Auto create vendor cards from my Aplos vendor list
           </div>
           <div class="rebate-line rebate-line-background">Earn 1% rebates on all eligible Vendor card payments</div>
         </div>
-        <clr-icon *ngIf="connectionDetails?.aplosConnection && connectionDetails?.vendorsSetup" shape="success-standard" size="32" class="is-solid is-success selector-badge"></clr-icon>
+        <cds-icon *ngIf="connectionDetails?.aplosConnection && connectionDetails?.vendorsSetup" shape="success-standard" size="32" class="is-solid is-success selector-badge"></cds-icon>
       </div>
     </div>
     <div class="clr-col-6 right-col">
       <div class="card clickable selector" [routerLink]="[syncingRoute]">
         <div class="card-block">
           <div class="card-img selector-img">
-            <clr-icon shape="sync" size="96" class="pex-color"></clr-icon>
+            <cds-icon shape="sync" size="96" class="pex-color"></cds-icon>
           </div>
           <div class="card-text">
             Sync transactions from PEX to Aplos nightly
           </div>
           <div class="rebate-line"></div>
         </div>
-        <clr-icon *ngIf="connectionDetails?.aplosConnection && connectionDetails?.syncingSetup" shape="success-standard" size="32" class="is-solid is-success selector-badge"></clr-icon>
+        <cds-icon *ngIf="connectionDetails?.aplosConnection && connectionDetails?.syncingSetup" shape="success-standard" size="32" class="is-solid is-success selector-badge"></cds-icon>
       </div>
     </div>
   </div>

@@ -1,38 +1,38 @@
 /* You can add global styles to this file, and also import other style files */
 .pex-color {
-    color: #249CE0;
-  }
-  .same-line {
-    display: flex;
-    flex-direction: row;
-  }
-  .h-centered {
-    text-align: center;
-  }
-  .v-centered {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  .no-margins {
-    margin: 0;
-  }
-  .page-status {
-    display: flex;
-    flex-flow: column;
-    align-items: center;
-  }
-  .page-status>clr-icon {
-    margin: 0.5em;
-  }
-  .page-status>clr-spinner {
-    margin: 0.5em;
-  }
-  
-  .bald {
-    margin-top: 0;
-  }
+  color: #249ce0;
+}
+.same-line {
+  display: flex;
+  flex-direction: row;
+}
+.h-centered {
+  text-align: center;
+}
+.v-centered {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.no-margins {
+  margin: 0;
+}
+.page-status {
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+}
+.page-status > clr-icon {
+  margin: 0.5em;
+}
+.page-status > clr-spinner {
+  margin: 0.5em;
+}
 
-  .focus-fix :focus:not(.focus-visible) {
-    outline: none;
-  }
+.bald {
+  margin-top: 0;
+}
+
+.focus-fix :focus:not(.focus-visible) {
+  outline: none;
+}

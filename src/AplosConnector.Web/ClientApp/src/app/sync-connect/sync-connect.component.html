@@ -97,7 +97,7 @@
         <div class="alert-items">
           <div class="alert-item static">
             <div class="alert-icon-wrapper">
-              <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
+              <cds-icon class="alert-icon" shape="exclamation-triangle"></cds-icon>
             </div>
             <span class="alert-text">
               Sorry, we don't seem to have your Aplos customer ID on file so can't connect your PEX account to Aplos.
@@ -126,7 +126,7 @@
         <div class="clr-row clr-justify-content-around" *ngIf="!verifyingAplosAuthentication && !redirectingToAplosAuth">
           <div class="clr-col-6">
             <button type="button" class="btn btn-primary " aria-label="add" (click)="onAplosPartnerVerification()">
-              <clr-icon shape="link" size="36"></clr-icon>
+              <cds-icon shape="link" size="36"></cds-icon>
               <span>Connect to Aplos</span>
             </button>
           </div>
@@ -150,7 +150,7 @@
       <div class="alert-items">
         <div class="alert-item static">
           <div class="alert-icon-wrapper">
-            <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
+            <cds-icon class="alert-icon" shape="exclamation-triangle"></cds-icon>
           </div>
           <span class="alert-text">
             Your PEX account does not support Tags. To enable this feature for integration with Aplos,
@@ -245,7 +245,7 @@
         <label>
           Sync 990 Tag.
           <clr-tooltip>
-            <clr-icon clrTooltipTrigger shape="info-circle" size="20"></clr-icon>
+            <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
             <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
                 <span>Please make sure you have 990 tag enabled in Aplos. Otherwise, your transactions will not sync.</span>
             </clr-tooltip-content>
@@ -446,7 +446,7 @@
     </form>
     <form clrForm [formGroup]="expenseAccountForm" [class.hide]="!savingSettings">
       <p>
-        Map your expense account in Aplos to the appropriate tag(s) within PEX. If you use multiple tags within PEX for accounts, click the <clr-icon shape="plus" size="18"></clr-icon> button to add additional tag(s).
+        Map your expense account in Aplos to the appropriate tag(s) within PEX. If you use multiple tags within PEX for accounts, click the <cds-icon shape="plus" size="18"></cds-icon> button to add additional tag(s).
       </p>
       <table class="table">
         <caption>Expense Account</caption>
@@ -458,7 +458,7 @@
             <th class="left clr-col-4">Default</th>
             <th class="clr-col-1">
               <button type="button" class="btn btn-primary btn-sm btn-icon" aria-label="add" (click)="addExpenseAccountElement()">
-                <clr-icon shape="plus" size="12"></clr-icon>
+                <cds-icon shape="plus" size="12"></cds-icon>
               </button>
             </th>
           </tr>
@@ -496,7 +496,7 @@
             </td>
             <td class="clr-col-1">
               <button type="button" class="btn btn-danger btn-sm btn-icon" aria-label="add" (click)="deleteExpenseAccountElement(i)" *ngIf="this.getExpenseAccountFormElements().length > 1">
-                <clr-icon shape="trash" size="12"></clr-icon>
+                <cds-icon shape="trash" size="12"></cds-icon>
               </button>
             </td>
           </tr>
@@ -515,7 +515,7 @@
               <th class="left clr-col-4">Default</th>
               <th class="clr-col-1">
                 <button type="button" class="btn btn-primary btn-sm btn-icon" aria-label="add" (click)="addTagMappingElement()">
-                  <clr-icon shape="plus" size="12"></clr-icon>
+                  <cds-icon shape="plus" size="12"></cds-icon>
                 </button>
               </th>
             </tr>
@@ -570,7 +570,7 @@
               </td>
               <td class="clr-col-1">
                 <button type="button" class="btn btn-danger btn-sm btn-icon" aria-label="add" (click)="deleteTagMappingElement(i)">
-                  <clr-icon shape="trash" size="12"></clr-icon>
+                  <cds-icon shape="trash" size="12"></cds-icon>
                 </button>
               </td>
             </tr>

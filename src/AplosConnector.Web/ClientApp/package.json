@@ -1,6 +1,10 @@
 {
-  "name": "Aplos-app",
+  "name": "aplos-app",
   "version": "0.0.0",
+    "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "ng": "ng",
     "start": "echo start && ng serve --disable-host-check",
