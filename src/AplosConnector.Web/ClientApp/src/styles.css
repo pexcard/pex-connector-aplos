@@ -1,3 +1,4 @@
+/* clarity update fixes & changes - start */
 header .header-nav::before,
 .header .header-nav::before {
   display: none;
@@ -16,7 +17,9 @@ header .header-actions > .dropdown > .dropdown-toggle:before,
 .header .header-actions > .dropdown > .dropdown-toggle:before {
   display: none;
 }
-
+.nav-link.active {
+  background-color: hsla(0, 0%, 100%, 0.15) !important;
+}
 a:not(.btn, .nav-link, .dropdown-item, .label, .alert-action, .badge, .clr-treenode-link) {
   color: var(--clr-link-color) !important;
   font-size: unset !important;
@@ -25,6 +28,10 @@ a:not(.btn, .nav-link, .dropdown-item, .label, .alert-action, .badge, .clr-treen
   color: var(--clr-link-color) !important;
   font-size: unset !important;
 }
+.focus-fix :focus:not(.focus-visible) {
+  outline: none;
+}
+/* clarity update fixes & changes - end */
 
 .pex-color {
   color: #249ce0;
@@ -58,8 +65,4 @@ a:not(.btn, .nav-link, .dropdown-item, .label, .alert-action, .badge, .clr-treen
 
 .bald {
   margin-top: 0;
-}
-
-.focus-fix :focus:not(.focus-visible) {
-  outline: none;
 }
