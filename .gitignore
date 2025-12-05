@@ -337,3 +337,6 @@ ASALocalRun/
 
 # ASP.NET Core
 appsettings.*.json
+
+# AI Files
+.claude/

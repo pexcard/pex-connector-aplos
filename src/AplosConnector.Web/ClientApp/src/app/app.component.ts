@@ -7,7 +7,8 @@ import { FundingSource } from './services/mapping.service';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  styleUrls: ['./app.component.css'],
+  standalone: false
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'PEX Connector for Aplos';

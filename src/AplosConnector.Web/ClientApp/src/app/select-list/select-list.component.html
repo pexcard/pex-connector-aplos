@@ -12,7 +12,7 @@
       <div class="clr-row clr-justify-content-center">
         <div class="clr-col">
           <div class="items-filter-container">
-            <clr-icon class="search-icon" shape="search" size="18"></clr-icon>
+            <cds-icon class="search-icon" shape="search" size="18"></cds-icon>
             <input (ngModelChange)='filterAllItems($event)' [ngModel]="allItemsFilter" class="items-filter" placeholder="Type something to filter list" type="text">
           </div>
         </div>
@@ -35,11 +35,11 @@
     <div class="items-action-container">
       <button (click)="moveSelectedToRight()" [disabled]="allItems.length === 0 || (maxSelectedItems > 0 && selectedItems.length === maxSelectedItems)" aria-label="arrow"
               class="btn btn-icon items-btn move-to-suggested" type="button">
-        <clr-icon dir="right" shape="arrow" size="16"></clr-icon>
+        <cds-icon dir="right" shape="arrow" size="16"></cds-icon>
       </button>
       <button (click)="moveSelectedToLeft()" [disabled]="selectedItems.length === 0" aria-label="arrow"
               class="btn btn-icon items-btn move-back" type="button">
-        <clr-icon dir="left" shape="arrow" size="16"></clr-icon>
+        <cds-icon dir="left" shape="arrow" size="16"></cds-icon>
       </button>
       <button class="btn btn-sm btn-link" (click)="reset()">RESET</button>
     </div>
@@ -57,7 +57,7 @@
       <div class="clr-row clr-justify-content-center">
         <div class="clr-col">
           <div class="items-filter-container">
-            <clr-icon class="search-icon" shape="search" size="18"></clr-icon>
+            <cds-icon class="search-icon" shape="search" size="18"></cds-icon>
             <input (ngModelChange)='filterSelectedItems($event)' [ngModel]="selectedItemsFilter" class="items-filter" placeholder="Type something to filter list" type="text">
           </div>
         </div>

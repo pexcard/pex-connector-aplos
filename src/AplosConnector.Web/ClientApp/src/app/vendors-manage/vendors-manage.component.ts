@@ -5,7 +5,8 @@ import { PexConnectionDetailModel, PexService, VendorCardOrdered } from "../serv
 @Component({
   selector: "app-vendors-manage",
   templateUrl: "./vendors-manage.component.html",
-  styleUrls: ["./vendors-manage.component.css"]
+  styleUrls: ["./vendors-manage.component.css"],
+  standalone: false
 })
 export class VendorsManageComponent implements OnInit {
   

@@ -3,7 +3,8 @@ import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 @Component({
   selector: 'app-loading-placeholder',
   templateUrl: './loading-placeholder.component.html',
-  styleUrls: ['./loading-placeholder.component.css']
+  styleUrls: ['./loading-placeholder.component.css'],
+  standalone: false
 })
 export class LoadingPlaceholderComponent implements OnInit {
   

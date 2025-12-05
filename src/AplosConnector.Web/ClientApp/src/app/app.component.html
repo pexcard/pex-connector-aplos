@@ -3,7 +3,7 @@
     <div class="branding">
       <a [routerLink]="['/connect']" class="nav-link" style="color:white;">
         <img src="../assets/Logo-Standard.png" alt="PEX Web Application" style="padding-right: 10px; max-width: 100%; max-height: 100%" />
-        <clr-icon shape="two-way-arrows"></clr-icon>
+        <cds-icon shape="two-way-arrows"></cds-icon>
         <img
           src="../assets/Aplos-Logo-White.png"
           alt="Aplos Logo"
@@ -30,7 +30,7 @@
         routerLinkActive="active"
         class="nav-link">
         <span class="nav-text">History</span>
-      </a> 
+      </a>
 
       <a *ngIf="isLoggedIn"
          [routerLink]="['vendors-manage']"
@@ -52,10 +52,10 @@
       <span *ngIf="isLoggedIn" class="nav-text" style="cursor: pointer">Logout</span>
       </a>
       <a *ngIf="isPrepaid" href="https://support.pexcard.com/s/article?name=000002012-PEX-Connector-for-Aplos" class="nav-link nav-icon" aria-label="help">
-        <clr-icon shape="help"></clr-icon>
+        <cds-icon shape="help"></cds-icon>
       </a>
       <a *ngIf="isCredit" href="https://support.pexcard.com/s/article?name=000003270-PEX-Connector-for-Aplos-Credit" class="nav-link nav-icon" aria-label="help">
-        <clr-icon shape="help"></clr-icon>
+        <cds-icon shape="help"></cds-icon>
       </a>
     </div>
   </clr-header>

@@ -6,7 +6,8 @@ import { concatMap } from 'rxjs/operators';
 @Component({
   selector: 'app-handle-pex-jwt',
   templateUrl: './handle-pex-jwt.component.html',
-  styleUrls: ['./handle-pex-jwt.component.css']
+  styleUrls: ['./handle-pex-jwt.component.css'],
+  standalone: false
 })
 export class HandlePexJwtComponent implements OnInit {
   loginFailed = false;

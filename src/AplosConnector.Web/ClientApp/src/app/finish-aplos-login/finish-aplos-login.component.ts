@@ -5,7 +5,8 @@ import { AuthService } from '../services/auth.service';
 @Component({
   selector: 'app-finish-aplos-login',
   templateUrl: './finish-aplos-login.component.html',
-  styleUrls: ['./finish-aplos-login.component.css']
+  styleUrls: ['./finish-aplos-login.component.css'],
+  standalone: false
 })
 export class FinishAplosLoginComponent implements OnInit {
 

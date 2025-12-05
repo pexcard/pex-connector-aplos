@@ -23,6 +23,31 @@ import { VendorsSelectComponent } from './vendors-select/vendors-select.componen
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { SelectListComponent } from './select-list/select-list.component';
 import { TruncateModule } from '@yellowspot/ng-truncate';
+import { ClarityIcons, twoWayArrowsIcon, helpIcon, infoCircleIcon, creditCardIcon, successStandardIcon, syncIcon, checkCircleIcon, exclamationCircleIcon, exclamationTriangleIcon, linkIcon, plusIcon, trashIcon, angleIcon, searchIcon, arrowIcon, checkIcon, timesCircleIcon, cogIcon, refreshIcon, disconnectIcon, banIcon } from '@cds/core/icon';
+
+ClarityIcons.addIcons(
+  twoWayArrowsIcon,
+  helpIcon,
+  infoCircleIcon,
+  creditCardIcon,
+  successStandardIcon,
+  syncIcon,
+  checkCircleIcon,
+  exclamationCircleIcon,
+  exclamationTriangleIcon,
+  linkIcon,
+  plusIcon,
+  trashIcon,
+  angleIcon,
+  searchIcon,
+  arrowIcon,
+  checkIcon,
+  timesCircleIcon,
+  cogIcon,
+  refreshIcon,
+  disconnectIcon,
+  banIcon
+);
 
 @NgModule({
   declarations: [

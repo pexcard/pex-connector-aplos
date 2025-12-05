@@ -103,7 +103,7 @@
           <div class="alert-items">
             <div class="alert-item static">
               <div class="alert-icon-wrapper">
-                <clr-icon class="alert-icon" shape="exclamation-triangle"></clr-icon>
+                <cds-icon class="alert-icon" shape="exclamation-triangle"></cds-icon>
               </div>
               <span class="alert-text">
                 Sorry, we don't seem to have your Aplos customer ID on file so can't connect your PEX account to Aplos.
@@ -133,7 +133,7 @@
           <div class="clr-row clr-justify-content-around" *ngIf="!verifyingAplosAuthentication && !redirectingToAplosAuth">
             <div class="clr-col-6">
               <button type="button" class="btn btn-primary " aria-label="add" (click)="onAplosPartnerVerification()">
-                <clr-icon shape="link" size="36"></clr-icon>
+                <cds-icon shape="link" size="36"></cds-icon>
                 <span>Connect to Aplos</span>
               </button>
             </div>
@@ -155,7 +155,7 @@
           <div class="alert-items">
             <div class="alert-item static">
               <div class="alert-icon-wrapper">
-                <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+                <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
               </div>
               <div>You can save 1% of all vendor spend with a PEX Vendor Card.</div>
             </div>
@@ -163,7 +163,7 @@
         </div>
         <clr-dropdown [clrCloseMenuOnItemClick]="true">
           <button class="btn btn-link" clrDropdownTrigger>SORT BY
-            <clr-icon shape="caret down"></clr-icon>
+            <cds-icon shape="angle down"></cds-icon>
           </button>
           <clr-dropdown-menu clrPosition="bottom" *clrIfOpen>
             <div clrDropdownItem (click)="onSortAtoZ()">A to Z</div>
@@ -197,7 +197,7 @@
           <div class="alert-items">
             <div class="alert-item static">
               <div class="alert-icon-wrapper">
-                <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+                <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
               </div>
               <span *ngIf="connectionDetails.isPrepaid" class="alert-text">Add optional initial funding<span *ngIf="connectionDetails.useBusinessBalanceEnabled">, or use auto funding,</span> for your vendor cards. <span *ngIf="availableBalance >= 0">You have {{availableBalance | currency}} available for funding.</span></span>
               <span *ngIf="connectionDetails.isCredit" class="alert-text">Add a required card limit for each vendor card.</span>
@@ -246,7 +246,7 @@
           <div class="alert-items">
             <div *ngIf="availableBalance < 0" class="alert-item static">
               <div class="alert-icon-wrapper">
-                <clr-icon class="alert-icon" shape="exclamation-circle"></clr-icon>
+                <cds-icon class="alert-icon" shape="exclamation-circle"></cds-icon>
               </div>
               <span class="alert-text">You don't have enough available balance to continue! <a target="_blank" href="https://dashboard.pexcard.com/transactions/transfers/make-transfer">Click here</a> to fund your account.</span>
             </div>
@@ -276,7 +276,7 @@
             <div class="alert-items">
               <div class="alert-item static">
                 <div class="alert-icon-wrapper">
-                  <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+                  <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
                 </div>
                 <span class="alert-text">You can save {{selectedSaveAmount | currency}} of your vendor spend with a PEX vendor card(s) <span class="red-star">*</span></span>
               </div>
@@ -301,9 +301,9 @@
   <div class="alert-items">
     <div class="alert-item static">
       <div class="alert-icon-wrapper">
-        <clr-icon class="alert-icon" shape="exclamation-circle"></clr-icon>
+        <cds-icon class="alert-icon" shape="exclamation-circle"></cds-icon>
       </div>
-      <span class="alert-text">Creating vendor cards failed. Please contact <code>appsupport@pexcard.com</code>.</span>
+      <span class="alert-text">Creating vendor cards failed. Please contact <code>appsupport&#64;pexcard.com</code>.</span>
     </div>
   </div>
 </div>

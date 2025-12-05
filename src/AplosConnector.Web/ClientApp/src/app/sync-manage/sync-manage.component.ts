@@ -8,7 +8,8 @@ import { PexConnectionDetailModel, PexService } from '../services/pex.service';
 @Component({
   selector: 'app-sync-manage',
   templateUrl: './sync-manage.component.html',
-  styleUrls: ['./sync-manage.component.css']
+  styleUrls: ['./sync-manage.component.css'],
+  standalone: false
 })
 export class SyncManageComponent implements OnInit {
 

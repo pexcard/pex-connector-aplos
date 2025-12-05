@@ -11,7 +11,8 @@ import { CreateVendorCard, PexConnectionDetailModel, PexService } from "../servi
 @Component({
   selector: "app-vendors-select",
   templateUrl: "./vendors-select.component.html",
-  styleUrls: ["./vendors-select.component.css"]
+  styleUrls: ["./vendors-select.component.css"],
+  standalone: false
 })
 export class VendorsSelectComponent implements OnInit, OnDestroy {
   sessionId: string;
