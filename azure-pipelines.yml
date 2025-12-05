@@ -54,7 +54,7 @@ steps:
 
 - task: NodeTool@0
   inputs:
-    versionSpec: '18.x'
+    versionSpec: '22.x'
   displayName: 'Install node.js'
 
 - script: dotnet publish src --configuration $(buildConfiguration)
