@@ -26,35 +26,6 @@ a:not(.btn, .nav-link, .dropdown-item, .label, .alert-action, .badge, .clr-treen
   font-size: unset !important;
 }
 
-button.btn-icon-text {
-  cds-icon {
-    margin-right: 0.3rem;
-  }
-}
-
-clr-dg-column.center .datagrid-column-title {
-  justify-content: center;
-  text-align: center !important;
-}
-clr-dg-cell.center {
-  display: flex;
-  justify-content: center;
-}
-clr-checkbox-container clr-control-helper {
-  margin-top: 0 !important;
-}
-
-.card-block-header {
-  margin-top: 0;
-  margin-bottom: 0;
-  font-family: var(--clr-h4-font-family);
-  color: var(--clr-h4-color);
-  font-size: var(--clr-h4-font-size);
-  font-weight: var(--clr-h4-font-weight);
-  line-height: var(--clr-h4-line-height);
-  letter-spacing: var(--clr-h4-letter-spacing);
-}
-
 .pex-color {
   color: #249ce0;
 }
