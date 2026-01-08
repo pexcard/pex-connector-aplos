@@ -35,11 +35,11 @@
     <div class="items-action-container">
       <button (click)="moveSelectedToRight()" [disabled]="allItems.length === 0 || (maxSelectedItems > 0 && selectedItems.length === maxSelectedItems)" aria-label="arrow"
               class="btn btn-icon items-btn move-to-suggested" type="button">
-        <cds-icon dir="right" shape="arrow" size="16"></cds-icon>
+        <cds-icon direction="right" shape="arrow" size="16"></cds-icon>
       </button>
       <button (click)="moveSelectedToLeft()" [disabled]="selectedItems.length === 0" aria-label="arrow"
               class="btn btn-icon items-btn move-back" type="button">
-        <cds-icon dir="left" shape="arrow" size="16"></cds-icon>
+        <cds-icon direction="left" shape="arrow" size="16"></cds-icon>
       </button>
       <button class="btn btn-sm btn-link" (click)="reset()">RESET</button>
     </div>

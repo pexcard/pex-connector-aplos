@@ -38,15 +38,15 @@
         <div class="clr-col-auto">
              <strong>
             <span *ngIf="connection.pexConnection && connection.aplosConnection">
-              <cds-icon *ngIf="connection.pexConnection" shape="check" size="md" role="img" class="is-success"></cds-icon>
+              <cds-icon *ngIf="connection.pexConnection" shape="check" size="md" role="img" status="success"></cds-icon>
               Valid connections
             </span>
             <span *ngIf="!connection.pexConnection">
-              <cds-icon shape="times-circle" size="md" role="img" class="is-error"></cds-icon>
+              <cds-icon shape="times-circle" size="md" role="img" status="danger"></cds-icon>
               Invalid PEX connection
             </span>
             <span *ngIf="!connection.aplosConnection">
-              <cds-icon shape="times-circle" size="md" role="img" class="is-error"></cds-icon>
+              <cds-icon shape="times-circle" size="md" role="img" status="danger"></cds-icon>
               Invalid Aplos connection
             </span>
              </strong>
@@ -100,11 +100,11 @@
               <cds-icon
                 *ngIf="settings.syncTags"
                 shape="success-standard"
-                      class="is-solid is-success"></cds-icon>
+                      solid status="success"></cds-icon>
               <cds-icon
                 *ngIf="!settings.syncTags"
                 shape="ban"
-                      class="is-solid is-error"></cds-icon>
+                      solid status="danger"></cds-icon>
             </td>
           </tr>
           <tr *ngIf="isPrepaid">
@@ -113,11 +113,11 @@
               <cds-icon
                 *ngIf="settings.syncTransactions"
                 shape="success-standard"
-                      class="is-solid is-success"></cds-icon>
+                      solid status="success"></cds-icon>
               <cds-icon
                 *ngIf="!settings.syncTransactions"
                 shape="ban"
-                      class="is-solid is-error"></cds-icon>&nbsp;
+                      solid status="danger"></cds-icon>&nbsp;
   
             <span *ngIf="settings.syncTransactions && settings.syncApprovedOnly">Approved</span>
               <span
@@ -127,8 +127,8 @@
           <tr *ngIf="isPrepaid">
             <th>Sync rebates</th>
             <td>
-              <cds-icon *ngIf="settings.syncRebates" shape="success-standard" class="is-solid is-success"></cds-icon>
-              <cds-icon *ngIf="!settings.syncRebates" shape="ban" class="is-solid is-error"></cds-icon>
+              <cds-icon *ngIf="settings.syncRebates" shape="success-standard" solid status="success"></cds-icon>
+              <cds-icon *ngIf="!settings.syncRebates" shape="ban" solid status="danger"></cds-icon>
             </td>
           </tr>
           <tr *ngIf="isPrepaid">
@@ -137,11 +137,11 @@
               <cds-icon
                 *ngIf="settings.syncTransfers"
                 shape="success-standard"
-                      class="is-solid is-success"></cds-icon>
+                      solid status="success"></cds-icon>
               <cds-icon
                 *ngIf="!settings.syncTransfers"
                 shape="ban"
-                      class="is-solid is-error"></cds-icon>
+                      solid status="danger"></cds-icon>
             </td>
           </tr>
           <tr *ngIf="isPrepaid">
@@ -150,11 +150,11 @@
               <cds-icon
                 *ngIf="settings.syncPexFees"
                 shape="success-standard"
-                      class="is-solid is-success"></cds-icon>
+                      solid status="success"></cds-icon>
               <cds-icon
                 *ngIf="!settings.syncPexFees"
                 shape="ban"
-                      class="is-solid is-error"></cds-icon>
+                      solid status="danger"></cds-icon>
             </td>
           </tr>
           <tr *ngIf="isCredit">
@@ -163,11 +163,11 @@
               <cds-icon
                 *ngIf="settings.syncInvoices"
                 shape="success-standard"
-                      class="is-solid is-success"></cds-icon>
+                      solid status="success"></cds-icon>
               <cds-icon
                 *ngIf="!settings.syncInvoices"
                 shape="ban"
-                      class="is-solid is-error"></cds-icon>
+                      solid status="danger"></cds-icon>
             </td>
           </tr>
         <tr>
@@ -176,11 +176,11 @@
               <cds-icon
                 *ngIf="settings.syncTaxTagToPex"
                 shape="success-standard"
-                      class="is-solid is-success"></cds-icon>
+                      solid status="success"></cds-icon>
               <cds-icon
                 *ngIf="!settings.syncTaxTagToPex"
                 shape="ban"
-                      class="is-solid is-error"></cds-icon>
+                      solid status="danger"></cds-icon>
             </td>
           </tr>                
           <tr>
@@ -237,11 +237,11 @@
                 <cds-icon
                   *ngIf="settings.syncTags && settings.syncFundsToPex"
                   shape="success-standard"
-                      class="is-solid is-success"></cds-icon>
+                      solid status="success"></cds-icon>
                 <cds-icon
                   *ngIf="!(settings.syncTags && settings.syncFundsToPex)"
                   shape="ban"
-                      class="is-solid is-error"></cds-icon>
+                      solid status="danger"></cds-icon>
               </td>
             </tr>
             <tr *ngFor="let accountMapping of tagNameAccount">
@@ -253,11 +253,11 @@
                 <cds-icon
                   *ngIf="settings.syncTags && accountMapping.syncExpenseAccounts"
                   shape="success-standard"
-                      class="is-solid is-success"></cds-icon>
+                      solid status="success"></cds-icon>
                 <cds-icon
                   *ngIf="!(settings.syncTags && accountMapping.syncExpenseAccounts)"
                   shape="ban"
-                      class="is-solid is-error"></cds-icon>
+                      solid status="danger"></cds-icon>
               </td>
             </tr>
             <tr *ngFor="let tagMapping of tagMappings">
@@ -271,11 +271,11 @@
                 <cds-icon
                   *ngIf="settings.syncTags && tagMapping.syncToPex"
                   shape="success-standard"
-                      class="is-solid is-success"></cds-icon>
+                      solid status="success"></cds-icon>
                 <cds-icon
                   *ngIf="!(settings.syncTags && tagMapping.syncToPex)"
                   shape="ban"
-                      class="is-solid is-error"></cds-icon>
+                      solid status="danger"></cds-icon>
               </td>
             </tr>
           </tbody>
