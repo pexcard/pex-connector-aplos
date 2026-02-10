@@ -50,6 +50,7 @@
       "Bash(git show *)",
       "Bash(git blame *)",
       "Bash(git -C *)",
+      "Bash(az version)",
       "Bash(az devops configure *)",
       "Bash(az devops project list *)",
       "Bash(az boards work-item show *)",
