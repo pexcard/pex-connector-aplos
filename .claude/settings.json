@@ -1,10 +1,12 @@
 {
   "permissions": {
     "allow": [
+      "Search(*)",
       "Read(*)",
       "Edit(*)",
       "Write(*)",
-      "Search(*)",
+      "WebSearch",
+      "WebFetch(*)",
       "Bash(echo *)",
       "Bash(dir *)",
       "Bash(cd *)",
@@ -14,8 +16,6 @@
       "Bash(mkdir *)",
       "Bash(rm *)",
       "Bash(grep *)",
-      "WebSearch",
-      "WebFetch(*)",
       "Bash(curl *)",
       "Bash(tree *)",
       "Bash(nvm *)",
@@ -65,7 +65,7 @@
       "Bash(git revert *)",
       "Bash(git remote *)",
       "Bash(git merge *)",
-      "Bash(git rebase *)",      
+      "Bash(git rebase *)",
       "Bash(git clean *)"
     ],
     "deny": [
@@ -79,6 +79,17 @@
   },
   "hooks": {
     "PostToolUse": [],
-    "PreToolUse": []
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "filePath": "package-lock.json",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'BLOCK: Do not edit package-lock.json directly' && exit 1"
+          }
+        ]
+      }
+    ]
   }
 }
