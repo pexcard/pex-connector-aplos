@@ -1,0 +1,83 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Search(*)",
+      "Bash(echo:*)",
+      "Bash(dir:*)",
+      "Bash(cd:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "Bash(grep:*)",
+      "WebSearch",
+      "WebFetch(*)",
+      "Bash(curl:*)",
+      "Bash(tree:*)",
+      "Bash(nvm:*)",
+      "Bash(node:*)",
+      "Bash(npm init:*)",
+      "Bash(npm ci:*)",
+      "Bash(npm i:*)",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(npm pack:*)",
+      "Bash(npm start:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm outdated:*)",
+      "Bash(npm update:*)",
+      "Bash(npm info:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm view:*)",
+      "Bash(npx:*)",
+      "Bash(dotnet:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git stash:*)",
+      "Bash(az devops configure:*)",
+      "Bash(az devops project list:*)",
+      "Bash(az boards work-item show:*)",
+      "Bash(az repos list:*)",
+      "Bash(az repos show:*)",
+      "Bash(az repos pr:*)"
+    ],
+    "ask": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git reset:*)",
+      "Bash(git revert:*)"
+    ],
+    "deny": [
+      "Bash(npm install -g *)",
+      "Bash(dotnet tool install *)",
+      "Bash(git push --force origin master*)",
+      "Bash(git push --force origin main*)",
+      "Bash(git push -f origin master*)",
+      "Bash(git push -f origin main*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "filePath": "package-lock.json",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'BLOCK: Do not edit package-lock.json directly' && exit 1"
+          }
+        ]
+      }
+    ]
+  }
+}
