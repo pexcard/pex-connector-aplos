@@ -14,8 +14,8 @@
       "Bash(findstr *)",
       "Bash(ls *)",
       "Bash(mkdir *)",
-      "Bash(rm *)",
       "Bash(grep *)",
+      "Bash(cat *)",
       "Bash(curl *)",
       "Bash(tree *)",
       "Bash(nvm *)",
@@ -59,6 +59,10 @@
       "Bash(az repos pr *)"
     ],
     "ask": [
+      "Bash(rm *)",
+      "Bash(rm -rf *)",
+      "Bash(rm -rf .)",
+      "Bash(del *)",
       "Bash(git config *)",
       "Bash(git add *)",
       "Bash(git commit *)",
@@ -71,6 +75,7 @@
       "Bash(git clean *)"
     ],
     "deny": [
+      "Bash(rm -rf /)",
       "Bash(npm install -g *)",
       "Bash(dotnet tool install *)",
       "Bash(git push --force origin master*)",
@@ -80,18 +85,28 @@
     ]
   },
   "hooks": {
-    "PostToolUse": [],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write",
-        "filePath": "package-lock.json",
+        "matcher": "Read|Edit|Write",
+        "filePath": ".env*|*secret*|*.pem|*.key|*.p12|*.pfx|*.crt|*.cer|*.jks|*.keystore|*.private|*password*|*token*|*credential*",
         "hooks": [
           {
             "type": "command",
-            "command": "echo 'BLOCK: Do not edit package-lock.json directly' && exit 1"
+            "command": "bash -c \"echo 'File access blocked: Sensitive file access denied by Claude settings hook.' && exit 1\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "filePath": "package-lock.json|yarn.lock|composer.lock|go.sum|pipfile.lock|pnpm-lock.yaml",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c \"echo 'File edit blocked: Auto-generated lock file access denied by Claude settings hook.' && exit 1\""
           }
         ]
       }
-    ]
+    ],
+    "Stop": []
   }
 }
