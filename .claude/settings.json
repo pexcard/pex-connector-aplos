@@ -60,8 +60,6 @@
     ],
     "ask": [
       "Bash(rm *)",
-      "Bash(rm -rf *)",
-      "Bash(rm -rf .)",
       "Bash(del *)",
       "Bash(git config *)",
       "Bash(git add *)",
@@ -75,6 +73,8 @@
       "Bash(git clean *)"
     ],
     "deny": [
+      "Bash(rm -rf *)",
+      "Bash(rm -rf .)",
       "Bash(rm -rf /)",
       "Bash(npm install -g *)",
       "Bash(dotnet tool install *)",
