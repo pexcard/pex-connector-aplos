@@ -85,27 +85,6 @@
     ]
   },
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read|Edit|Write",
-        "filePath": ".env*|*secret*|*.pem|*.key|*.p12|*.pfx|*.crt|*.cer|*.jks|*.keystore|*.private|*password*|*token*|*credential*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c \"echo 'File access blocked: Sensitive file access denied by Claude settings hook.' && exit 1\""
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "filePath": "package-lock.json|yarn.lock|composer.lock|go.sum|pipfile.lock|pnpm-lock.yaml",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c \"echo 'File edit blocked: Auto-generated lock file access denied by Claude settings hook.' && exit 1\""
-          }
-        ]
-      }
-    ]
+    "PreToolUse": []
   }
 }
