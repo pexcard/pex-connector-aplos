@@ -45,6 +45,7 @@
       "Bash(git diff *)",
       "Bash(git checkout *)",
       "Bash(git branch)",
+      "Bash(git mv *)",
       "Bash(git stash *)",
       "Bash(git tag *)",
       "Bash(git show *)",
