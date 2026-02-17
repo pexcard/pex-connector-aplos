@@ -1590,11 +1590,11 @@ namespace AplosConnector.Common.Services
                                 continue;
                             }
 
-                            // NOTE: we use positive for the rebate-credit and negative for rebate-credit-reversal so that we
-                            // - debit (⬆️) the payment bank account [AplosRegisterAccountNumber (TransfersAplosTransactionAccountNumber)]
-                            // - credit (⬇️) the rebate income account [AplosTransactionAccountNumber (PexRebatesAplosTransactionAccountNumber)]
-                            // in the SyncInvoice method
-                            var amount = invoiceRebate.Type == PaymentType.RebateCredit ? invoiceRebate.Amount : -invoiceRebate.Amount;
+                            // NOTE: we use negative for the rebate-credit and positive for rebate-credit-reversal so that we
+                            // - debit (⬆️) the payment bank account [AplosTransactionAccountNumber (TransfersAplosTransactionAccountNumber)]
+                            // - credit (⬇️) the rebate income account [AplosRegisterAccountNumber (PexRebatesAplosTransactionAccountNumber)]
+                            // in the SyncInvoice method and so the invoice total is correct.
+                            var amount = invoiceRebate.Type == PaymentType.RebateCredit ? -invoiceRebate.Amount : invoiceRebate.Amount;
 
                             var allocationTagValue = new AllocationTagValue
                             {
@@ -1604,10 +1604,10 @@ namespace AplosConnector.Common.Services
 
                             var pexTagValues = new PexTagValuesModel
                             {
-                                AplosRegisterAccountNumber = mapping.TransfersAplosTransactionAccountNumber,
+                                AplosRegisterAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber,
                                 AplosContactId = mapping.PexRebatesAplosContactId,
                                 AplosFundId = mapping.PexRebatesAplosFundId,
-                                AplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber,
+                                AplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber,
                                 AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
                             };
 
