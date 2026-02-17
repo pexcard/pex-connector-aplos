@@ -523,7 +523,8 @@ namespace AplosConnector.Common.Services
                     mapping.IsSyncing = true;
                     await _mappingStorage.UpdateAsync(mapping, cancellationToken);
 
-                    List<TransactionModel> additionalFees = default;
+                    List<TransactionModel> additionalFees = [];
+
                     try
                     {
                         additionalFees = await SyncTransactions(_logger, mapping, utcNow, cancellationToken);
@@ -1523,9 +1524,7 @@ namespace AplosConnector.Common.Services
                             continue;
                         }
 
-                        List<InvoiceAllocationModel> invoiceAllocations;
-
-                        invoiceAllocations = await _pexApiClient.GetInvoiceAllocations(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+                        var invoiceAllocations = await _pexApiClient.GetInvoiceAllocations(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
 
                         var allocationDetails = new List<(AllocationTagValue allocation, PexTagValuesModel pexTagValues)>();
                         var totalAllocationsAmount = 0m;
@@ -1561,7 +1560,7 @@ namespace AplosConnector.Common.Services
                                 AplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber
                             };
 
-                            // Apply default tag values from transfer tag mappings for invoices
+                            // Apply default tag values from transfer tag mappings for invoice allocations
                             ApplyTagMappingsToTagValues(pexTagValues, mapping.TransferTagMappings, _logger);
 
                             allocationDetails.Add((allocationTagValue, pexTagValues));
@@ -1577,8 +1576,7 @@ namespace AplosConnector.Common.Services
 
                         // Add rebates
                         var hasRebateError = false;
-
-                        foreach (var invoicePayment in invoicePayments.Where(invoicePayment => invoicePayment.Type is PaymentType.RebateCredit or PaymentType.RebateCreditReversal))
+                        foreach (var invoiceRebate in invoicePayments.Where(invoicePayment => invoicePayment.Type is PaymentType.RebateCredit or PaymentType.RebateCreditReversal))
                         {
                             var pexRebatesAplosFundIdString = mapping.PexRebatesAplosFundId.ToString();
 
@@ -1592,7 +1590,11 @@ namespace AplosConnector.Common.Services
                                 continue;
                             }
 
-                            var amount = invoicePayment.Type == PaymentType.RebateCredit ? -invoicePayment.Amount : invoicePayment.Amount;
+                            // NOTE: we use positive for the rebate-credit and negative for rebate-credit-reversal so that we
+                            // - debit (⬆️) the payment bank account [AplosRegisterAccountNumber (TransfersAplosTransactionAccountNumber)]
+                            // - credit (⬇️) the rebate income account [AplosTransactionAccountNumber (PexRebatesAplosTransactionAccountNumber)]
+                            // in the SyncInvoice method
+                            var amount = invoiceRebate.Type == PaymentType.RebateCredit ? invoiceRebate.Amount : -invoiceRebate.Amount;
 
                             var allocationTagValue = new AllocationTagValue
                             {
@@ -1602,14 +1604,14 @@ namespace AplosConnector.Common.Services
 
                             var pexTagValues = new PexTagValuesModel
                             {
-                                AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
+                                AplosRegisterAccountNumber = mapping.TransfersAplosTransactionAccountNumber,
                                 AplosContactId = mapping.PexRebatesAplosContactId,
                                 AplosFundId = mapping.PexRebatesAplosFundId,
                                 AplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber,
                                 AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
                             };
 
-                            // Apply default tag values from rebate tag mappings for invoice rebates
+                            // Apply default tag values from transfer tag mappings for invoice rebates
                             ApplyTagMappingsToTagValues(pexTagValues, mapping.TransferTagMappings, _logger);
 
                             allocationDetails.Add((allocationTagValue, pexTagValues));
