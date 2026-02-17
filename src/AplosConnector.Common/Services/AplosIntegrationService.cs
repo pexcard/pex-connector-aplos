@@ -1616,10 +1616,58 @@ namespace AplosConnector.Common.Services
 
                             allocationDetails.Add((allocationTagValue, pexTagValues));
                         }
-
                         if (hasRebateError)
                         {
                             _logger.LogWarning($"Failed syncing invoice {invoiceModel.InvoiceId}. Incorrect rebates configuration.");
+                            failureCount++;
+                            continue;
+                        }
+
+                        // Add carry-over credits
+                        var hasCarryOverCreditError = false;
+                        foreach (var invoiceCarryOverCredit in invoicePayments.Where(invoicePayment => invoicePayment.Type is PaymentType.CarryOverCredit))
+                        {
+                            var pexRebatesAplosFundIdString = mapping.PexRebatesAplosFundId.ToString();
+
+                            if (mapping.PexRebatesAplosContactId == 0
+                                || mapping.PexRebatesAplosFundId == 0
+                                || mapping.PexRebatesAplosTransactionAccountNumber == decimal.Zero
+                                || mapping.SyncTaxTagToPex && string.IsNullOrEmpty(mapping.PexRebatesAplosTaxTagId)
+                                || aplosFunds.All(f => f.Id != pexRebatesAplosFundIdString))
+                            {
+                                hasCarryOverCreditError = true;
+                                continue;
+                            }
+
+                            // NOTE: we use negative for the carry-over-credit so that we
+                            // - debit (⬆️) the payment bank account [AplosTransactionAccountNumber (TransfersAplosTransactionAccountNumber)]
+                            // - credit (⬇️) the rebate income account [AplosRegisterAccountNumber (PexRebatesAplosTransactionAccountNumber)]
+                            // in the SyncInvoice method and so the invoice total is correct.
+                            var amount = -invoiceCarryOverCredit.Amount;
+
+                            var allocationTagValue = new AllocationTagValue
+                            {
+                                Amount = amount,
+                                Allocation = new List<TagValueItem> { new() { Value = pexRebatesAplosFundIdString } }
+                            };
+
+                            var pexTagValues = new PexTagValuesModel
+                            {
+                                AplosRegisterAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber,
+                                AplosContactId = mapping.PexRebatesAplosContactId,
+                                AplosFundId = mapping.PexRebatesAplosFundId,
+                                AplosTransactionAccountNumber = mapping.TransfersAplosTransactionAccountNumber,
+                                AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
+                            };
+
+                            // Apply default tag values from transfer tag mappings for invoice carry-over credits
+                            ApplyTagMappingsToTagValues(pexTagValues, mapping.TransferTagMappings, _logger);
+
+                            allocationDetails.Add((allocationTagValue, pexTagValues));
+                        }
+                        if (hasCarryOverCreditError)
+                        {
+                            _logger.LogWarning($"Failed syncing invoice {invoiceModel.InvoiceId}. Incorrect rebates configuration for carry-over credits.");
                             failureCount++;
                             continue;
                         }
