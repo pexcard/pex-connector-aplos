@@ -18,6 +18,16 @@
   display: inline;
 }
 
+.multi-line-toggle {
+  height: unset;
+}
+
+.multi-line-toggle label {
+  height: unset;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
 .table {
   margin-top: 10px;
 }
@@ -46,8 +56,4 @@
   margin-bottom: -1px;
   background-color: #fafafa;
   padding: 3px;
-}
-
-.display-inline {
-  display: inline;
 }
