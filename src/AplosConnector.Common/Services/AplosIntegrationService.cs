@@ -1627,11 +1627,7 @@ namespace AplosConnector.Common.Services
                     Fund = new AplosApiFundDetail { Id = aplosFundId },
                 };
 
-                // Apply tags from transfer tag mappings
-                var debitTagValues = new PexTagValuesModel();
-                ApplyTagMappingsToTagValues(debitTagValues, mapping.TransferTagMappings, logger);
-                ApplyTagsToLine(debitLine, debitTagValues);
-
+                // No tags on register-side (debit) lines — matches SyncTransaction convention
                 debitLines.Add(debitLine);
                 totalAllocationsAmount += allocation.TotalAmount;
             }
@@ -1679,14 +1675,7 @@ namespace AplosConnector.Common.Services
                         Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
                     };
 
-                    // Apply tags and tax tag
-                    var creditTagValues = new PexTagValuesModel
-                    {
-                        AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
-                    };
-                    ApplyTagMappingsToTagValues(creditTagValues, mapping.TransferTagMappings, logger);
-                    ApplyTagsToLine(creditLine, creditTagValues);
-
+                    // No tags on register-side (rebate income) lines — matches SyncTransaction convention
                     creditLines.Add(creditLine);
                 }
             }
@@ -1704,6 +1693,12 @@ namespace AplosConnector.Common.Services
                     Amount = -cashPaymentTotal,
                     Fund = new AplosApiFundDetail { Id = mapping.TransfersAplosFundId },
                 };
+
+                // Tags on transaction-side (checking) line — matches SyncTransaction convention
+                var checkingTagValues = new PexTagValuesModel();
+                ApplyTagMappingsToTagValues(checkingTagValues, mapping.TransferTagMappings, logger);
+                ApplyTagsToLine(checkingLine, checkingTagValues);
+
                 creditLines.Add(checkingLine);
             }
 
@@ -1757,16 +1752,13 @@ namespace AplosConnector.Common.Services
 
                 var aplosFundId = isFeeAllocation ? mapping.PexFeesAplosFundId : tagValue;
 
-                // Debit: Register (liability) account, +amount
+                // Debit: Register (liability) account, +amount — no tags (register-side convention)
                 var debitLine = new AplosApiTransactionLineDetail
                 {
                     Account = new AplosApiAccountDetail { AccountNumber = mapping.AplosRegisterAccountNumber },
                     Amount = allocation.TotalAmount,
                     Fund = new AplosApiFundDetail { Id = aplosFundId },
                 };
-                var debitTagValues = new PexTagValuesModel();
-                ApplyTagMappingsToTagValues(debitTagValues, mapping.TransferTagMappings, logger);
-                ApplyTagsToLine(debitLine, debitTagValues);
                 lines.Add(debitLine);
 
                 // Credit: Checking (asset) account, -amount (same fund)
@@ -1819,29 +1811,26 @@ namespace AplosConnector.Common.Services
                         ? payment.Amount
                         : -payment.Amount;
 
-                    // Credit: RebateIncome account, -amount (or +amount for reversal), rebate fund — with tax tag
+                    // Credit: RebateIncome account, -amount (or +amount for reversal), rebate fund — no tags (register-side convention)
                     var rebateIncomeLine = new AplosApiTransactionLineDetail
                     {
                         Account = new AplosApiAccountDetail { AccountNumber = mapping.PexRebatesAplosTransactionAccountNumber },
                         Amount = amount,
                         Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
                     };
-                    var rebateIncomeTagValues = new PexTagValuesModel
-                    {
-                        AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
-                    };
-                    ApplyTagMappingsToTagValues(rebateIncomeTagValues, mapping.TransferTagMappings, logger);
-                    ApplyTagsToLine(rebateIncomeLine, rebateIncomeTagValues);
                     lines.Add(rebateIncomeLine);
 
-                    // Debit: Checking account, +amount (or -amount for reversal), rebate fund — no tax tag
+                    // Debit: Checking account, +amount (or -amount for reversal), rebate fund — tags + tax tag (transaction-side convention)
                     var checkingOffsetLine = new AplosApiTransactionLineDetail
                     {
                         Account = new AplosApiAccountDetail { AccountNumber = mapping.TransfersAplosTransactionAccountNumber },
                         Amount = -amount,
                         Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
                     };
-                    var checkingOffsetTagValues = new PexTagValuesModel();
+                    var checkingOffsetTagValues = new PexTagValuesModel
+                    {
+                        AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
+                    };
                     ApplyTagMappingsToTagValues(checkingOffsetTagValues, mapping.TransferTagMappings, logger);
                     ApplyTagsToLine(checkingOffsetLine, checkingOffsetTagValues);
                     lines.Add(checkingOffsetLine);
