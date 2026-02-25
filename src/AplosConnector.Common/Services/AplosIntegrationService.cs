@@ -1529,13 +1529,13 @@ namespace AplosConnector.Common.Services
                         var transactionSyncResult = TransactionSyncResult.Failed;
                         try
                         {
-                            switch (mapping.SyncInvoiceMethod)
+                            switch (mapping.SyncInvoicesMethod)
                             {
-                                case "Balanced":
+                                case "balanced":
                                     transactionSyncResult = await SyncInvoiceBalanced(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
                                     break;
                                 default:
-                                case "Unbalanced":
+                                case "unbalanced":
                                     transactionSyncResult = await SyncInvoiceUnbalanced(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
                                     break;
                             }

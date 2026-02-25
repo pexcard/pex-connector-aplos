@@ -94,6 +94,6 @@ namespace AplosConnector.Common.Entities
         public string RowKey { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
-        public string SyncInvoiceMethod { get; set; }
+        public string SyncInvoicesMethod { get; set; }
     }
 }
