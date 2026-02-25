@@ -1529,7 +1529,16 @@ namespace AplosConnector.Common.Services
                         var transactionSyncResult = TransactionSyncResult.Failed;
                         try
                         {
-                            transactionSyncResult = await SyncInvoiceBalanced(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                            switch (mapping.SyncInvoiceMethod)
+                            {
+                                case "Balanced":
+                                    transactionSyncResult = await SyncInvoiceBalanced(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                    break;
+                                default:
+                                case "Unbalanced":
+                                    transactionSyncResult = await SyncInvoiceUnbalanced(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                    break;
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -1540,7 +1549,7 @@ namespace AplosConnector.Common.Services
                         if (transactionSyncResult == TransactionSyncResult.Success)
                         {
                             syncCount++;
-                            _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos");
+                            _logger.LogInformation($"Synced invoice {invoiceModel.InvoiceId} with Aplos.");
                         }
                         else if (transactionSyncResult == TransactionSyncResult.Failed)
                         {
@@ -1590,6 +1599,8 @@ namespace AplosConnector.Common.Services
             ILogger logger,
             CancellationToken cancellationToken)
         {
+            logger.LogInformation($"Syncing invoice {invoice.InvoiceId} using unbalanced method.");
+
             // --- A. Debit lines from allocations (Liability per fund) ---
             var debitLines = new List<AplosApiTransactionLineDetail>();
             var totalAllocationsAmount = 0m;
@@ -1725,6 +1736,8 @@ namespace AplosConnector.Common.Services
             ILogger logger,
             CancellationToken cancellationToken)
         {
+            logger.LogInformation($"Syncing invoice {invoice.InvoiceId} using balanced method.");
+
             var lines = new List<AplosApiTransactionLineDetail>();
             var totalAllocationsAmount = 0m;
 

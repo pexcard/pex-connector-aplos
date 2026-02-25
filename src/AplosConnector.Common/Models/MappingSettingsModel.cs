@@ -106,5 +106,6 @@ namespace AplosConnector.Common.Models
         public DateTime? ExpirationEmailLastDate { get; set; }
         public int ExpirationEmailCount { get; set; }
         public bool IsTokenExpired { get; set; }
+        public string SyncInvoiceMethod { get; set; }
     }
 }
