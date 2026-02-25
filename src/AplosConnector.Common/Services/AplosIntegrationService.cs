@@ -1529,7 +1529,7 @@ namespace AplosConnector.Common.Services
                         var transactionSyncResult = TransactionSyncResult.Failed;
                         try
                         {
-                            transactionSyncResult = await SyncInvoice(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                            transactionSyncResult = await SyncInvoiceUnbalanced(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
                         }
                         catch (Exception ex)
                         {
@@ -1581,7 +1581,7 @@ namespace AplosConnector.Common.Services
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
-        private async Task<TransactionSyncResult> SyncInvoice(
+        private async Task<TransactionSyncResult> SyncInvoiceUnbalanced(
             Pex2AplosMappingModel mapping,
             InvoiceModel invoice,
             IReadOnlyList<InvoiceAllocationModel> invoiceAllocations,
