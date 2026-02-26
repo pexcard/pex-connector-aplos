@@ -85,6 +85,7 @@ namespace AplosConnector.Common.Models
             IsTokenExpired = mapping.IsTokenExpired;
 
             SyncInvoicesMethod = mapping.SyncInvoicesMethod;
+            SyncInvoiceAggregate = mapping.SyncInvoiceAggregate;
         }
 
         private static string GetPexTaxTagId(IEnumerable<TagMappingModel> tagMappings)
@@ -166,7 +167,8 @@ namespace AplosConnector.Common.Models
                 ExpirationEmailCount = ExpirationEmailCount,
                 IsTokenExpired = IsTokenExpired,
 
-                SyncInvoicesMethod = SyncInvoicesMethod
+                SyncInvoicesMethod = SyncInvoicesMethod,
+                SyncInvoiceAggregate = SyncInvoiceAggregate
             };
         }
 
@@ -242,6 +244,7 @@ namespace AplosConnector.Common.Models
         public int TotalExpirationEmailCount { get; set; }
         public bool IsTokenExpired { get; set; }
         public string SyncInvoicesMethod { get; set; }
+        public bool SyncInvoiceAggregate { get; set; }
 
         public DateTime GetLastRenewedDateUtc()
         {
