@@ -1532,15 +1532,15 @@ namespace AplosConnector.Common.Services
                         {
                             switch (mapping.SyncInvoicesMethod)
                             {
-                                case "balanced":
-                                    transactionSyncResult = await SyncInvoiceBalanced(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                case "rebatedeposit":
+                                    transactionSyncResult = await SyncInvoiceRebateDeposit(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
                                     break;
-                                case "distribute":
-                                    transactionSyncResult = await SyncInvoiceDistribute(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                case "rebatedistribute":
+                                    transactionSyncResult = await SyncInvoiceRebateDistribute(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
                                     break;
                                 default:
-                                case "unbalanced":
-                                    transactionSyncResult = await SyncInvoiceUnbalanced(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                case "simple":
+                                    transactionSyncResult = await SyncInvoiceSimple(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
                                     break;
                             }
                         }
@@ -1594,7 +1594,7 @@ namespace AplosConnector.Common.Services
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
-        private async Task<TransactionSyncResult> SyncInvoiceUnbalanced(
+        private async Task<TransactionSyncResult> SyncInvoiceSimple(
             Pex2AplosMappingModel mapping,
             InvoiceModel invoice,
             IReadOnlyList<InvoiceAllocationModel> invoiceAllocations,
@@ -1603,7 +1603,7 @@ namespace AplosConnector.Common.Services
             ILogger logger,
             CancellationToken cancellationToken)
         {
-            logger.LogInformation($"Syncing invoice {invoice.InvoiceId} using unbalanced method.");
+            logger.LogInformation($"Syncing invoice {invoice.InvoiceId} using simple method.");
 
             // --- A. Validate allocations vs payments ---
             var totalAllocationsAmount = 0m;
@@ -1659,7 +1659,7 @@ namespace AplosConnector.Common.Services
                     Amount = totalNonCash,
                     Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
                 };
-                lines.AddLine(nonCashDebitLine, mapping.SyncInvoiceAggregate);
+                lines.AddLine(nonCashDebitLine, mapping.SyncInvoiceAggregated);
 
                 var nonCashCreditLine = new AplosApiTransactionLineDetail
                 {
@@ -1667,7 +1667,7 @@ namespace AplosConnector.Common.Services
                     Amount = -totalNonCash,
                     Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
                 };
-                lines.AddLine(nonCashCreditLine, mapping.SyncInvoiceAggregate);
+                lines.AddLine(nonCashCreditLine, mapping.SyncInvoiceAggregated);
             }
 
             // --- C. Cash paired lines (transfer fund) ---
@@ -1683,7 +1683,7 @@ namespace AplosConnector.Common.Services
                     Amount = cashPaymentTotal,
                     Fund = new AplosApiFundDetail { Id = mapping.TransfersAplosFundId },
                 };
-                lines.AddLine(cashDebitLine, mapping.SyncInvoiceAggregate);
+                lines.AddLine(cashDebitLine, mapping.SyncInvoiceAggregated);
 
                 var cashCreditLine = new AplosApiTransactionLineDetail
                 {
@@ -1696,7 +1696,7 @@ namespace AplosConnector.Common.Services
                 ApplyTagMappingsToTagValues(checkingTagValues, mapping.TransferTagMappings, logger);
                 ApplyTagsToLine(cashCreditLine, checkingTagValues);
 
-                lines.AddLine(cashCreditLine, mapping.SyncInvoiceAggregate);
+                lines.AddLine(cashCreditLine, mapping.SyncInvoiceAggregated);
             }
 
             // --- D. Build and submit transaction ---
@@ -1715,7 +1715,7 @@ namespace AplosConnector.Common.Services
             return TransactionSyncResult.Success;
         }
 
-        private async Task<TransactionSyncResult> SyncInvoiceBalanced(
+        private async Task<TransactionSyncResult> SyncInvoiceRebateDeposit(
             Pex2AplosMappingModel mapping,
             InvoiceModel invoice,
             IReadOnlyList<InvoiceAllocationModel> invoiceAllocations,
@@ -1724,7 +1724,7 @@ namespace AplosConnector.Common.Services
             ILogger logger,
             CancellationToken cancellationToken)
         {
-            logger.LogInformation($"Syncing invoice {invoice.InvoiceId} using balanced method.");
+            logger.LogInformation($"Syncing invoice {invoice.InvoiceId} using rebatedeposit method.");
 
             var lines = new List<AplosApiTransactionLineDetail>();
             var totalAllocationsAmount = 0m;
@@ -1752,7 +1752,7 @@ namespace AplosConnector.Common.Services
                     Amount = allocation.TotalAmount,
                     Fund = new AplosApiFundDetail { Id = aplosFundId },
                 };
-                lines.AddLine(debitLine, mapping.SyncInvoiceAggregate);
+                lines.AddLine(debitLine, mapping.SyncInvoiceAggregated);
 
                 // Credit: Checking (asset) account, -amount (same fund)
                 var creditLine = new AplosApiTransactionLineDetail
@@ -1764,7 +1764,7 @@ namespace AplosConnector.Common.Services
                 var creditTagValues = new PexTagValuesModel();
                 ApplyTagMappingsToTagValues(creditTagValues, mapping.TransferTagMappings, logger);
                 ApplyTagsToLine(creditLine, creditTagValues);
-                lines.AddLine(creditLine, mapping.SyncInvoiceAggregate);
+                lines.AddLine(creditLine, mapping.SyncInvoiceAggregated);
 
                 totalAllocationsAmount += allocation.TotalAmount;
             }
@@ -1811,7 +1811,7 @@ namespace AplosConnector.Common.Services
                         Amount = amount,
                         Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
                     };
-                    lines.AddLine(rebateIncomeLine, mapping.SyncInvoiceAggregate);
+                    lines.AddLine(rebateIncomeLine, mapping.SyncInvoiceAggregated);
 
                     // Debit: Checking account, +amount (or -amount for reversal), rebate fund — tags + tax tag (transaction-side convention)
                     var checkingOffsetLine = new AplosApiTransactionLineDetail
@@ -1826,7 +1826,7 @@ namespace AplosConnector.Common.Services
                     };
                     ApplyTagMappingsToTagValues(checkingOffsetTagValues, mapping.TransferTagMappings, logger);
                     ApplyTagsToLine(checkingOffsetLine, checkingOffsetTagValues);
-                    lines.AddLine(checkingOffsetLine, mapping.SyncInvoiceAggregate);
+                    lines.AddLine(checkingOffsetLine, mapping.SyncInvoiceAggregated);
                 }
             }
 
@@ -1850,7 +1850,7 @@ namespace AplosConnector.Common.Services
             return TransactionSyncResult.Success;
         }
 
-        private async Task<TransactionSyncResult> SyncInvoiceDistribute(
+        private async Task<TransactionSyncResult> SyncInvoiceRebateDistribute(
             Pex2AplosMappingModel mapping,
             InvoiceModel invoice,
             IReadOnlyList<InvoiceAllocationModel> invoiceAllocations,
@@ -1859,7 +1859,7 @@ namespace AplosConnector.Common.Services
             ILogger logger,
             CancellationToken cancellationToken)
         {
-            logger.LogInformation($"Syncing invoice {invoice.InvoiceId} using distribute method.");
+            logger.LogInformation($"Syncing invoice {invoice.InvoiceId} using rebatedistribute method.");
 
             var lines = new List<AplosApiTransactionLineDetail>();
             var totalAllocationsAmount = 0m;
@@ -1926,7 +1926,7 @@ namespace AplosConnector.Common.Services
                     Amount = allocationAmount,
                     Fund = new AplosApiFundDetail { Id = aplosFundId },
                 };
-                lines.AddLine(debitLine, mapping.SyncInvoiceAggregate);
+                lines.AddLine(debitLine, mapping.SyncInvoiceAggregated);
 
                 // Line 2: Credit Checking (asset) account, -allocationAmount, allocationFund, tags (no TaxTag)
                 var creditLine = new AplosApiTransactionLineDetail
@@ -1938,7 +1938,7 @@ namespace AplosConnector.Common.Services
                 var creditTagValues = new PexTagValuesModel();
                 ApplyTagMappingsToTagValues(creditTagValues, mapping.TransferTagMappings, logger);
                 ApplyTagsToLine(creditLine, creditTagValues);
-                lines.AddLine(creditLine, mapping.SyncInvoiceAggregate);
+                lines.AddLine(creditLine, mapping.SyncInvoiceAggregated);
 
                 // Pair 2 — Rebate income receipt (only when totalNonCash > 0)
                 if (totalNonCash > 0)
@@ -1965,7 +1965,7 @@ namespace AplosConnector.Common.Services
                             Amount = -proportionalNonCash,
                             Fund = new AplosApiFundDetail { Id = aplosFundId },
                         };
-                        lines.AddLine(rebateIncomeLine, mapping.SyncInvoiceAggregate);
+                        lines.AddLine(rebateIncomeLine, mapping.SyncInvoiceAggregated);
 
                         // Line 4: Debit Checking account, +proportionalNonCash, allocationFund, tags + TaxTag
                         var checkingOffsetLine = new AplosApiTransactionLineDetail
@@ -1980,7 +1980,7 @@ namespace AplosConnector.Common.Services
                         };
                         ApplyTagMappingsToTagValues(checkingOffsetTagValues, mapping.TransferTagMappings, logger);
                         ApplyTagsToLine(checkingOffsetLine, checkingOffsetTagValues);
-                        lines.AddLine(checkingOffsetLine, mapping.SyncInvoiceAggregate);
+                        lines.AddLine(checkingOffsetLine, mapping.SyncInvoiceAggregated);
                     }
                 }
             }
