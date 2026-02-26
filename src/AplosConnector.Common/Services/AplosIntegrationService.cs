@@ -1605,8 +1605,7 @@ namespace AplosConnector.Common.Services
         {
             logger.LogInformation($"Syncing invoice {invoice.InvoiceId} using unbalanced method.");
 
-            // --- A. Debit lines from allocations (Liability per fund) ---
-            var lines = new List<AplosApiTransactionLineDetail>();
+            // --- A. Validate allocations vs payments ---
             var totalAllocationsAmount = 0m;
 
             foreach (var allocation in invoiceAllocations)
@@ -1615,24 +1614,13 @@ namespace AplosConnector.Common.Services
                     && (allocation.TransactionTypeCategory == TransactionCategory.CardAccountFee
                         || allocation.TransactionTypeCategory == TransactionCategory.BusinessAccountFee);
 
-                if ((!int.TryParse(allocation.TagValue, out var tagValue)
+                if ((!int.TryParse(allocation.TagValue, out _)
                      || aplosFunds.All(f => f.Id != allocation.TagValue))
                     && !isFeeAllocation)
                 {
                     continue;
                 }
 
-                var aplosFundId = isFeeAllocation ? mapping.PexFeesAplosFundId : tagValue;
-
-                var debitLine = new AplosApiTransactionLineDetail
-                {
-                    Account = new AplosApiAccountDetail { AccountNumber = mapping.AplosRegisterAccountNumber },
-                    Amount = allocation.TotalAmount,
-                    Fund = new AplosApiFundDetail { Id = aplosFundId },
-                };
-
-                // No tags on register-side (debit) lines — matches SyncTransaction convention
-                lines.AddLine(debitLine, mapping.SyncInvoiceAggregate);
                 totalAllocationsAmount += allocation.TotalAmount;
             }
 
@@ -1644,15 +1632,17 @@ namespace AplosConnector.Common.Services
                 return TransactionSyncResult.Failed;
             }
 
-            // --- B. Credit lines from non-cash payments (Rebate Income) ---
-            var pexRebatesAplosFundIdString = mapping.PexRebatesAplosFundId.ToString();
+            var lines = new List<AplosApiTransactionLineDetail>();
 
-            var nonCashPayments = invoicePayments
+            // --- B. Non-cash paired lines (rebate fund) ---
+            var totalNonCash = invoicePayments
                 .Where(p => p.Type is PaymentType.RebateCredit or PaymentType.RebateCreditReversal or PaymentType.CarryOverCredit)
-                .ToList();
+                .Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
 
-            if (nonCashPayments.Count > 0)
+            if (totalNonCash > 0)
             {
+                var pexRebatesAplosFundIdString = mapping.PexRebatesAplosFundId.ToString();
+
                 if (mapping.PexRebatesAplosContactId == 0
                     || mapping.PexRebatesAplosFundId == 0
                     || mapping.PexRebatesAplosTransactionAccountNumber == decimal.Zero
@@ -1663,48 +1653,53 @@ namespace AplosConnector.Common.Services
                     return TransactionSyncResult.Failed;
                 }
 
-                foreach (var payment in nonCashPayments)
+                var nonCashDebitLine = new AplosApiTransactionLineDetail
                 {
-                    // RebateCreditReversal: positive (debit) to reverse a prior credit
-                    // RebateCredit / CarryOverCredit: negative (credit)
-                    var amount = payment.Type == PaymentType.RebateCreditReversal
-                        ? payment.Amount
-                        : -payment.Amount;
+                    Account = new AplosApiAccountDetail { AccountNumber = mapping.AplosRegisterAccountNumber },
+                    Amount = totalNonCash,
+                    Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
+                };
+                lines.AddLine(nonCashDebitLine, mapping.SyncInvoiceAggregate);
 
-                    var creditLine = new AplosApiTransactionLineDetail
-                    {
-                        Account = new AplosApiAccountDetail { AccountNumber = mapping.PexRebatesAplosTransactionAccountNumber },
-                        Amount = amount,
-                        Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
-                    };
-
-                    // No tags on register-side (rebate income) lines — matches SyncTransaction convention
-                    lines.AddLine(creditLine, mapping.SyncInvoiceAggregate);
-                }
+                var nonCashCreditLine = new AplosApiTransactionLineDetail
+                {
+                    Account = new AplosApiAccountDetail { AccountNumber = mapping.PexRebatesAplosTransactionAccountNumber },
+                    Amount = -totalNonCash,
+                    Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
+                };
+                lines.AddLine(nonCashCreditLine, mapping.SyncInvoiceAggregate);
             }
 
-            // --- C. Credit line for net cash payment (Checking) ---
+            // --- C. Cash paired lines (transfer fund) ---
             var cashPaymentTotal = invoicePayments
                 .Where(p => p.Type is not (PaymentType.RebateCredit or PaymentType.RebateCreditReversal or PaymentType.CarryOverCredit))
                 .Sum(p => p.Amount);
 
             if (cashPaymentTotal > 0)
             {
-                var checkingLine = new AplosApiTransactionLineDetail
+                var cashDebitLine = new AplosApiTransactionLineDetail
+                {
+                    Account = new AplosApiAccountDetail { AccountNumber = mapping.AplosRegisterAccountNumber },
+                    Amount = cashPaymentTotal,
+                    Fund = new AplosApiFundDetail { Id = mapping.TransfersAplosFundId },
+                };
+                lines.AddLine(cashDebitLine, mapping.SyncInvoiceAggregate);
+
+                var cashCreditLine = new AplosApiTransactionLineDetail
                 {
                     Account = new AplosApiAccountDetail { AccountNumber = mapping.TransfersAplosTransactionAccountNumber },
                     Amount = -cashPaymentTotal,
                     Fund = new AplosApiFundDetail { Id = mapping.TransfersAplosFundId },
                 };
 
-                // Tags on transaction-side (checking) line — matches SyncTransaction convention
                 var checkingTagValues = new PexTagValuesModel();
                 ApplyTagMappingsToTagValues(checkingTagValues, mapping.TransferTagMappings, logger);
-                ApplyTagsToLine(checkingLine, checkingTagValues);
+                ApplyTagsToLine(cashCreditLine, checkingTagValues);
 
-                lines.AddLine(checkingLine, mapping.SyncInvoiceAggregate);
+                lines.AddLine(cashCreditLine, mapping.SyncInvoiceAggregate);
             }
 
+            // --- D. Build and submit transaction ---
             var aplosTransaction = new AplosApiTransactionDetail
             {
                 Contact = new AplosApiContactDetail { Id = mapping.TransfersAplosContactId },
