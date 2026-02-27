@@ -1595,6 +1595,14 @@ namespace AplosConnector.Common.Services
         }
 
         [Obsolete("This is not a valid fund accounting method and should not be used.")]
+        /// <summary>
+        /// Pays off the PEX Register (liability) in bulk, not per allocation fund.
+        ///
+        /// Because everything is summed into totals, the liability balance is reduced in one lump
+        /// rather than fund-by-fund, making this the simplest but least granular method.
+        /// 
+        /// If the user is using different funds for purchases, they will NOT be paid off correctly.
+        /// </summary>
         private async Task<TransactionSyncResult> SyncInvoiceSimple(
             Pex2AplosMappingModel mapping,
             InvoiceModel invoice,
@@ -1716,6 +1724,19 @@ namespace AplosConnector.Common.Services
             return TransactionSyncResult.Success;
         }
 
+        /// <summary>
+        /// Pays off the PEX Register (liability) per allocation fund,
+        /// and "applies" the rebate separately as if it was a check deposited after paying off the full liability.
+        ///
+        /// Per allocation: debit Register & credit Checking, both under the allocation's fund.
+        ///   This credits Checking for the full invoice total (payment + rebates + carry-overs).
+        /// Rebates/carry-overs: credit RebateIncome & debit Checking, both under the dedicated rebate fund.
+        ///   This reverses the rebate portion out of Checking and records it as income instead.
+        ///
+        /// Because Checking is first credited in full then debited back for the rebate share, this
+        /// "grosses up" the Checking account. Rebate income is tracked under a single rebate fund
+        /// rather than spread across the individual allocation funds.
+        /// </summary>
         private async Task<TransactionSyncResult> SyncInvoiceRebateDeposit(
             Pex2AplosMappingModel mapping,
             InvoiceModel invoice,
@@ -1851,6 +1872,19 @@ namespace AplosConnector.Common.Services
             return TransactionSyncResult.Success;
         }
 
+        /// <summary>
+        /// Pays off the PEX Register (liability) per allocation fund with a clean three-line set.
+        /// This is the default method.
+        ///
+        /// Per allocation:
+        ///   1. debit Register (allocation's fund)  — reduces the liability by the full allocation amount.
+        ///   2. credit Checking (allocation's fund)  — only the net cash portion (allocation minus rebate/carry-over share).
+        ///   3. credit RebateIncome (allocation's fund) — the proportional rebate/carry-over share.
+        ///
+        /// The rebate total is split across allocation funds in proportion to each fund's share of the
+        /// invoice, so every fund shows exactly how much came from cash and how much from rebate income.
+        /// No gross-up on Checking. The last allocation absorbs any rounding remainder.
+        /// </summary>
         private async Task<TransactionSyncResult> SyncInvoiceRebateDistribute(
             Pex2AplosMappingModel mapping,
             InvoiceModel invoice,
