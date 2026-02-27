@@ -121,6 +121,7 @@ namespace AplosConnector.Common.Services
                     IsTokenExpired = model.IsTokenExpired,
 
                     SyncInvoicesMethod = model.SyncInvoicesMethod,
+                    SyncInvoiceAggregated = model.SyncInvoiceAggregated,
                 };
             }
 
@@ -262,6 +263,7 @@ namespace AplosConnector.Common.Services
                     IsTokenExpired = model.IsTokenExpired,
 
                     SyncInvoicesMethod = model.SyncInvoicesMethod,
+                    SyncInvoiceAggregated = model.SyncInvoiceAggregated,
                 };
             }
 
