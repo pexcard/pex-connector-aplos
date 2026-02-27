@@ -118,7 +118,10 @@ namespace AplosConnector.Common.Services
                     ExpirationEmailCount = model.ExpirationEmailCount,
                     TotalExpirationEmailCount = model.TotalExpirationEmailCount,
                     ExpirationEmailLastDate = model.ExpirationEmailLastDate,
-                    IsTokenExpired = model.IsTokenExpired
+                    IsTokenExpired = model.IsTokenExpired,
+
+                    SyncInvoicesMethod = model.SyncInvoicesMethod,
+                    SyncInvoiceAggregated = model.SyncInvoiceAggregated,
                 };
             }
 
@@ -257,7 +260,10 @@ namespace AplosConnector.Common.Services
                     ExpirationEmailCount = model.ExpirationEmailCount,
                     TotalExpirationEmailCount = model.TotalExpirationEmailCount,
                     ExpirationEmailLastDate = model.ExpirationEmailLastDate,
-                    IsTokenExpired = model.IsTokenExpired
+                    IsTokenExpired = model.IsTokenExpired,
+
+                    SyncInvoicesMethod = model.SyncInvoicesMethod,
+                    SyncInvoiceAggregated = model.SyncInvoiceAggregated,
                 };
             }
 
