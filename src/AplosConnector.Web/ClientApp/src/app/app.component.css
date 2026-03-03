@@ -1,7 +1,65 @@
 .header {
-	background-color: #249CE0;
+  background: #08063E linear-gradient(90deg, rgba(5, 10, 59, 0) 0%, rgba(40, 105, 250, 0.1) 82%);
 }
 
-.content-area{
-	background-color: white;
+.content-area {
+  background-color: white;
+}
+
+clr-header .branding {
+  min-width: auto;
+  max-width: 440px;
+  flex: 0 0 auto;
+}
+
+.pex-logo {
+  display: inline-block;
+  width: 38px;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
+.aplos-logo {
+  max-height: 60px;
+  width: auto;
+  vertical-align: middle;
+  object-fit: contain;
+  padding-left: 4px;
+}
+
+clr-header .nav-link::before,
+clr-header .nav-link::after,
+.header-nav::before {
+  display: none !important;
+}
+
+clr-header .nav-link.active {
+  background: hsla(0, 0%, 100%, .15);
+  color: white;
+}
+
+@media (max-width: 768px) {
+  clr-header .branding {
+    min-width: auto;
+    max-width: 310px;
+    flex: 0 0 auto;
+  }
+
+  clr-header .branding cds-icon[shape="two-way-arrows"] {
+    display: inline;
+  }
+
+  .pex-logo {
+    max-height: 42px;
+    width: auto;
+    vertical-align: middle;
+    object-fit: contain;
+  }
+
+  .aplos-logo {
+    max-height: 42px;
+    width: auto;
+    vertical-align: middle;
+    object-fit: contain;
+  }
 }
