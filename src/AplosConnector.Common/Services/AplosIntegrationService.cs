@@ -1368,6 +1368,12 @@ namespace AplosConnector.Common.Services
             List<AplosApiTransactionDetail> aplosTransactions,
             CancellationToken cancellationToken)
         {
+            if (mapping.PEXFundingSource != FundingSource.Prepaid)
+            {
+                _logger.LogWarning($"Skipping SyncRebates for business {mapping.PEXBusinessAcctId}. Rebates sync is only supported for prepaid accounts.");
+                return;
+            }
+
             if (!mapping.SyncRebates) return;
 
             if (!(mapping.PexRebatesAplosContactId > 0
