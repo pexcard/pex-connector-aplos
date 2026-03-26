@@ -13,8 +13,7 @@ using Azure.Identity;
 using Azure.Storage.Queues;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Azure.Functions.Worker.Builder;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
+using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -55,7 +54,9 @@ public class Program
         builder.Services.Configure<AppSettingsModel>(builder.Configuration.GetSection("AppSettings"));
         
         var appSettings = builder.Configuration.GetSection("AppSettings").Get<AppSettingsModel>()!;
-        var storageConnectionString = builder.Configuration.GetConnectionString("StorageConnectionString")!;
+        var storageAccountName = appSettings.StorageAccountName
+            ?? throw new InvalidOperationException("AppSettings:StorageAccountName is not configured.");
+        var credential = new DefaultAzureCredential();
 
         builder.Services.AddScoped(_ => new SyncSettingsModel());
 
@@ -74,7 +75,9 @@ public class Program
                 provider.GetService<IDataProtectionProvider>()
             ));
 
-        var tableServiceClient = new TableServiceClient(storageConnectionString);
+        var tableServiceClient = new TableServiceClient(
+            new Uri($"https://{storageAccountName}.table.core.windows.net"),
+            credential);
         builder.Services.TryAddSingleton(tableServiceClient);
 
         var pexOAuthSessionTableClient = tableServiceClient.GetTableClient(PexOAuthSessionStorage.TABLE_NAME);
@@ -97,7 +100,9 @@ public class Program
 
         builder.Services.AddAzureServiceBusSender(appSettings.AzureServiceBusUrl, appSettings.AzureServiceBusTopicName);
 
-        var queueServiceClient = new QueueServiceClient(storageConnectionString);
+        var queueServiceClient = new QueueServiceClient(
+            new Uri($"https://{storageAccountName}.queue.core.windows.net"),
+            credential);
         builder.Services.TryAddSingleton(queueServiceClient);
 
         var pex2AplosMappingQueueClient = queueServiceClient.GetQueueClient(Pex2AplosMappingQueue.QUEUE_NAME);
@@ -128,20 +133,20 @@ public class Program
             provider.GetService<SyncSettingsModel>(),
             provider.GetService<IVendorCardStorage>()));
 
-        var storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-        var blobClient = storageAccount.CreateCloudBlobClient();
-        var blobContainer = blobClient.GetContainerReference(appSettings.DataProtectionBlobContainer);
-        blobContainer.CreateIfNotExistsAsync();
+        var blobServiceClient = new BlobServiceClient(
+            new Uri($"https://{storageAccountName}.blob.core.windows.net"),
+            credential);
+        var blobContainerClient = blobServiceClient.GetBlobContainerClient(appSettings.DataProtectionBlobContainer);
+        blobContainerClient.CreateIfNotExists();
+        var blobClient = blobContainerClient.GetBlobClient(appSettings.DataProtectionBlobName);
 
         builder.Services
             .AddDataProtection()
             .SetApplicationName(appSettings.DataProtectionApplicationName)
-            .PersistKeysToAzureBlobStorage(
-                blobContainer,
-                appSettings.DataProtectionBlobName)
+            .PersistKeysToAzureBlobStorage(blobClient)
             .ProtectKeysWithAzureKeyVault(
                 new Uri(appSettings.DataProtectionKeyIdentifier),
-                new DefaultAzureCredential())
+                credential)
             .DisableAutomaticKeyGeneration();
 
         var host = builder.Build();
