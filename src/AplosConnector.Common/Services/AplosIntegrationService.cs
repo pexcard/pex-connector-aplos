@@ -1368,7 +1368,7 @@ namespace AplosConnector.Common.Services
             List<AplosApiTransactionDetail> aplosTransactions,
             CancellationToken cancellationToken)
         {
-            if (mapping.PEXFundingSource != FundingSource.Prepaid)
+            if (mapping.PEXFundingSource == FundingSource.Credit)
             {
                 _logger.LogWarning($"Skipping SyncRebates for business {mapping.PEXBusinessAcctId}. Rebates sync is only supported for prepaid accounts.");
                 return;
