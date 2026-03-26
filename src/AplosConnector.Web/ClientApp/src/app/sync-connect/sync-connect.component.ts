@@ -751,6 +751,9 @@ export class SyncConnectComponent implements OnInit {
   onSyncTransactionChange() {
     if (!this.settingsModel.syncTransactions) {
       this.settingsModel.syncRebates = false;
+      if (this.isCredit) {
+        this.settingsModel.syncInvoices = false;
+      }
     }
   }
 

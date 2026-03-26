@@ -230,7 +230,7 @@ export class SyncManageComponent implements OnInit {
   }
 
   getFeesInfo() {
-    if (this.settings.syncPexFees || this.settings.syncInvoices) {
+    if (this.settings.syncPexFees) {
       this.aplos.getContact(this.sessionId, this.settings.pexFeesAplosContactId).subscribe(
         contact => {
           console.log('got fees contact', contact);

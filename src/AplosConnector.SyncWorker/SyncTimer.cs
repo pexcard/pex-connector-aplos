@@ -6,6 +6,7 @@ using System.Threading;
 using AplosConnector.Common.Storage;
 using System.Collections.Generic;
 using Microsoft.Azure.Functions.Worker;
+using PexCard.Api.Client.Core.Models;
 
 namespace AplosConnector.SyncWorker
 {
@@ -36,6 +37,20 @@ namespace AplosConnector.SyncWorker
             {
                 if (mapping.AutomaticSync)
                 {
+                    // Migrate legacy credit businesses: SyncInvoices used to gate everything.
+                    // Now that purchases and fees have their own toggles, auto-enable them
+                    // so existing behavior is preserved.
+                    if (mapping.PEXFundingSource == FundingSource.Credit
+                        && mapping.SyncInvoices
+                        && !mapping.SyncTransactions
+                        && !mapping.SyncPexFees)
+                    {
+                        mapping.SyncTransactions = true;
+                        mapping.SyncPexFees = true;
+                        await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                        log.LogInformation($"Migrated credit business {mapping.PEXBusinessAcctId}: enabled SyncTransactions and SyncPexFees.");
+                    }
+
                     log.LogInformation($"Enqueuing {nameof(mapping.PEXBusinessAcctId)} '{mapping.PEXBusinessAcctId}'");
                     await _mappingQueue.EnqueueMapping(mapping, cancellationToken);
                 }

@@ -140,8 +140,8 @@
     (clrWizardPageOnCommit)="onSettingsCommit()"
     (clrWizardPageOnCancel)="onCloseWizard()"
     [clrWizardPageNextDisabled]="!optionsForm.valid
-                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices) && !settingsModel.aplosRegisterAccountNumber)
-                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices) && !settingsModel.earliestTransactionDateToSync)">
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees) && !settingsModel.aplosRegisterAccountNumber)
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees) && !settingsModel.earliestTransactionDateToSync)">
 
     <ng-template clrPageNavTitle>Sync Selection</ng-template>
     <ng-template clrPageTitle>Choose what to sync</ng-template>
@@ -228,13 +228,33 @@
           Automatically import Rebates into Aplos.
         </label>
       </clr-toggle-wrapper>
-      <clr-toggle-wrapper *ngIf="isCredit" class="multi-line-toggle">
+      <clr-toggle-wrapper *ngIf="isCredit">
+        <input
+          type="checkbox"
+          clrToggle
+          name="syncTransactions"
+          [(ngModel)]="settingsModel.syncTransactions"
+          (change)="onSyncTransactionChange()"/>
+        <label>Automatically import approved PEX purchases with Fund and Account tags into Aplos.</label>
+      </clr-toggle-wrapper>
+
+      <clr-toggle-wrapper *ngIf="isCredit">
+        <input
+          type="checkbox"
+          clrToggle
+          name="syncPexFees"
+          [(ngModel)]="settingsModel.syncPexFees"/>
+        <label>Automatically import Fees into Aplos.</label>
+      </clr-toggle-wrapper>
+
+      <clr-toggle-wrapper *ngIf="isCredit">
         <input
           type="checkbox"
           clrToggle
           name="syncInvoices"
-          [(ngModel)]="settingsModel.syncInvoices"/>
-        <label>Automatically import approved PEX purchases with Fund and Account tags, fees, bill payments and rebates into Aplos.</label>
+          [(ngModel)]="settingsModel.syncInvoices"
+          [disabled]="!settingsModel.syncTransactions"/>
+        <label>Automatically import bill payments and rebates into Aplos.</label>
       </clr-toggle-wrapper>
       <clr-toggle-wrapper>
         <input
@@ -253,7 +273,7 @@
         </label>
       </clr-toggle-wrapper>
 
-      <div class="card" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices">
+      <div class="card" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees">
         <div class="card-block">
           <app-loading-placeholder
             [loadingState]="loadingAplosAccounts"
@@ -293,7 +313,7 @@
       <p></p>
       <p></p>
 
-      <div class="clr-row" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices">
+      <div class="clr-row" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees">
         <div class="clr-col">
           Please specify a start date for the sync. Transactions made prior to this date will not be imported into Aplos. All transactions after this date will be imported automatically.
           <clr-date-container>
@@ -754,7 +774,7 @@
       </div>
 
       <!-- Fees -->
-      <div *ngIf="settingsModel.syncPexFees || settingsModel.syncInvoices">
+      <div *ngIf="settingsModel.syncPexFees">
 
         <table class="table">
           <caption>

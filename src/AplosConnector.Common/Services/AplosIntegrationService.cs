@@ -950,7 +950,7 @@ namespace AplosConnector.Common.Services
             DateTime utcNow,
             CancellationToken cancellationToken)
         {
-            if (!mapping.SyncTransactions && !mapping.SyncInvoices) return default;
+            if (!mapping.SyncTransactions) return default;
 
             var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
             var startDate = startDateUtc.ToStartOfDay(TimeZones.EST);
@@ -2172,7 +2172,7 @@ namespace AplosConnector.Common.Services
             List<TransactionModel> additionalFeeTransactions,
             CancellationToken cancellationToken)
         {
-            if (!model.SyncPexFees && !model.SyncInvoices) return;
+            if (!model.SyncPexFees) return;
 
             var transactions = businessAccountTransactions.SelectBusinessAccountFees();
             if (additionalFeeTransactions != null)
