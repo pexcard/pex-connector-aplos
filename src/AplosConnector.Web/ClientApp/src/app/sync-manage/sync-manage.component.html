@@ -329,7 +329,7 @@
               <th>Contact for rebates</th>
               <td>{{rebatesContact.name}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && rebatesFund">
+            <tr class="left" *ngIf="isPrepaid && (settings.syncTransactions && settings.syncRebates) && rebatesFund">
               <th>Fund for rebates</th>
               <td>{{rebatesFund.name}}</td>
             </tr>

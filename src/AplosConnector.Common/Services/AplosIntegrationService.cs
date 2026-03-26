@@ -1368,13 +1368,14 @@ namespace AplosConnector.Common.Services
             List<AplosApiTransactionDetail> aplosTransactions,
             CancellationToken cancellationToken)
         {
-            if (!mapping.SyncInvoices && !mapping.SyncRebates) return;
+            if (!mapping.SyncRebates) return;
 
             if (!(mapping.PexRebatesAplosContactId > 0
                 && mapping.PexRebatesAplosFundId > 0
                 && mapping.PexRebatesAplosTransactionAccountNumber > 0))
             {
                 _logger.LogInformation($"Skipping sync rebate for business {mapping.PEXBusinessAcctId}. Rebates are not configured.");
+                return;
             }
 
             var rebates = allBusinessAccountTransactions.Where(FilterRebateTransactions);
