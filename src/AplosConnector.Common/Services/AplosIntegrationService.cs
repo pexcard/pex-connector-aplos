@@ -870,8 +870,6 @@ namespace AplosConnector.Common.Services
             Pex2AplosMappingModel mapping,
             CancellationToken cancellationToken)
         {
-            if (mapping.ExpenseAccountMappings == null || !mapping.ExpenseAccountMappings.Any()) return;
-
             if (mapping.ExpenseAccountMappings == null || !mapping.ExpenseAccountMappings.Any())
             {
                 _logger.LogWarning($"{nameof(mapping.ExpenseAccountMappings)} is not specified for business: {mapping.PEXBusinessAcctId}");
