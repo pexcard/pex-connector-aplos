@@ -165,15 +165,6 @@
     </clr-spinner>
 
     <form clrForm #optionsForm="ngForm" [class.hide]="!savingSettings">
-      <clr-toggle-wrapper>
-        <input
-          type="checkbox"
-          clrToggle
-          name="syncTags"
-          [(ngModel)]="settingsModel.syncTags"/>
-        <label>Sync Aplos Funds/Accounts to PEX Tags</label>
-      </clr-toggle-wrapper>
-
       <clr-toggle-wrapper *ngIf="isPrepaid">
         <input
           type="checkbox"
@@ -235,7 +226,20 @@
           name="syncTransactions"
           [(ngModel)]="settingsModel.syncTransactions"
           (change)="onSyncTransactionChange()"/>
-        <label>Automatically import approved PEX purchases with Fund and Account tags into Aplos.</label>
+        <label>Automatically import
+          <span *ngIf="!settingsModel.syncTransactions">approved</span>
+          <div *ngIf="settingsModel.syncTransactions" class="clr-select-wrapper">
+            <select
+                id="syncApprovedOnlyCredit"
+                class="clr-select"
+                [(ngModel)]="settingsModel.syncApprovedOnly"
+                name="syncApprovedOnlyCredit">
+              <option value="true">approved</option>
+              <option value="false">all</option>
+            </select>
+          </div>
+          PEX purchases with Fund and Account tags into Aplos.
+        </label>
       </clr-toggle-wrapper>
 
       <clr-toggle-wrapper *ngIf="isCredit">
@@ -390,7 +394,7 @@
   </clr-wizard-page>
 
   <clr-wizard-page
-    *ngIf="isAuthenticated && (settingsModel.syncTransactions || settingsModel.syncTags) && hasTagsAvailable"
+    *ngIf="isAuthenticated && settingsModel.syncTransactions && hasTagsAvailable"
     (clrWizardPageOnCommit)="onTagMappingCommit()"
     (clrWizardPageOnCancel)="onCloseWizard()"
     [clrWizardPageNextDisabled]="! aplosFieldMappingForm.valid

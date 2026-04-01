@@ -173,7 +173,7 @@ namespace AplosConnector.Web.Controllers
                 Name = mapping.PEXNameAccount,
                 IsSyncing = mapping.IsSyncing,
                 LastSync = mapping.LastSyncUtc,
-                SyncingSetup = mapping.SyncInvoices || mapping.SyncTransactions || mapping.SyncTransfers || mapping.SyncPexFees || mapping.SyncTags || mapping.SyncFundsToPex || mapping.SyncTaxTagToPex
+                SyncingSetup = mapping.SyncInvoices || mapping.SyncTransactions || mapping.SyncTransfers || mapping.SyncPexFees || mapping.SyncFundsToPex || mapping.SyncTaxTagToPex
             };
 
             try

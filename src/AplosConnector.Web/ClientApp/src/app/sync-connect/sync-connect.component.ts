@@ -144,7 +144,6 @@ export class SyncConnectComponent implements OnInit {
     pexFundsTagId: '',
     aplosRegisterAccountNumber: 0,
     syncFundsToPex: false,
-    syncTags: true,
     syncTaxTagToPex: false,
     pexFeesAplosContactId: 0,
     pexFeesAplosFundId: 0,
