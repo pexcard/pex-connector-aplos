@@ -21,10 +21,6 @@ namespace AplosConnector.Common.Models
         public DateTime? AplosAccessTokenExpiresAt { get; internal set; }
 
         /// <summary>
-        /// Whether to sync Aplos entities as PEX tags.
-        /// </summary>
-        public bool SyncTags { get; set; }
-        /// <summary>
         /// Whether to update tag option names when syncing from Aplos to PEX.
         /// </summary>
         public bool UpdateTagOptionNames { get; set; }

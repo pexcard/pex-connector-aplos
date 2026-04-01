@@ -94,19 +94,6 @@
       <h4>Settings</h4>
       <table class="table table-vertical">
         <tbody>
-        <tr>
-          <th>Sync tags</th>
-            <td>
-              <cds-icon
-                *ngIf="settings.syncTags"
-                shape="success-standard"
-                      solid status="success"></cds-icon>
-              <cds-icon
-                *ngIf="!settings.syncTags"
-                shape="ban"
-                      solid status="danger"></cds-icon>
-            </td>
-          </tr>
           <tr *ngIf="isPrepaid">
             <th>Sync transactions</th>
             <td>
@@ -167,7 +154,11 @@
               <cds-icon
                 *ngIf="!settings.syncTransactions"
                 shape="ban"
-                      solid status="danger"></cds-icon>
+                      solid status="danger"></cds-icon>&nbsp;
+
+            <span *ngIf="settings.syncTransactions && settings.syncApprovedOnly">Approved</span>
+              <span
+                  *ngIf="settings.syncTransactions && !settings.syncApprovedOnly">All</span>
             </td>
           </tr>
           <tr *ngIf="isCredit">
@@ -261,11 +252,11 @@
               </td>
               <td>
                 <cds-icon
-                  *ngIf="settings.syncTags && settings.syncFundsToPex"
+                  *ngIf="settings.syncFundsToPex"
                   shape="success-standard"
                       solid status="success"></cds-icon>
                 <cds-icon
-                  *ngIf="!(settings.syncTags && settings.syncFundsToPex)"
+                  *ngIf="!settings.syncFundsToPex"
                   shape="ban"
                       solid status="danger"></cds-icon>
               </td>
@@ -277,11 +268,11 @@
               </td>
               <td>
                 <cds-icon
-                  *ngIf="settings.syncTags && accountMapping.syncExpenseAccounts"
+                  *ngIf="accountMapping.syncExpenseAccounts"
                   shape="success-standard"
                       solid status="success"></cds-icon>
                 <cds-icon
-                  *ngIf="!(settings.syncTags && accountMapping.syncExpenseAccounts)"
+                  *ngIf="!accountMapping.syncExpenseAccounts"
                   shape="ban"
                       solid status="danger"></cds-icon>
               </td>
@@ -295,11 +286,11 @@
               </td>
               <td>
                 <cds-icon
-                  *ngIf="settings.syncTags && tagMapping.syncToPex"
+                  *ngIf="tagMapping.syncToPex"
                   shape="success-standard"
                       solid status="success"></cds-icon>
                 <cds-icon
-                  *ngIf="!(settings.syncTags && tagMapping.syncToPex)"
+                  *ngIf="!tagMapping.syncToPex"
                   shape="ban"
                       solid status="danger"></cds-icon>
               </td>

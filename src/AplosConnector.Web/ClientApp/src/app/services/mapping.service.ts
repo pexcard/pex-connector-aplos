@@ -101,7 +101,6 @@ export interface SettingsModel {
   automaticSync: boolean;
 
   syncTransactions: boolean;
-  syncTags: boolean;
   syncTaxTagToPex: boolean;
 
   syncApprovedOnly: boolean;

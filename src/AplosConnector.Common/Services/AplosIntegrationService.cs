@@ -667,7 +667,7 @@ namespace AplosConnector.Common.Services
 
         private async Task SyncAplosTaxTagsToPex(ILogger _logger, Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
-            if (!(mapping.SyncTags && mapping.SyncTaxTagToPex)) return;
+            if (!mapping.SyncTaxTagToPex) return;
 
             if (string.IsNullOrEmpty(mapping.PexTaxTagId))
             {
@@ -816,7 +816,7 @@ namespace AplosConnector.Common.Services
             Pex2AplosMappingModel mapping,
             CancellationToken cancellationToken)
         {
-            if (!(mapping.SyncTags && mapping.SyncFundsToPex)) return;
+            if (!mapping.SyncFundsToPex) return;
 
             if (string.IsNullOrEmpty(mapping.PexFundsTagId))
             {
@@ -870,8 +870,6 @@ namespace AplosConnector.Common.Services
             Pex2AplosMappingModel mapping,
             CancellationToken cancellationToken)
         {
-            if (!(mapping.SyncTags && mapping.ExpenseAccountMappings != null && mapping.ExpenseAccountMappings.Any())) return;
-
             if (mapping.ExpenseAccountMappings == null || !mapping.ExpenseAccountMappings.Any())
             {
                 _logger.LogWarning($"{nameof(mapping.ExpenseAccountMappings)} is not specified for business: {mapping.PEXBusinessAcctId}");
