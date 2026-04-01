@@ -158,7 +158,33 @@
             </td>
           </tr>
           <tr *ngIf="isCredit">
-            <th>Sync purchases, bill payments, fees and rebates</th>
+            <th>Sync purchases</th>
+            <td>
+              <cds-icon
+                *ngIf="settings.syncTransactions"
+                shape="success-standard"
+                      solid status="success"></cds-icon>
+              <cds-icon
+                *ngIf="!settings.syncTransactions"
+                shape="ban"
+                      solid status="danger"></cds-icon>
+            </td>
+          </tr>
+          <tr *ngIf="isCredit">
+            <th>Sync fees</th>
+            <td>
+              <cds-icon
+                *ngIf="settings.syncPexFees"
+                shape="success-standard"
+                      solid status="success"></cds-icon>
+              <cds-icon
+                *ngIf="!settings.syncPexFees"
+                shape="ban"
+                      solid status="danger"></cds-icon>
+            </td>
+          </tr>
+          <tr *ngIf="isCredit">
+            <th>Sync bill payments/rebates</th>
             <td>
               <cds-icon
                 *ngIf="settings.syncInvoices"
@@ -309,15 +335,15 @@
               <th *ngIf="isCredit">Transaction account for bill payments</th>
               <td>{{transferAccount | aplosAccount}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesContact">
+            <tr class="left" *ngIf="settings.syncPexFees && feesContact">
               <th>Contact for fees</th>
               <td>{{feesContact.name}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesFund">
+            <tr class="left" *ngIf="settings.syncPexFees && feesFund">
               <th>Fund for fees</th>
               <td>{{feesFund.name}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncPexFees || settings.syncInvoices) && feesAccount">
+            <tr class="left" *ngIf="settings.syncPexFees && feesAccount">
               <th>Transaction account for fees</th>
               <td>{{feesAccount | aplosAccount}}</td>
             </tr>

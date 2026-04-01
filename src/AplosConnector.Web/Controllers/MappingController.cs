@@ -8,6 +8,7 @@ using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Common.Models.Settings;
 using Microsoft.Extensions.Options;
 using AplosConnector.Web.Models;
+using PexCard.Api.Client.Core.Models;
 using System.Threading;
 using AplosConnector.Common.Storage;
 
@@ -92,6 +93,20 @@ namespace AplosConnector.Web.Controllers
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
 
             await _aplosIntegrationService.UpdateFundingSource(mapping, cancellationToken);
+
+            // Migrate legacy credit businesses: SyncInvoices used to gate everything.
+            // Now that purchases and fees have their own toggles, auto-enable them
+            // so existing behavior is preserved. Only migrate when both are false
+            // (legacy state) to avoid re-enabling toggles a user intentionally turned off.
+            if (mapping.PEXFundingSource == FundingSource.Credit
+                && mapping.SyncInvoices
+                && !mapping.SyncTransactions
+                && !mapping.SyncPexFees)
+            {
+                mapping.SyncTransactions = true;
+                mapping.SyncPexFees = true;
+                await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
+            }
 
             return mapping.ToStorageModel();
         }
