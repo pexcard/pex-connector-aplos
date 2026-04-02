@@ -258,7 +258,7 @@
           [disabled]="!settingsModel.syncTransactions"/>
         <label>Automatically import bill payments and rebates into Aplos.</label>
       </clr-toggle-wrapper>
-      <clr-toggle-wrapper *ngIf="isPrepaid">
+      <clr-toggle-wrapper>
         <input
           type="checkbox"
           clrToggle
@@ -840,7 +840,7 @@
               </td>
             </tr>
 
-            <tr *ngIf="isPrepaid && settingsModel.syncTaxTagToPex">
+            <tr *ngIf="settingsModel.syncTaxTagToPex">
               <td class="left clr-col-4">990 Tag Option</td>
               <td class="left">
                 <div class="clr-select-wrapper">
@@ -913,7 +913,7 @@
               </td>
             </tr>
 
-            <tr *ngIf="isPrepaid">
+            <tr *ngIf="isPrepaid || (isCredit && invoiceMethodRequiresRebateFund)">
               <td class="left clr-col-4">Fund</td>
               <td class="left">
                 <div class="clr-select-wrapper">
@@ -948,7 +948,7 @@
               </td>
             </tr>
 
-            <tr *ngIf="isPrepaid && settingsModel.syncTaxTagToPex">
+            <tr *ngIf="settingsModel.syncTaxTagToPex">
               <td class="left clr-col-4">990 Tag Option</td>
               <td class="left">
                 <div class="clr-select-wrapper">
@@ -969,7 +969,7 @@
           </tbody>
         </table>
 
-        <table *ngIf="isPrepaid" class="table table-no-top-margin">
+        <table class="table table-no-top-margin">
           <caption class="caption-border">Rebate tags default values</caption>
           <tbody formArrayName="rebateTagMappings">
             <tr *ngFor="let tagMapping of getRebateTagMappingFormElements().controls; let i = index" [formGroupName]="i">

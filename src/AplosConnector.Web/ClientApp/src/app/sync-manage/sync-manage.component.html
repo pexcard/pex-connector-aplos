@@ -187,7 +187,7 @@
                       solid status="danger"></cds-icon>
             </td>
           </tr>
-        <tr *ngIf="isPrepaid">
+        <tr>
           <th>Sync 990 tag</th>
             <td>
               <cds-icon
@@ -342,11 +342,11 @@
               <th>990 tag for fees</th>
               <td>{{pexFeesAplosTaxTagName}}</td>
             </tr>
-            <tr class="left" *ngIf="isPrepaid && (settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && rebatesContact">
+            <tr class="left" *ngIf="isPrepaid && ((settings.syncTransactions && settings.syncRebates) || settings.syncInvoices) && rebatesContact">
               <th>Contact for rebates</th>
               <td>{{rebatesContact.name}}</td>
             </tr>
-            <tr class="left" *ngIf="isPrepaid && (settings.syncTransactions && settings.syncRebates) && rebatesFund">
+            <tr class="left" *ngIf="(isPrepaid && (settings.syncTransactions && settings.syncRebates) || (isCredit && invoiceMethodRequiresRebateFund)) && rebatesFund">
               <th>Fund for rebates</th>
               <td>{{rebatesFund.name}}</td>
             </tr>
@@ -354,7 +354,7 @@
               <th>Transaction account for rebates</th>
               <td>{{rebatesAccount | aplosAccount}}</td>
             </tr>
-            <tr class="left" *ngIf="isPrepaid && settings.syncTaxTagToPex && settings.pexRebatesAplosTaxTag">
+            <tr class="left" *ngIf="settings.syncTaxTagToPex && settings.pexRebatesAplosTaxTag">
               <th>990 tag for rebates</th>
               <td>{{pexRebatesAplosTaxTagName}}</td>
             </tr>

@@ -118,12 +118,12 @@ export interface SettingsModel {
   pexFeesAplosContactId: number;
   pexFeesAplosFundId: number;
   pexFeesAplosTransactionAccountNumber: number;
-  pexFeesAplosTaxTag: number;
+  pexFeesAplosTaxTag: string;
 
   pexRebatesAplosContactId: number;
   pexRebatesAplosFundId: number;
   pexRebatesAplosTransactionAccountNumber: number;
-  pexRebatesAplosTaxTag: number;
+  pexRebatesAplosTaxTag: string;
 
   aplosRegisterAccountNumber: number;
 
@@ -157,6 +157,7 @@ export interface SettingsModel {
   transferTagMappings: AplosTagMappingModel[];
   feeTagMappings: AplosTagMappingModel[];
   rebateTagMappings: AplosTagMappingModel[];
+  syncInvoicesMethod: SyncInvoicesMethod;
 }
 
 export interface ExpenseAccountMappingModel {
@@ -186,6 +187,12 @@ export enum FundingSource {
 export enum PostDateType {
   Transaction = 0,
   Settlement = 1
+}
+
+export enum SyncInvoicesMethod {
+  Simple = 'simple',
+  RebateDeposit = 'rebate-deposit',
+  RebateDistribute = 'rebate-distribute'
 }
 
 export interface AplosTagMappingModel {
