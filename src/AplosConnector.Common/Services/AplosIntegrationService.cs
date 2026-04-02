@@ -1657,8 +1657,7 @@ namespace AplosConnector.Common.Services
             {
                 var pexRebatesAplosFundIdString = mapping.PexRebatesAplosFundId.ToString();
 
-                if (mapping.PexRebatesAplosContactId == 0
-                    || mapping.PexRebatesAplosFundId == 0
+                if (mapping.PexRebatesAplosFundId == 0
                     || mapping.PexRebatesAplosTransactionAccountNumber == decimal.Zero
                     || (mapping.SyncTaxTagToPex && string.IsNullOrEmpty(mapping.PexRebatesAplosTaxTagId))
                     || aplosFunds.All(f => f.Id != pexRebatesAplosFundIdString))
@@ -1681,6 +1680,12 @@ namespace AplosConnector.Common.Services
                     Amount = -totalNonCash,
                     Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
                 };
+                var nonCashTagValues = new PexTagValuesModel
+                {
+                    AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
+                };
+                ApplyTagMappingsToTagValues(nonCashTagValues, mapping.RebateTagMappings, logger);
+                ApplyTagsToLine(nonCashCreditLine, nonCashTagValues);
                 lines.AddLine(nonCashCreditLine, mapping.SyncInvoiceAggregated);
             }
 
@@ -1813,8 +1818,7 @@ namespace AplosConnector.Common.Services
 
             if (nonCashPayments.Count > 0)
             {
-                if (mapping.PexRebatesAplosContactId == 0
-                    || mapping.PexRebatesAplosFundId == 0
+                if (mapping.PexRebatesAplosFundId == 0
                     || mapping.PexRebatesAplosTransactionAccountNumber == decimal.Zero
                     || (mapping.SyncTaxTagToPex && string.IsNullOrEmpty(mapping.PexRebatesAplosTaxTagId))
                     || aplosFunds.All(f => f.Id != pexRebatesAplosFundIdString))
@@ -1851,7 +1855,7 @@ namespace AplosConnector.Common.Services
                     {
                         AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
                     };
-                    ApplyTagMappingsToTagValues(checkingOffsetTagValues, mapping.TransferTagMappings, logger);
+                    ApplyTagMappingsToTagValues(checkingOffsetTagValues, mapping.RebateTagMappings, logger);
                     ApplyTagsToLine(checkingOffsetLine, checkingOffsetTagValues);
                     lines.AddLine(checkingOffsetLine, mapping.SyncInvoiceAggregated);
                 }
@@ -2014,6 +2018,7 @@ namespace AplosConnector.Common.Services
                     {
                         AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
                     };
+                    ApplyTagMappingsToTagValues(rebateTagValues, mapping.RebateTagMappings, logger);
                     ApplyTagsToLine(rebateIncomeLine, rebateTagValues);
                     lines.AddLine(rebateIncomeLine, mapping.SyncInvoiceAggregated);
                 }

@@ -173,7 +173,6 @@
           [(ngModel)]="settingsModel.syncTransactions"
           (change)="onSyncTransactionChange()"/>
         <label>Automatically import
-          <span *ngIf="!settingsModel.syncTransactions">approved</span>
           <div *ngIf="settingsModel.syncTransactions" class="clr-select-wrapper">
             <select
                 id="syncApprovedOnly"
@@ -227,7 +226,6 @@
           [(ngModel)]="settingsModel.syncTransactions"
           (change)="onSyncTransactionChange()"/>
         <label>Automatically import
-          <span *ngIf="!settingsModel.syncTransactions">approved</span>
           <div *ngIf="settingsModel.syncTransactions" class="clr-select-wrapper">
             <select
                 id="syncApprovedOnlyCredit"
@@ -238,7 +236,7 @@
               <option value="false">all</option>
             </select>
           </div>
-          PEX purchases with Fund and Account tags into Aplos.
+          PEX purchases into Aplos.
         </label>
       </clr-toggle-wrapper>
 
@@ -898,7 +896,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
+            <tr *ngIf="isPrepaid">
               <td class="left  clr-col-4">Contact</td>
               <td class="left">
                 <div class="clr-select-wrapper">
@@ -915,7 +913,7 @@
               </td>
             </tr>
 
-            <tr *ngIf="isPrepaid">
+            <tr *ngIf="isPrepaid || (isCredit && invoiceMethodRequiresRebateFund)">
               <td class="left clr-col-4">Fund</td>
               <td class="left">
                 <div class="clr-select-wrapper">

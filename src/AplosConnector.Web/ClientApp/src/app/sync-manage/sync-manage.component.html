@@ -342,11 +342,11 @@
               <th>990 tag for fees</th>
               <td>{{pexFeesAplosTaxTagName}}</td>
             </tr>
-            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && rebatesContact">
+            <tr class="left" *ngIf="isPrepaid && ((settings.syncTransactions && settings.syncRebates) || settings.syncInvoices) && rebatesContact">
               <th>Contact for rebates</th>
               <td>{{rebatesContact.name}}</td>
             </tr>
-            <tr class="left" *ngIf="isPrepaid && (settings.syncTransactions && settings.syncRebates) && rebatesFund">
+            <tr class="left" *ngIf="(isPrepaid && (settings.syncTransactions && settings.syncRebates) || (isCredit && invoiceMethodRequiresRebateFund)) && rebatesFund">
               <th>Fund for rebates</th>
               <td>{{rebatesFund.name}}</td>
             </tr>

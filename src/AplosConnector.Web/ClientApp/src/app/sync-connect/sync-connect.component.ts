@@ -12,7 +12,8 @@ import {
   AplosAuthenticationStatusModel,
   AplosAuthenticationMode,
   FundingSource,
-  PostDateType
+  PostDateType,
+  SyncInvoicesMethod
 } from "../services/mapping.service";
 import { AplosService, AplosPreferences, AplosAccount, AplosObject, AplosApiTaxTagCategoryDetail } from "../services/aplos.service";
 import { PexService, PexTagInfoModel, CustomFieldType } from '../services/pex.service';
@@ -119,6 +120,7 @@ export class SyncConnectComponent implements OnInit {
   aplosPreferences: AplosPreferences = { isClassEnabled: false, isLocationEnabled: false, locationFieldName: '' };
   isPrepaid: boolean = false;
   isCredit: boolean = false;
+  invoiceMethodRequiresRebateFund: boolean = false;
 
   public readonly postDateTypeTransaction = PostDateType.Transaction;
   public readonly postDateTypeSettlement = PostDateType.Settlement;
@@ -149,7 +151,7 @@ export class SyncConnectComponent implements OnInit {
     pexFeesAplosFundId: 0,
     pexFeesAplosRegisterAccountNumber: 0,
     pexFeesAplosTransactionAccountNumber: 0,
-    pexFeesAplosTaxTag: 0,
+    pexFeesAplosTaxTag: '',
     syncPexFees: false,
     syncRebates: false,
     transfersAplosContactId: 0,
@@ -158,7 +160,7 @@ export class SyncConnectComponent implements OnInit {
     pexRebatesAplosContactId: 0,
     pexRebatesAplosFundId: 0,
     pexRebatesAplosTransactionAccountNumber: 0,
-    pexRebatesAplosTaxTag: 0,
+    pexRebatesAplosTaxTag: '',
     expenseAccountMappings: [],
     tagMappings: [],
     taxTagCategoryDetails: [],
@@ -168,7 +170,8 @@ export class SyncConnectComponent implements OnInit {
     postDateType: PostDateType.Transaction,
     transferTagMappings: [],
     feeTagMappings: [],
-    rebateTagMappings: []
+    rebateTagMappings: [],
+    syncInvoicesMethod: SyncInvoicesMethod.RebateDistribute
   };
 
   getExpenseAccountFormElements() {
@@ -555,6 +558,8 @@ export class SyncConnectComponent implements OnInit {
 
       this.isPrepaid = this.settingsModel.pexFundingSource == FundingSource.Prepaid;
       this.isCredit = this.settingsModel.pexFundingSource == FundingSource.Credit;
+      this.invoiceMethodRequiresRebateFund = this.settingsModel.syncInvoicesMethod === SyncInvoicesMethod.Simple
+        || this.settingsModel.syncInvoicesMethod === SyncInvoicesMethod.RebateDeposit;
 
       let d = new Date(data.earliestTransactionDateToSync);
       let newDate = 1 + d.getMonth() + '/' + d.getDate() + '/' + d.getFullYear();

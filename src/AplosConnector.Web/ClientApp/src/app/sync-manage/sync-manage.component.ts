@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { ExpenseAccountMappingModel, FundingSource, MappingService, SettingsModel, TagMappingModel } from '../services/mapping.service';
+import { ExpenseAccountMappingModel, FundingSource, MappingService, SettingsModel, SyncInvoicesMethod, TagMappingModel } from '../services/mapping.service';
 import { AuthService } from '../services/auth.service';
 import { AplosService, AplosPreferences, AplosAccount, AplosObject, AplosApiTaxTagCategoryDetail } from '../services/aplos.service';
 import { PexConnectionDetailModel, PexService } from '../services/pex.service';
@@ -55,6 +55,7 @@ export class SyncManageComponent implements OnInit {
   AplosPreferences: AplosPreferences = { isClassEnabled: false, isLocationEnabled: false, locationFieldName: '' };
   isPrepaid: boolean = false;
   isCredit: boolean = false;
+  invoiceMethodRequiresRebateFund: boolean = false;
 
   ngOnInit() {
     this.auth.sessionId.subscribe(sessionId => {
@@ -91,6 +92,8 @@ export class SyncManageComponent implements OnInit {
         console.log('got settings', this.settings);
         this.isPrepaid = this.settings.pexFundingSource == FundingSource.Prepaid;
         this.isCredit = this.settings.pexFundingSource == FundingSource.Credit;
+        this.invoiceMethodRequiresRebateFund = this.settings.syncInvoicesMethod === SyncInvoicesMethod.Simple
+          || this.settings.syncInvoicesMethod === SyncInvoicesMethod.RebateDeposit;
 
         this.validatePexSetup();
         this.getTransferInfo();
