@@ -173,7 +173,6 @@
           [(ngModel)]="settingsModel.syncTransactions"
           (change)="onSyncTransactionChange()"/>
         <label>Automatically import
-          <span *ngIf="!settingsModel.syncTransactions">approved</span>
           <div *ngIf="settingsModel.syncTransactions" class="clr-select-wrapper">
             <select
                 id="syncApprovedOnly"
@@ -227,7 +226,6 @@
           [(ngModel)]="settingsModel.syncTransactions"
           (change)="onSyncTransactionChange()"/>
         <label>Automatically import
-          <span *ngIf="!settingsModel.syncTransactions">approved</span>
           <div *ngIf="settingsModel.syncTransactions" class="clr-select-wrapper">
             <select
                 id="syncApprovedOnlyCredit"
@@ -238,7 +236,7 @@
               <option value="false">all</option>
             </select>
           </div>
-          PEX purchases with Fund and Account tags into Aplos.
+          PEX purchases into Aplos.
         </label>
       </clr-toggle-wrapper>
 
@@ -260,7 +258,7 @@
           [disabled]="!settingsModel.syncTransactions"/>
         <label>Automatically import bill payments and rebates into Aplos.</label>
       </clr-toggle-wrapper>
-      <clr-toggle-wrapper>
+      <clr-toggle-wrapper *ngIf="isPrepaid">
         <input
           type="checkbox"
           clrToggle
@@ -842,7 +840,7 @@
               </td>
             </tr>
 
-            <tr *ngIf="settingsModel.syncTaxTagToPex">
+            <tr *ngIf="isPrepaid && settingsModel.syncTaxTagToPex">
               <td class="left clr-col-4">990 Tag Option</td>
               <td class="left">
                 <div class="clr-select-wrapper">
@@ -898,7 +896,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
+            <tr *ngIf="isPrepaid">
               <td class="left  clr-col-4">Contact</td>
               <td class="left">
                 <div class="clr-select-wrapper">
@@ -950,7 +948,7 @@
               </td>
             </tr>
 
-            <tr *ngIf="settingsModel.syncTaxTagToPex">
+            <tr *ngIf="isPrepaid && settingsModel.syncTaxTagToPex">
               <td class="left clr-col-4">990 Tag Option</td>
               <td class="left">
                 <div class="clr-select-wrapper">
@@ -971,7 +969,7 @@
           </tbody>
         </table>
 
-        <table class="table table-no-top-margin">
+        <table *ngIf="isPrepaid" class="table table-no-top-margin">
           <caption class="caption-border">Rebate tags default values</caption>
           <tbody formArrayName="rebateTagMappings">
             <tr *ngFor="let tagMapping of getRebateTagMappingFormElements().controls; let i = index" [formGroupName]="i">
