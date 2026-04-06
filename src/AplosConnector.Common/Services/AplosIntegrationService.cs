@@ -1206,6 +1206,16 @@ namespace AplosConnector.Common.Services
                                     pexTagValues.AplosTransactionAccountNumber = mapping.DefaultAplosTransactionAccountNumber;
                                 }
 
+                                if (string.IsNullOrWhiteSpace(pexTagValues.AplosTaxTagId))
+                                {
+                                    var taxTagMapping = mapping.TagMappings?.FirstOrDefault(t => t.AplosTagId == "990");
+                                    if (taxTagMapping != null && !string.IsNullOrEmpty(taxTagMapping.DefaultAplosTagId))
+                                    {
+                                        _logger.LogInformation($"Applying default Aplos tax tag value '{taxTagMapping.DefaultAplosTagId}' from 990 tag mapping on transaction {transaction.TransactionId}.");
+                                        pexTagValues.AplosTaxTagId = taxTagMapping.DefaultAplosTagId;
+                                    }
+                                }
+
                                 if (pexTagValues.AplosFundId == default || aplosFunds.All(ec => ec.Id != pexTagValues.AplosFundId.ToString()))
                                 {
                                     syncIneligibilityReason = $"Transaction {transaction.TransactionId}: {nameof(pexTagValues.AplosFundId)} '{pexTagValues.AplosFundId}' not valid for {aplosFunds.Count} funds found in Aplos";
@@ -2504,7 +2514,7 @@ namespace AplosConnector.Common.Services
         {
             if (tagMappings?.Any() == true)
             {
-                pexTagValues.AplosTagIds = new List<string>();
+                pexTagValues.AplosTagIds ??= new List<string>();
 
                 logger.LogInformation($"Processing {tagMappings.Length} Aplos tag mappings");
 
@@ -2512,8 +2522,16 @@ namespace AplosConnector.Common.Services
                 {
                     if (!string.IsNullOrEmpty(tagMapping.DefaultAplosTagValue))
                     {
-                        logger.LogInformation($"Using default Aplos tag value '{tagMapping.DefaultAplosTagValue}' for tag category '{tagMapping.AplosTagId}'.");
-                        pexTagValues.AplosTagIds.Add(tagMapping.DefaultAplosTagValue);
+                        if (tagMapping.AplosTagId == "990")
+                        {
+                            logger.LogInformation($"Using default Aplos tax tag value '{tagMapping.DefaultAplosTagValue}' for tag category '990'.");
+                            pexTagValues.AplosTaxTagId = tagMapping.DefaultAplosTagValue;
+                        }
+                        else
+                        {
+                            logger.LogInformation($"Using default Aplos tag value '{tagMapping.DefaultAplosTagValue}' for tag category '{tagMapping.AplosTagId}'.");
+                            pexTagValues.AplosTagIds.Add(tagMapping.DefaultAplosTagValue);
+                        }
                     }
                 }
             }
