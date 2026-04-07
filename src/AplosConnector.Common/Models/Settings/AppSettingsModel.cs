@@ -15,6 +15,8 @@ namespace AplosConnector.Common.Models.Settings
         public int PEXAPITimeout { get; set; } = 100;
         public string CorsAllowedOrigins { get; set; }
 
+        public string StorageAccountName { get; set; }
+
         public string DataProtectionApplicationName { get; set; }
         public string DataProtectionBlobContainer { get; set; }
         public string DataProtectionBlobName { get; set; }

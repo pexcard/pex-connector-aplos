@@ -10,8 +10,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SpaServices.AngularCli;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
+using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -80,9 +79,13 @@ namespace AplosConnector.Web
                     provider.GetService<IDataProtectionProvider>()
                 ));
 
-            var storageConnectionString = _configuration.GetConnectionString("StorageConnectionString");
-            
-            var tableServiceClient = new TableServiceClient(storageConnectionString);
+            var storageAccountName = appSettings.StorageAccountName
+                ?? throw new InvalidOperationException("AppSettings:StorageAccountName is not configured.");
+            var credential = new DefaultAzureCredential();
+
+            var tableServiceClient = new TableServiceClient(
+                new Uri($"https://{storageAccountName}.table.core.windows.net"),
+                credential);
             services.TryAddSingleton(tableServiceClient);
 
             var pexOAuthSessionTableClient = tableServiceClient.GetTableClient(PexOAuthSessionStorage.TABLE_NAME);
@@ -103,7 +106,9 @@ namespace AplosConnector.Web
             services.AddSingleton<IVendorCardStorage>(provider => new VendorCardStorage(vendorCardTableClient,
                 provider.GetService<IPexApiClient>(), provider.GetService<ILogger<VendorCardStorage>>()));
 
-            var queueServiceClient = new QueueServiceClient(storageConnectionString);
+            var queueServiceClient = new QueueServiceClient(
+                new Uri($"https://{storageAccountName}.queue.core.windows.net"),
+                credential);
             services.TryAddSingleton(queueServiceClient);
 
             var pex2AplosMappingQueueClient = queueServiceClient.GetQueueClient(Pex2AplosMappingQueue.QUEUE_NAME);
@@ -150,20 +155,20 @@ namespace AplosConnector.Web
                     });
             });
 
-            var storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            var blobClient = storageAccount.CreateCloudBlobClient();
-            var blobContainer = blobClient.GetContainerReference(appSettings.DataProtectionBlobContainer);
-            blobContainer.CreateIfNotExistsAsync();
+            var blobServiceClient = new BlobServiceClient(
+                new Uri($"https://{storageAccountName}.blob.core.windows.net"),
+                credential);
+            var blobContainerClient = blobServiceClient.GetBlobContainerClient(appSettings.DataProtectionBlobContainer);
+            blobContainerClient.CreateIfNotExists();
+            var blobClient = blobContainerClient.GetBlobClient(appSettings.DataProtectionBlobName);
 
             services
                 .AddDataProtection()
                 .SetApplicationName(appSettings.DataProtectionApplicationName)
-                .PersistKeysToAzureBlobStorage(
-                    blobContainer,
-                    appSettings.DataProtectionBlobName)
+                .PersistKeysToAzureBlobStorage(blobClient)
                 .ProtectKeysWithAzureKeyVault(
                     new Uri(appSettings.DataProtectionKeyIdentifier),
-                    new DefaultAzureCredential());
+                    credential);
 
 
             // In production, the Angular files will be served from this directory
