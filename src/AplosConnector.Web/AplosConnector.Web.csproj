@@ -40,7 +40,7 @@
     <PackageReference Include="PexCard.Api.Client.Core" Version="1.90.0" />
     <PackageReference Include="PexCard.Shared.Encryption.AspNetCore" Version="2025.5.21.1" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.1" />
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.2" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.3" />
     <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
   </ItemGroup>
 
