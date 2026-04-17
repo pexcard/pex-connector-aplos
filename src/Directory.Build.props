@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <!-- Override transitive System.Security.Cryptography.Xml 8.0.2 from PexCard.Shared.Encryption.AspNetCore -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.3" />
+  </ItemGroup>
+</Project>
