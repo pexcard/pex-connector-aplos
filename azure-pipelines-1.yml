@@ -24,7 +24,7 @@ variables:
 - name: buildconfiguration
   value: 'Debug'
 - name: dotnetVersion
-  value: '8.0'
+  value: '10.0'
 
 steps:
 - task: UseDotNet@2
