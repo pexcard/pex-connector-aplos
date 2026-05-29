@@ -22,6 +22,7 @@ import { VendorsManageComponent } from './vendors-manage/vendors-manage.componen
 import { VendorsSelectComponent } from './vendors-select/vendors-select.component';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { SelectListComponent } from './select-list/select-list.component';
+import { StatusIconComponent } from './status-icon/status-icon.component';
 import { TruncateModule } from '@yellowspot/ng-truncate';
 import { ClarityIcons, twoWayArrowsIcon, helpIcon, infoCircleIcon, creditCardIcon, successStandardIcon, syncIcon, checkCircleIcon, exclamationCircleIcon, exclamationTriangleIcon, linkIcon, plusIcon, trashIcon, angleIcon, searchIcon, arrowIcon, checkIcon, timesCircleIcon, cogIcon, refreshIcon, disconnectIcon, banIcon } from '@cds/core/icon';
 
@@ -65,7 +66,8 @@ ClarityIcons.addIcons(
     SyncManageComponent,
     VendorsManageComponent,
     VendorsSelectComponent,
-    SelectListComponent
+    SelectListComponent,
+    StatusIconComponent
   ],
   imports: [
     BrowserModule,

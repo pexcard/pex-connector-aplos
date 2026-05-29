@@ -1,0 +1,173 @@
+// Vendored from: Start/projects/ngx-pex-core/src/lib/styles/pex-themes.scss
+// Last synced: 2026-05-22
+// DO NOT EDIT -- update by copying from source repo
+
+// Test dark mode theme
+[data-theme~='dark'] {
+  --pex-header-bg: var(--cds-global-color-cool-gray-1000);
+  --pex-footer-bg: var(--cds-alias-object-app-background);
+  --pex-sidebar-bg: var(--cds-alias-object-interaction-vertical-navigation-background-color);
+  --pex-main-bg: var(--cds-alias-object-app-background);
+  --pex-text-global-color: var(--pex-color-neutral-200);
+
+  // Buttons
+  --pex-btn-primary-bg: var(--pex-app-color-primary);
+  --pex-btn-primary-hover-bg: var(--pex-app-color-primary-hover);
+  --pex-btn-primary-hover-color: var(--pex-app-color-primary-hover);
+  --pex-btn-primary-disabled-opacity: 0.6;
+  --pex-sidebar-item-hover-bg: #3f3f3f;
+  --pex-header-btn-bg: var(--cds-global-color-cool-gray-1000);
+  --pex-header-btn-hover-bg: #3f3f3f;
+  --pex-app-header-logo-url: url(./logos/pex-logo-white-legacy.svg);
+}
+
+// Redesign theme
+[data-theme~='pexcard-fresh'] {
+  /* Primitive tokens
+  ================================================================ */
+
+  // Primary color
+  --pex-color-primary-50: #E7EAFE;
+  --pex-color-primary-100: #C2C9FD;
+  --pex-color-primary-200: #96A7FB;
+  --pex-color-primary-300: #6284FB;
+  --pex-color-primary-400: #2866FA; // base color
+  --pex-color-primary-500: #004AF6;
+  --pex-color-primary-600: #0042EB;
+  --pex-color-primary-700: #0037DE;
+  --pex-color-primary-800: #002BD4;
+  --pex-color-primary-900: #0013BB;
+  --pex-color-primary-950: #050505;
+  // Secondary color
+  --pex-color-secondary-50: #E3E4ED;
+  --pex-color-secondary-100: #BABCD3;
+  --pex-color-secondary-200: #8d91b5;
+  --pex-color-secondary-300: #636897;
+  --pex-color-secondary-400: #464B84;
+  --pex-color-secondary-500: #282F71;
+  --pex-color-secondary-600: #23296A;
+  --pex-color-secondary-700: #1B215F;
+  --pex-color-secondary-800: #131853;
+  --pex-color-secondary-900: #08063E; // base secondary color
+  // Secondary alternate color
+  --pex-color-secondary-alternate-50: #E6F0FC; // base actions/secondary color
+  --pex-color-secondary-alternate-100: #C3D9F9;
+  --pex-color-secondary-alternate-200: #9FC2F5;
+  --pex-color-secondary-alternate-300: #7EAAF0;
+  --pex-color-secondary-alternate-400: #6C98EC;
+  --pex-color-secondary-alternate-500: #6287E7;
+  --pex-color-secondary-alternate-600: #5E79D8;
+  --pex-color-secondary-alternate-700: #5867C4;
+  --pex-color-secondary-alternate-800: #5256B1;
+  --pex-color-secondary-alternate-900: #47378E;
+  // Accent color
+  --pex-color-accent-50:  #EEFDEB;
+  --pex-color-accent-100: #D3F8CC;
+  --pex-color-accent-200: #B5F3AB;
+  --pex-color-accent-300: #94EE86; // base accent color
+  --pex-color-accent-400: #76E968;
+  --pex-color-accent-500: #5EE251;
+  --pex-color-accent-600: #4DD148;
+  --pex-color-accent-700: #33BB3E;
+  --pex-color-accent-800: #11A635;
+  --pex-color-accent-900: #008225;
+
+  /* Semantic tokens
+    ================================================================ */
+
+  // Primary colors
+  --pex-app-color-primary: var(--pex-color-primary-400);
+  --pex-app-color-primary-hover: var(--pex-color-primary-700);
+  // Secondary colors
+  --pex-app-color-secondary: var(--pex-color-secondary-900);
+  --pex-app-color-secondary-alternate: var(--pex-color-secondary-alternate-50);
+  // Accent color
+  --pex-app-color-accent: var(--pex-color-accent-300);
+  --pex-app-color-accent-disabled: var(--pex-color-neutral-250);
+  --pex-app-color-accent-hover: var(--pex-color-accent-500);
+  --pex-app-color-accent-active: var(--pex-color-accent-600);
+  // Status colors
+  --pex-status-info-color: var(--pex-app-color-primary);
+  --pex-status-solid-color: var(--pex-surface-1-color);
+  // Text
+  --pex-text-link-color: var(--pex-app-color-primary);
+  --pex-text-link-hover-color: var(--pex-app-color-primary-hover);
+  --pex-forms-invalid-text-color: initial;
+  // Other
+  --pex-object-interaction-background-highlight:  var(--pex-app-color-primary);
+  --pex-corner-label-primary-bg: var(--pex-app-color-primary);
+  --pex-corner-label-secondary-bg: #DAC2FE;
+  // Logo
+  --pex-app-logo-md-url: url(./logos/pex-icon-bright-blue-md.svg);
+  --pex-app-logo-alternate-md-url: url(./logos/pex-icon-white-md.svg);
+  --pex-app-logo-text-md-url: url(./logos/pex-horizontal-bright-blue-navy-text-md.svg);
+  --pex-app-logo-text-alternate-md-url: url(./logos/pex-horizontal-bright-blue-white-text-md.svg);
+  // Surface
+  --pex-surface-1-color: #eeeeef; // footer background
+  --pex-surface-4-color: var(--pex-app-color-secondary-alternate); // background 2
+
+  /* Component tokens
+  ================================================================ */
+
+  // Global
+  --pex-global-primary-gradient: linear-gradient(116.76deg, #040328 0%, var(--pex-app-color-secondary) 50%, #0F2168 100%);
+  // Login page
+  --pex-login-page-media-overlay-bg: var(--pex-global-primary-gradient);
+  // Header
+  --pex-header-bg: var(--pex-global-primary-gradient);
+  --pex-header-btn-bg: transparent;
+  --pex-header-btn-hover-bg: var(--pex-color-secondary-700);
+  // Footer
+  --pex-footer-bg: var(--pex-surface-1-color);
+  --pex-footer-text-link-color: var(--pex-app-color-secondary);
+  // Sidebar
+  --pex-sidebar-item-active-bg: var(--pex-color-secondary-alternate-50);
+  --pex-sidebar-item-finished-bg: var(--pex-color-accent-300);
+  --pex-sidebar-item-icon-color: var(--pex-app-color-primary);
+  --pex-sidebar-item-hover-bg: var(--pex-app-color-secondary-alternate);
+  // Accordion
+  --pex-accordion-header-open-background-color: var(--pex-app-color-secondary-alternate);
+  --pex-accordion-header-open-hover-background-color: var(--pex-color-secondary-alternate-100);
+  --pex-accordion-header-open-active-background-color: var(--pex-color-secondary-alternate-200);
+  // Dropdown
+  --pex-dropdown-item-hover-bg: var(--pex-surface-4-color);
+  --pex-dropdown-item-pressed-bg: var(--pex-surface-4-color);
+  // Table
+  --pex-thead-bg: initial;
+  // Datagrid
+  --pex-datagrid-row-hover-color: initial;
+  // Password Strength Bar
+  --pex-password-strength-bar-level-0-color: var(--pex-status-solid-color);
+  --pex-password-strength-bar-level-1-color: var(--pex-status-danger-color);
+  --pex-password-strength-bar-level-2-color: var(--pex-status-warning-alternate-color);
+  --pex-password-strength-bar-level-3-color: var(--pex-app-color-primary);
+  --pex-password-strength-bar-level-4-color: var(--pex-app-color-accent);
+  // Primary button
+  --pex-btn-primary-bg: var(--pex-color-accent-300);
+  --pex-btn-primary-color: var(--pex-app-color-secondary);
+  --pex-btn-primary-hover-bg: var(--pex-app-color-accent-hover);
+  --pex-btn-primary-hover-color: var(--pex-app-color-secondary);
+  --pex-btn-primary-pressed-bg: var(--pex-app-color-accent-active);
+  --pex-btn-primary-pressed-color: var(--pex-app-color-secondary);
+  --pex-btn-primary-disabled-opacity: 0.4;
+  // Outline button
+  --pex-btn-outline-border-color: var(--pex-color-secondary-alternate-200);
+  --pex-btn-outline-color: var(--pex-app-color-secondary);
+  --pex-btn-outline-hover-bg: var(--pex-color-secondary-alternate-200);
+  --pex-btn-outline-hover-color: var(--pex-app-color-secondary);
+  --pex-btn-outline-pressed-bg: var(--pex-color-secondary-alternate-300);
+  --pex-btn-outline-pressed-color: var(--pex-app-color-secondary);
+  // Link button
+  --pex-btn-link-color: var(--pex-app-color-primary);
+  --pex-btn-link-hover-color: var(--pex-color-primary-600);
+  --pex-btn-link-pressed-color: var(--pex-color-primary-800);
+  // Logo
+  --pex-app-header-logo-url: var(--pex-app-logo-alternate-md-url);
+  --pex-app-card-logo-url: var(--pex-app-logo-md-url);
+  --pex-app-component-logo-url: var(--pex-app-logo-text-md-url);
+  // Alert
+  --pex-alert-info-bg: #E1F1F6;
+  --pex-alert-info-icon-color: var(--pex-color-global-black);
+  // Icons
+  --pex-app-email-letter-circle-icon-url: url(./logos/pex-email-icon-blue.svg);
+}

@@ -1,8 +1,22 @@
-.aplosLogo {
-    filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
-	-webkit-filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.5));
-    width: 120px;
-    margin-bottom: 2px;
+.connect-heading {
+  margin-bottom: 16px;
+}
+
+.connect-aplos-logo {
+  height: 28px;
+  width: auto;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+.section {
+  border-top: 1px solid var(--pex-color-neutral-150, #E5E5E5);
+  padding: 14px 0 18px;
+  margin-top: 0;
+}
+
+.actions-section {
+  padding-bottom: 28px;
 }
 
 .auto-sync-toggle {
@@ -13,3 +27,23 @@
   display: flex;
   flex-direction: column;
 }
+
+.table-tag-mapping th:nth-child(1),
+.table-tag-mapping td:nth-child(1),
+.table-tag-mapping th:nth-child(2),
+.table-tag-mapping td:nth-child(2) {
+  width: 28%;
+}
+
+.table-tag-mapping th:nth-child(3),
+.table-tag-mapping td:nth-child(3) {
+  text-align: center;
+}
+
+.table-vertical th {
+  width: 28%;
+  font-weight: normal;
+  background: var(--table-header-bg, #F1F6F8);
+  border-right: 1px solid var(--pex-border-color);
+}
+

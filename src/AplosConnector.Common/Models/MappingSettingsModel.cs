@@ -54,6 +54,10 @@ namespace AplosConnector.Common.Models
         /// Whether to sync PEX account fees to Aplos.
         /// </summary>
         public bool SyncPexFees { get; set; }
+        /// <summary>
+        /// Whether to sync PEX reimbursements to Aplos.
+        /// </summary>
+        public bool SyncReimbursements { get; set; }
 
         /// <summary>
         /// The AccountId for the register to use in Aplos. This is the account from which money will be taken from in the transaction created in Aplos.
@@ -85,11 +89,18 @@ namespace AplosConnector.Common.Models
         public decimal PexRebatesAplosTransactionAccountNumber { get; set; }
         public string PexRebatesAplosTaxTag { get; set; }
 
+        public bool SyncReimbursementsCreateContact { get; set; }
+        public int ReimbursementsAplosContactId { get; set; }
+        public int ReimbursementsAplosFundId { get; set; }
+        public decimal ReimbursementsAplosTransactionAccountNumber { get; set; }
+        public string ReimbursementsAplosTaxTag { get; set; }
+
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
         public AplosTagMappingModel[] TransferTagMappings { get; set; }
         public AplosTagMappingModel[] FeeTagMappings { get; set; }
         public AplosTagMappingModel[] RebateTagMappings { get; set; }
+        public AplosTagMappingModel[] ReimbursementTagMappings { get; set; }
         public FundingSource PEXFundingSource { get; set; }
 
         public double? SyncTransactionsIntervalDays { get; set; }

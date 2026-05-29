@@ -2,7 +2,8 @@ import { Injectable, Inject } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { retryWithBackoff } from "../operators/retryWithBackoff.operator";
 import { CacheRepositoryService } from './cache-repository.service';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { ENABLE_MOCK_MODE } from './mapping.service';
 
 @Injectable({
   providedIn: "root"
@@ -24,6 +25,9 @@ export class PexService {
   }
 
   validatePexSetup(sessionId: string): Observable<PexValidityModel> {
+    if (ENABLE_MOCK_MODE) {
+      return of({ isValid: true, useTagsEnabled: true, requestAchTransferEnabled: false });
+    }
     return this.cache.runAndCacheOrGetFromCache(
       this.CACHE_KEY_PEX_VALIDITY, this.httpClient
         .get(this.buildUrl(sessionId, 'Validity'))
@@ -32,6 +36,13 @@ export class PexService {
   }
 
   getTags(sessionId: string): Observable<PexTagInfoModel[]> {
+    if (ENABLE_MOCK_MODE) {
+      return of([
+        { id: 'pex-1', type: CustomFieldType.Dropdown, name: 'Aplos Account', description: '', order: 1, isRequired: false },
+        { id: 'pex-2', type: CustomFieldType.Dropdown, name: 'Department', description: '', order: 2, isRequired: false },
+        { id: 'pex-3', type: CustomFieldType.Dropdown, name: 'Fund', description: '', order: 3, isRequired: false },
+      ]);
+    }
     return this.cache.runAndCacheOrGetFromCache(
       this.CACHE_KEY_PEX_TAGS,
       this.httpClient
@@ -41,31 +52,55 @@ export class PexService {
   }
 
   getAuthenticationStatus(sessionId: string) {
+    if (ENABLE_MOCK_MODE) return of({ isAuthenticated: true });
     return this.cache.runAndCacheOrGetFromCache("Pex.AuthenticationStatus", this.httpClient
       .get(this.buildUrl(sessionId, 'AuthenticationStatus'))
       .pipe(retryWithBackoff(50, 1, 500)), 5);
   }
 
   getConnectionAccountDetail(sessionId: string): Observable<PexConnectionDetailModel> {
+    if (ENABLE_MOCK_MODE) {
+      return of({
+        name: 'Dev Mock User',
+        email: 'devmock@pexcard.com',
+        pexConnection: true,
+        aplosConnection: true,
+        syncingSetup: true,
+        vendorsSetup: true,
+        isSyncing: false,
+        lastSync: new Date().toISOString(),
+        accountBalance: 5000,
+        useBusinessBalanceEnabled: true,
+        vendorCardsAvailable: 10,
+        isPrepaid: true,
+        isCredit: false
+      });
+    }
     return this.cache.runAndCacheOrGetFromCache("Pex.ConnectionAccountDetail", this.httpClient
       .get<PexConnectionDetailModel>(this.buildUrl(sessionId, 'ConnectionAccountDetail'))
       .pipe(retryWithBackoff(50, 1, 500)), 5);
   }
 
   updatePexAccountLinked(sessionId: string) {
+    if (ENABLE_MOCK_MODE) return of(null);
     return this.httpClient.post(this.buildUrl(sessionId, "UpdatePexAccountLinked"), null)
       .pipe(retryWithBackoff(50, 1, 500));
   }
 
   createVendorCards(sessionId: string, selectedVendors: CreateVendorCard[]) {
+    if (ENABLE_MOCK_MODE) return of(null);
     return this.httpClient.post<void>(this.buildUrl(sessionId, "VendorCards"), selectedVendors);
   }
 
-  getVendorCards(sessionId: string) {
+  getVendorCards(sessionId: string): Observable<VendorCardsOrdered[]> {
+    if (ENABLE_MOCK_MODE) {
+      return of([]);
+    }
     return this.httpClient.get<VendorCardsOrdered[]>(this.buildUrl(sessionId, "VendorCards"));
   }
 
   disconnectPexAccountLinked(sessionId: string) {
+    if (ENABLE_MOCK_MODE) return of(null);
     return this.httpClient.post(this.buildUrl(sessionId, "Disconnect"), null);
   }
 }

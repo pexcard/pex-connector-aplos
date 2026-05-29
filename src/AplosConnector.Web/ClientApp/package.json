@@ -1,7 +1,7 @@
 {
   "name": "aplos-app",
   "version": "0.0.0",
-    "engines": {
+  "engines": {
     "node": ">=22.0.0",
     "npm": ">=10.0.0"
   },
@@ -41,6 +41,7 @@
     "@angular/language-service": "^19.2.19",
     "@types/jasmine": "^5.1.4",
     "@types/node": "^22.10.2",
+    "eslint": "^10.3.0",
     "jasmine-core": "^5.5.0",
     "jasmine-spec-reporter": "^7.0.0",
     "karma": "^6.4.4",

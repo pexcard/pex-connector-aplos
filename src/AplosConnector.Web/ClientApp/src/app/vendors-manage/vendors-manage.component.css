@@ -25,6 +25,6 @@
 }
 
 tr:hover {
-  background-color: #E8E8E8;
+  background-color: var(--pex-color-neutral-100);
   ;
 }

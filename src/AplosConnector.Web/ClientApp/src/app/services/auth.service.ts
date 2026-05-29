@@ -5,7 +5,7 @@ import { retryWithBackoff } from '../operators/retryWithBackoff.operator';
 import { CacheRepositoryService } from './cache-repository.service';
 import { Router } from '@angular/router';
 import { catchError, concatMap } from "rxjs/operators";
-import { FundingSource } from "./mapping.service";
+import { FundingSource, ENABLE_MOCK_MODE } from "./mapping.service";
 
 @Injectable({
   providedIn: "root"
@@ -77,6 +77,13 @@ export class AuthService {
   }
 
   autoLogIn() {
+    if (ENABLE_MOCK_MODE) {
+      this.isAuthenticated.next(true);
+      this.sessionId.next('mock-session-id');
+      this.businessName.next('Dev Mock Business');
+      this.fundingSource.next(FundingSource.Prepaid);
+      return;
+    }
     let sessionId = localStorage.getItem(this.SESSION_ID_KEY);
     if (sessionId) {
       this.httpClient
@@ -108,6 +115,13 @@ export class AuthService {
   }
 
   logout(): Observable<void> {
+    if (ENABLE_MOCK_MODE) {
+      this.isAuthenticated.next(false);
+      this.sessionId.next(null);
+      this.businessName.next(null);
+      this.fundingSource.next(0);
+      return of(void 0);
+    }
     let sessionId = localStorage.getItem(this.SESSION_ID_KEY);
     if (sessionId) {
       return this.httpClient

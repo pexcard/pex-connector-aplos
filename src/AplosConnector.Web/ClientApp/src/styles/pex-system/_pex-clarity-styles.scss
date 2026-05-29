@@ -1,0 +1,234 @@
+﻿// Vendored from: Start/projects/ngx-pex-core/src/lib/styles/pex-clarity-styles.scss
+// Last synced: 2026-05-22
+// DO NOT EDIT -- update by copying from source repo
+
+@import "./pex-tokens";
+@import "./pex-mixins";
+
+[data-theme] {
+  // Page elements
+  --clr-global-app-background: var(--pex-main-bg) !important;
+  --clr-header-divider-color: transparent !important;
+  // Sidebar
+  --clr-vertical-nav-selected-bg-color: var(--pex-sidebar-item-active-bg) !important;
+  // Buttons
+  --clr-btn-primary-color: var(--pex-btn-primary-color) !important;
+  --clr-btn-primary-bg-color: var(--pex-btn-primary-bg) !important;
+  --clr-btn-primary-hover-bg-color: var(--pex-btn-primary-hover-bg) !important;
+  --clr-btn-primary-hover-color: var(--pex-btn-primary-hover-color) !important;
+  --clr-btn-primary-active-bg-color: var(--pex-btn-primary-pressed-bg) !important;
+  --clr-btn-primary-active-color: var(--pex-btn-primary-pressed-color) !important;
+  --clr-btn-primary-border-color: var(--pex-btn-primary-bg) !important;
+  // Outline
+  --clr-btn-primary-outline-color: var(--pex-btn-outline-color) !important;
+  --clr-btn-primary-outline-hover-color: var(--pex-btn-outline-hover-color) !important; // text
+  --clr-btn-primary-outline-hover-bg-color: var(--pex-btn-outline-hover-bg) !important;
+  --clr-btn-primary-outline-border-color: var(--pex-btn-outline-border-color) !important;
+  --clr-btn-primary-outline-active-color: var(--pex-btn-outline-pressed-color) !important; // text
+  --clr-btn-primary-outline-active-bg-color: var(--pex-btn-outline-pressed-bg) !important; // background
+  // Default outline
+  --clr-btn-default-outline-hover-color: var(--pex-btn-outline-hover-color) !important; // text
+  --clr-btn-default-outline-hover-bg-color: var(--pex-btn-outline-hover-bg) !important; // background
+  --clr-btn-default-outline-active-color: var(--pex-btn-outline-pressed-color) !important; // text
+  --clr-btn-default-outline-active-bg-color: var(--pex-btn-outline-pressed-bg) !important; // background
+  --clr-btn-default-outline-color: var(--pex-btn-outline-color) !important;
+  --clr-btn-default-outline-border-color: var(--pex-btn-outline-border-color) !important;
+  // Link button
+  --clr-btn-link-color: var(--pex-btn-link-color) !important;
+  --clr-btn-link-hover-color: var(--pex-btn-link-hover-color, var(--cds-alias-typography-info-hover)) !important;
+  --clr-btn-link-active-color: var(--pex-btn-link-pressed-color, var(--clr-btn-link-color)) !important;
+  // Default
+  --clr-btn-default-color: var(--pex-btn-outline-color) !important;
+  // Cards
+  --clr-card-clickable-box-shadow-color: var(--pex-app-color-primary) !important;
+  --clr-card-clickable-border-color: var(--pex-app-color-primary) !important;
+  // Alerts
+  --clr-alert-info-bg-color: var(--pex-alert-info-bg, var(--cds-alias-status-info-tint)) !important;
+  --clr-alert-info-icon-color: var(--pex-alert-info-icon-color, var(--cds-global-color-blue-800)) !important;
+  // Forms
+  --clr-forms-checkbox-background-color: var(--pex-object-interaction-background-highlight) !important;
+  --clr-forms-focused-color: var(--pex-object-interaction-background-highlight) !important;
+  // Other
+  --cds-alias-object-interaction-background-highlight: var(--pex-object-interaction-background-highlight) !important;
+  --cds-alias-typography-link-color: var(--pex-object-interaction-background-highlight) !important;
+  --clr-spinner-fill-color: var(--pex-object-interaction-background-highlight) !important;
+  --clr-progress-default-color: var(--pex-object-interaction-background-highlight) !important;
+  // Accordion
+  --clr-accordion-header-open-background-color: var(--pex-accordion-header-open-background-color, var(--clr-accordion-active-background-color)) !important;
+  --clr-accordion-header-open-hover-background-color: var(--pex-accordion-header-open-hover-background-color, var(--cds-alias-object-interaction-background-selected-hover)) !important;
+  --clr-accordion-header-open-active-background-color: var(--pex-accordion-header-open-active-background-color, var(--cds-alias-object-interaction-background-selected-active)) !important;
+  // Calendar
+  --clr-calendar-active-focus-cell-background-color: var(--pex-object-interaction-background-highlight, var(--cds-alias-object-interaction-background-highlight)) !important;
+  --clr-calendar-btn-picker-trigger-color: var(--pex-object-interaction-background-highlight, var(--cds-alias-typography-link-color)) !important;
+  // Dropdown
+  --clr-dropdown-item-hover-color: var(--pex-dropdown-item-hover-color, var(--cds-alias-object-interaction-color-hover)) !important;
+  --clr-dropdown-item-hover-bg-color: var(--pex-dropdown-item-hover-bg, var(--clr-dropdown-bg-hover-color)) !important;
+  --clr-dropdown-item-active-color: var(--pex-dropdown-item-pressed-color, var(--cds-alias-object-interaction-color-active)) !important;
+  --clr-dropdown-item-active-bg-color: var(--pex-dropdown-item-pressed-bg, var(--cds-alias-object-interaction-background-active)) !important;
+  // Timeline
+  --clr-timeline-incomplete-step-color: var(--pex-timeline-incomplete-step-color) !important;
+  --clr-timeline-current-step-color: var(--pex-timeline-current-step-color) !important;
+  --clr-timeline-line-color: var(--pex-timeline-color) !important;
+  // Forms
+  --clr-forms-invalid-text-color: var(--pex-forms-invalid-text-color, var(--cds-alias-status-danger)) !important;
+  // Table
+  --clr-thead-bgcolor: var(--pex-thead-bg, var(--cds-alias-object-container-background-tint)) !important;
+  // Datagrid
+  --clr-datagrid-row-hover-color: var(--pex-datagrid-row-hover-color, var(--cds-alias-object-interaction-background-hover)) !important;
+  // Wizard
+  --clr-wizard-stepnav-active-bgcolor: var(--pex-surface-4-color, var(--cds-alias-object-interaction-background-selected)) !important;
+  --clr-wizard-stepnav-selected-bgcolor: var(--pex-surface-4-color, var(--cds-alias-object-interaction-background-selected)) !important;
+  // Other styles
+  .btn.btn-primary.disabled,
+  .btn.btn-primary:disabled,
+  .btn-primary .btn.disabled,
+  .btn-primary .btn:disabled {
+    color: var(--pex-btn-primary-disabled-color) !important;
+    background-color: var(--pex-btn-primary-disabled-bg) !important;
+    opacity: var(--pex-btn-primary-disabled-opacity) !important;
+  }
+
+  .suppress-header-divider:before {
+    display: none !important;
+  }
+
+  .clr-error {
+    .clr-subtext {
+      color: var(--pex-status-danger-color) !important;
+    }
+  }
+}
+
+[data-theme~='pexcard-fresh'] {
+  .btn,
+  .alert-app-level .alert-item .btn {
+    text-transform: inherit !important;
+  }
+
+  .clr-vertical-nav .nav-link.active::before {
+    border-left-color: transparent;
+  }
+
+  .clr-timeline {
+    .clr-timeline-step {
+      cds-icon[status=info] {
+        fill: var(--pex-object-interaction-background-highlight) !important;
+      }
+    }
+  }
+}
+
+.disabled-control {
+  color: var(--pex-text-secondary-color) !important;
+  cursor: not-allowed !important;
+
+  input,
+  textarea,
+  clr-input-wrapper,
+  clr-input-group,
+  clr-select-wrapper,
+  select {
+    cursor: not-allowed !important;
+
+    &:hover {
+      background-color: inherit;
+      border-color: inherit;
+    }
+  }
+}
+
+cds-icon {
+  &.is-solid {
+    fill: var(--pex-status-solid-color) !important;
+  }
+
+  &.is-green,
+  &.is-success {
+    fill: var(--pex-status-success-color) !important;
+  }
+
+  &.is-red,
+  &.is-danger,
+  &.is-error {
+    fill: var(--pex-status-danger-color) !important;
+  }
+
+  &.is-warning {
+    fill: var(--pex-status-warning-color) !important;
+  }
+
+  &.is-blue,
+  &.is-info {
+    fill: var(--pex-status-info-color) !important;
+  }
+
+  &.is-info-circle {
+    background: var(--pex-status-info-light-color) !important;
+    border-radius: 50%;
+    padding: 0.4rem;
+  }
+
+  &.is-white,
+  &.is-inverse {
+    fill: var(--pex-status-inverse-color) !important;
+  }
+
+  &.is-highlight {
+    fill: var(--pex-status-info-color) !important;
+  }
+
+  &.is-dark {
+    fill: var(--pex-color-global-black) !important;
+  }
+}
+
+// .required is deprecated. please use .asterisk on the <label> element instead
+clr-select-container,
+clr-textarea-container,
+clr-date-container,
+clr-input-container,
+clr-password-container,
+clr-radio-container,
+.clr-form-control {
+  &.required label:first-child::after {
+    content: '\00a0*';
+    color: var(--pex-color-danger) !important;
+    --deprecated: 'WARNING: Use .asterisk on the <label> element instead';
+  }
+}
+
+.full-width-form {
+  @include pex-clr-full-width-form(508px);
+  --deprecated: 'WARNING: Use .pex-form-md instead';
+}
+
+.pex-form-md {
+  @include pex-clr-full-width-form(25rem);
+}
+
+.pex-form-lg {
+  @include pex-clr-full-width-form(35rem);
+}
+
+.pex-form-xl {
+  @include pex-clr-full-width-form(48rem);
+}
+
+.pex-form-full {
+  @include pex-clr-full-width-form(100%);
+}
+
+.clr-checkbox-wrapper input[type='checkbox']:disabled + label::before {
+  cursor: not-allowed;
+  background: var(-clr-color-neutral-400) !important;
+  border: none;
+}
+
+.clr-checkbox-wrapper input[type='checkbox']:disabled + label {
+  cursor: not-allowed;
+  color: var(-clr-color-neutral-400) !important;
+}
+
+.clr-input-group .clr-input-group-icon-action cds-icon {
+  fill: var(--pex-object-interaction-background-highlight, var(--cds-global-color-blue-800)) !important;
+}

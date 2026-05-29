@@ -1,10 +1,13 @@
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 
 import { retryWithBackoff } from '../operators/retryWithBackoff.operator';
 import { CacheRepositoryService } from './cache-repository.service';
 import { AplosApiTaxTagCategoryDetail } from './aplos.service';
+
+// TO DELETE BEFORE PUSH — Mock mode for local UI testing without backend
+export const ENABLE_MOCK_MODE = true;
 
 @Injectable({
   providedIn: 'root'
@@ -30,6 +33,14 @@ export class MappingService {
   }
 
   getAplosAuthenticationStatus(sessionId: string): Observable<AplosAuthenticationStatusModel> {
+    if (ENABLE_MOCK_MODE) {
+      return of({
+        isAuthenticated: true,
+        hasAplosAccountId: true,
+        aplosAuthenticationMode: AplosAuthenticationMode.partnerAuthentication,
+        partnerVerificationUrl: null
+      });
+    }
     return this.cache.runAndCacheOrGetFromCache(
       this.CACHE_KEY_GET_AUTHENTICATION_STATUS,
       this.httpClient
@@ -42,40 +53,127 @@ export class MappingService {
   }
 
   getSettings(sessionId: string): Observable<SettingsModel> {
+    // TO DELETE BEFORE PUSH — Mock mode for local UI testing
+    if (ENABLE_MOCK_MODE) {
+      const mockSettings: SettingsModel = {
+        automaticSync: true,
+        syncTransactions: true,
+        syncTaxTagToPex: false,
+        syncApprovedOnly: false,
+        earliestTransactionDateToSync: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        syncTransfers: false,
+        syncInvoices: false,
+        syncPexFees: false,
+        syncRebates: false,
+        syncReimbursements: true, // Enable reimbursements for testing
+        transfersAplosContactId: 1,
+        transfersAplosFundId: 100,
+        transfersAplosTransactionAccountNumber: 1000,
+        pexFeesAplosRegisterAccountNumber: 1000,
+        pexFeesAplosContactId: 1,
+        pexFeesAplosFundId: 100,
+        pexFeesAplosTransactionAccountNumber: 5000,
+        pexFeesAplosTaxTag: '',
+        pexRebatesAplosContactId: 1,
+        pexRebatesAplosFundId: 100,
+        pexRebatesAplosTransactionAccountNumber: 5000,
+        pexRebatesAplosTaxTag: '',
+        syncReimbursementsCreateContact: false,
+        reimbursementsAplosContactId: 1,
+        reimbursementsAplosFundId: 100,
+        reimbursementsAplosTransactionAccountNumber: 5000,
+        reimbursementsAplosTaxTag: '',
+        aplosRegisterAccountNumber: 1000,
+        syncTransactionsCreateContact: false,
+        defaultAplosContactId: 0,
+        syncFundsToPex: true,
+        pexFundsTagId: 'pex-3',
+        defaultAplosFundId: 0,
+        defaultAplosTransactionAccountNumber: 0,
+        connectedOn: new Date(),
+        lastSync: new Date(),
+        aplosAccountId: 'sandbox-account',
+        aplosPartnerVerified: false,
+        aplosClientId: '',
+        aplosPrivateKey: '',
+        aplosAuthenticationMode: AplosAuthenticationMode.partnerAuthentication,
+        expenseAccountMappings: [
+          { expenseAccountsPexTagId: 'pex-1', syncExpenseAccounts: true, defaultAplosTransactionAccountNumber: 5000 }
+        ],
+        tagMappings: [
+          { aplosTagId: '10', pexTagId: 'pex-1', syncToPex: true, defaultAplosTagId: '' },
+          { aplosTagId: '20', pexTagId: 'pex-2', syncToPex: false, defaultAplosTagId: '' },
+          { aplosTagId: '30', pexTagId: 'pex-3', syncToPex: true, defaultAplosTagId: '' },
+        ],
+        taxTagCategoryDetails: [],
+        pexFundingSource: FundingSource.Prepaid,
+        mapVendorCards: false,
+        useNormalizedMerchantNames: false,
+        postDateType: PostDateType.Transaction,
+        transferTagMappings: [],
+        feeTagMappings: [],
+        rebateTagMappings: [],
+        reimbursementTagMappings: [
+          { aplosTagId: '1', defaultAplosTagValue: 'Meals & Entertainment' }
+        ],
+        syncInvoicesMethod: SyncInvoicesMethod.Simple
+      };
+      return of(mockSettings);
+    }
+
     return this.cache.runAndCacheOrGetFromCache(this.CACHE_KEY_GET_SETTINGS, this.httpClient
       .get<SettingsModel>(this.buildUrl(sessionId, 'Settings'))
       .pipe(retryWithBackoff()), 5);
   }
 
   saveSettings(sessionId: string, settings: SettingsModel) {
+    if (ENABLE_MOCK_MODE) {
+      return of(null);
+    }
     this.clearCache();
     return this.httpClient.put(this.buildUrl(sessionId, 'Settings'), settings);
   }
 
   getSyncResults(sessionId: string) {
+    if (ENABLE_MOCK_MODE) {
+      const now = new Date();
+      return of([
+        { createdUtc: now, syncType: 'Transactions', syncStatus: 'Success', syncedRecords: 12, syncNotes: '', PEXBusinessAcctId: 0 },
+        { createdUtc: now, syncType: 'Transfers', syncStatus: 'Success', syncedRecords: 3, syncNotes: '', PEXBusinessAcctId: 0 },
+        { createdUtc: now, syncType: 'Reimbursements', syncStatus: 'Success', syncedRecords: 5, syncNotes: '', PEXBusinessAcctId: 0 },
+        { createdUtc: now, syncType: 'Rebates', syncStatus: 'Success', syncedRecords: 0, syncNotes: '', PEXBusinessAcctId: 0 },
+        { createdUtc: now, syncType: 'PEX Account Fees', syncStatus: 'Success', syncedRecords: 1, syncNotes: '', PEXBusinessAcctId: 0 },
+        { createdUtc: now, syncType: 'Tag Values (Funds)', syncStatus: 'Success', syncedRecords: 0, syncNotes: '', PEXBusinessAcctId: 0 },
+        { createdUtc: now, syncType: 'Tag Values (Accounts)', syncStatus: 'Success', syncedRecords: 0, syncNotes: '', PEXBusinessAcctId: 0 },
+      ]);
+    }
     return this.cache.runAndCacheOrGetFromCache(this.CACHE_KEY_GET_SYNC_RESULTS, this.httpClient
       .get<SyncResultModel[]>(this.buildUrl(sessionId, 'SyncResults'))
       .pipe(retryWithBackoff()), 5);
   }
 
   sync(sessionId: string) {
+    if (ENABLE_MOCK_MODE) return of(null);
     this.clearCache();
     return this.httpClient.post(this.buildUrl(sessionId, 'Sync'), null);
   }
 
   getVendorCardsMapped(sessionId: string): Observable<boolean> {
+    if (ENABLE_MOCK_MODE) return of(true);
     return this.httpClient
       .get<boolean>(this.buildUrl(sessionId, 'Settings/VendorCardMapping'))
       .pipe(retryWithBackoff());
   }
 
   setVendorCardsMapped(sessionId: string, enable: boolean): Observable<boolean> {
+    if (ENABLE_MOCK_MODE) return of(true);
     return this.httpClient
       .put<void>(this.buildUrl(sessionId, 'Settings/VendorCardMapping'), enable)
       .pipe(retryWithBackoff());
   }
 
   disconnect(sessionId: string) {
+    if (ENABLE_MOCK_MODE) return of(null);
     this.clearCache();
     return this.httpClient.delete(this.buildUrl(sessionId, ''));
   }
@@ -109,6 +207,7 @@ export interface SettingsModel {
   syncInvoices: boolean,
   syncPexFees: boolean;
   syncRebates: boolean;
+  syncReimbursements: boolean;
 
   transfersAplosContactId: number;
   transfersAplosFundId: number;
@@ -124,6 +223,12 @@ export interface SettingsModel {
   pexRebatesAplosFundId: number;
   pexRebatesAplosTransactionAccountNumber: number;
   pexRebatesAplosTaxTag: string;
+
+  syncReimbursementsCreateContact: boolean;
+  reimbursementsAplosContactId: number;
+  reimbursementsAplosFundId: number;
+  reimbursementsAplosTransactionAccountNumber: number;
+  reimbursementsAplosTaxTag: string;
 
   aplosRegisterAccountNumber: number;
 
@@ -157,6 +262,7 @@ export interface SettingsModel {
   transferTagMappings: AplosTagMappingModel[];
   feeTagMappings: AplosTagMappingModel[];
   rebateTagMappings: AplosTagMappingModel[];
+  reimbursementTagMappings: AplosTagMappingModel[];
   syncInvoicesMethod: SyncInvoicesMethod;
 }
 

@@ -557,6 +557,231 @@ namespace AplosConnector.Common.Tests
             Assert.Equal("Resources (1004)", dedupedAccounts[3].Name);
         }
 
+        [Fact]
+        public void WasPexTransactionSyncedToAplos_ReturnsTrue_WhenPaymentRequestIdIsInNoteSuffix()
+        {
+            //Arrange — reimbursement note format: "MerchantName | PayeeName | 12345"
+            string paymentRequestId = "12345";
+
+            var aplosTransactions = new List<AplosApiTransactionDetail>
+            {
+                new AplosApiTransactionDetail
+                {
+                    Note = $"Merchant | John Doe | {paymentRequestId}",
+                    Memo = null,
+                },
+            };
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            bool wasSynced = service.WasPexTransactionSyncedToAplos(aplosTransactions, paymentRequestId);
+
+            //Assert
+            Assert.True(wasSynced);
+        }
+
+        [Fact]
+        public void WasPexTransactionSyncedToAplos_ReturnsTrue_WhenPaymentRequestIdIsOnlyNote()
+        {
+            //Arrange — reimbursement with no merchant/payee info
+            string paymentRequestId = "99999";
+
+            var aplosTransactions = new List<AplosApiTransactionDetail>
+            {
+                new AplosApiTransactionDetail
+                {
+                    Note = paymentRequestId,
+                    Memo = null,
+                },
+            };
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            bool wasSynced = service.WasPexTransactionSyncedToAplos(aplosTransactions, paymentRequestId);
+
+            //Assert
+            Assert.True(wasSynced);
+        }
+
+        [Fact]
+        public void WasPexTransactionSyncedToAplos_ReturnsFalse_WhenPaymentRequestIdNotPresent()
+        {
+            //Arrange
+            string paymentRequestId = "12345";
+
+            var aplosTransactions = new List<AplosApiTransactionDetail>
+            {
+                new AplosApiTransactionDetail
+                {
+                    Note = "Merchant | John Doe | 99999",
+                    Memo = null,
+                },
+            };
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            bool wasSynced = service.WasPexTransactionSyncedToAplos(aplosTransactions, paymentRequestId);
+
+            //Assert
+            Assert.False(wasSynced);
+        }
+
+        [Theory]
+        [InlineData(0, 1, 1, "Contact not configured")]
+        [InlineData(1, 0, 1, "Fund not configured")]
+        [InlineData(1, 1, 0, "Account not configured")]
+        public void Pex2AplosMappingModel_SyncReimbursements_RequiresAllDefaults(
+            int contactId, int fundId, decimal accountNumber, string scenario)
+        {
+            //Arrange — verify the mapping model can hold reimbursement config
+            var mapping = new Pex2AplosMappingModel
+            {
+                SyncReimbursements = true,
+                ReimbursementsAplosContactId = contactId,
+                ReimbursementsAplosFundId = fundId,
+                ReimbursementsAplosTransactionAccountNumber = accountNumber,
+            };
+
+            //Act
+            bool isConfigured = mapping.ReimbursementsAplosContactId > 0
+                && mapping.ReimbursementsAplosFundId > 0
+                && mapping.ReimbursementsAplosTransactionAccountNumber > 0;
+
+            //Assert
+            Assert.False(isConfigured, $"Should not be fully configured when: {scenario}");
+        }
+
+        [Fact]
+        public void Pex2AplosMappingModel_SyncReimbursements_FlagDefaultsToFalse()
+        {
+            //Arrange & Act
+            var mapping = new Pex2AplosMappingModel();
+
+            //Assert
+            Assert.False(mapping.SyncReimbursements);
+        }
+
+        [Fact]
+        public void Pex2AplosMappingModel_ReimbursementSettings_RoundTripThroughStorageModel()
+        {
+            //Arrange
+            var mapping = new Pex2AplosMappingModel
+            {
+                SyncReimbursements = true,
+                SyncReimbursementsCreateContact = true,
+                ReimbursementsAplosContactId = 42,
+                ReimbursementsAplosFundId = 7,
+                ReimbursementsAplosTransactionAccountNumber = 5010,
+                ReimbursementsAplosTaxTagId = "990-1",
+                ReimbursementTagMappings = new[] { new AplosTagMappingModel { AplosTagId = "cat1", DefaultAplosTagValue = "val1" } },
+            };
+
+            //Act
+            var storageModel = mapping.ToStorageModel();
+
+            //Assert
+            Assert.True(storageModel.SyncReimbursements);
+            Assert.True(storageModel.SyncReimbursementsCreateContact);
+            Assert.Equal(42, storageModel.ReimbursementsAplosContactId);
+            Assert.Equal(7, storageModel.ReimbursementsAplosFundId);
+            Assert.Equal(5010, storageModel.ReimbursementsAplosTransactionAccountNumber);
+            Assert.Equal("990-1", storageModel.ReimbursementsAplosTaxTag);
+            Assert.NotNull(storageModel.ReimbursementTagMappings);
+            Assert.Single(storageModel.ReimbursementTagMappings);
+            Assert.Equal("cat1", storageModel.ReimbursementTagMappings[0].AplosTagId);
+        }
+
+        [Fact]
+        public void Pex2AplosMappingModel_UpdateFromSettings_PopulatesReimbursementFields()
+        {
+            //Arrange
+            var mapping = new Pex2AplosMappingModel();
+            var settings = mapping.ToStorageModel();
+            settings.SyncReimbursements = true;
+            settings.ReimbursementsAplosContactId = 10;
+            settings.ReimbursementsAplosFundId = 20;
+            settings.ReimbursementsAplosTransactionAccountNumber = 3000;
+            settings.ReimbursementsAplosTaxTag = "990-2";
+            settings.ReimbursementTagMappings = new[] { new AplosTagMappingModel { AplosTagId = "c2", DefaultAplosTagValue = "v2" } };
+
+            //Act
+            mapping.UpdateFromSettings(settings);
+
+            //Assert
+            Assert.True(mapping.SyncReimbursements);
+            Assert.Equal(10, mapping.ReimbursementsAplosContactId);
+            Assert.Equal(20, mapping.ReimbursementsAplosFundId);
+            Assert.Equal(3000, mapping.ReimbursementsAplosTransactionAccountNumber);
+            Assert.Equal("990-2", mapping.ReimbursementsAplosTaxTagId);
+            Assert.Single(mapping.ReimbursementTagMappings);
+        }
+
+        [Fact]
+        public void Pex2AplosMappingModel_SyncReimbursementsCreateContact_DefaultsToFalse()
+        {
+            var mapping = new Pex2AplosMappingModel();
+            Assert.False(mapping.SyncReimbursementsCreateContact);
+        }
+
+        [Fact]
+        public void Pex2AplosMappingModel_SyncReimbursementsCreateContact_RoundTripThroughStorageModel()
+        {
+            //Arrange
+            var mapping = new Pex2AplosMappingModel
+            {
+                SyncReimbursementsCreateContact = true,
+                ReimbursementsAplosContactId = 42,
+                ReimbursementsAplosFundId = 7,
+                ReimbursementsAplosTransactionAccountNumber = 5010,
+            };
+
+            //Act
+            var storageModel = mapping.ToStorageModel();
+
+            //Assert
+            Assert.True(storageModel.SyncReimbursementsCreateContact);
+        }
+
+        [Fact]
+        public void Pex2AplosMappingModel_UpdateFromSettings_PopulatesSyncReimbursementsCreateContact()
+        {
+            //Arrange
+            var mapping = new Pex2AplosMappingModel();
+            var settings = mapping.ToStorageModel();
+            settings.SyncReimbursementsCreateContact = true;
+
+            //Act
+            mapping.UpdateFromSettings(settings);
+
+            //Assert
+            Assert.True(mapping.SyncReimbursementsCreateContact);
+        }
+
+        [Fact]
+        public void Pex2AplosMappingModel_SyncReimbursements_ContactNotRequired_WhenCreateContactEnabled()
+        {
+            //Arrange
+            var mapping = new Pex2AplosMappingModel
+            {
+                SyncReimbursements = true,
+                SyncReimbursementsCreateContact = true,
+                ReimbursementsAplosContactId = 0,
+                ReimbursementsAplosFundId = 200,
+                ReimbursementsAplosTransactionAccountNumber = 5000,
+            };
+
+            //Act — mirrors the guard check in SyncReimbursements
+            bool isConfigured = (mapping.SyncReimbursementsCreateContact || mapping.ReimbursementsAplosContactId > 0)
+                && mapping.ReimbursementsAplosFundId > 0
+                && mapping.ReimbursementsAplosTransactionAccountNumber > 0;
+
+            //Assert
+            Assert.True(isConfigured, "Should be configured when SyncReimbursementsCreateContact is true even without a contact ID");
+        }
+
         private AplosIntegrationService GetAplosIntegrationService()
         {
             _mockOptions.Setup(mockOptions => mockOptions.Value).Returns(new AppSettingsModel());

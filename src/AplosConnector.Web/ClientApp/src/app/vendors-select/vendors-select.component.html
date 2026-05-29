@@ -99,21 +99,15 @@
           </clr-input-container>
         </div>
 
-        <div *ngIf="aplosAuthenticationStatus && !aplosAuthenticationStatus.hasAplosAccountId" class="alert alert-warning" role="alert">
-          <div class="alert-items">
-            <div class="alert-item static">
-              <div class="alert-icon-wrapper">
-                <cds-icon class="alert-icon" shape="exclamation-triangle"></cds-icon>
-              </div>
-              <span class="alert-text">
-                Sorry, we don't seem to have your Aplos customer ID on file so can't connect your PEX account to Aplos.
-                <br />
-                <br />
-                Please contact <a href="https://www.aplos.com/support/">Aplos Support</a> and ask that your customer ID be sent to PEX. Once we have it, we'll contact you so that you know when you're able to complete the account linking process.
-              </span>
-            </div>
-          </div>
-        </div>
+        <clr-alert [clrAlertType]="'warning'" [clrAlertClosable]="false" *ngIf="aplosAuthenticationStatus && !aplosAuthenticationStatus.hasAplosAccountId">
+          <clr-alert-item>
+            <span class="alert-text">
+              Sorry, we don't seem to have your Aplos customer ID on file so can't connect your PEX account to Aplos.
+              <br /><br />
+              Please contact <a href="https://www.aplos.com/support/">Aplos Support</a> and ask that your customer ID be sent to PEX. Once we have it, we'll contact you so that you know when you're able to complete the account linking process.
+            </span>
+          </clr-alert-item>
+        </clr-alert>
 
         <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl">
           <p>
@@ -151,16 +145,11 @@
       <div class="text-weight-500">You can create {{maxVendorCards | number}} vendor cards at a time. You have {{(connectionDetails.vendorCardsAvailable - selectedVendors.length) | number}} cards available for creation.</div>
       <div class="p7 text-margin">Hold cmnd+click (mac) or ctrl/shift+click (win) for multi selection.</div>
       <ng-container *ngIf="!isLoadingVendors">
-        <div class="alert alert-info" role="alert">
-          <div class="alert-items">
-            <div class="alert-item static">
-              <div class="alert-icon-wrapper">
-                <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
-              </div>
-              <div>You can save 1% of all vendor spend with a PEX Vendor Card.</div>
-            </div>
-          </div>
-        </div>
+        <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
+          <clr-alert-item>
+            <span class="alert-text">You can save 1% of all vendor spend with a PEX Vendor Card.</span>
+          </clr-alert-item>
+        </clr-alert>
         <clr-dropdown [clrCloseMenuOnItemClick]="true">
           <button class="btn btn-link" clrDropdownTrigger>SORT BY
             <cds-icon shape="angle down"></cds-icon>
@@ -193,17 +182,12 @@
       <ng-template clrPageTitle>Configure how your vendors cards are setup and used.</ng-template>
       <clr-spinner *ngIf="isLoadingSettings" [clrMedium]="true"></clr-spinner>
       <ng-container *ngIf="!isLoadingSettings">
-        <div class="alert alert-info" role="alert">
-          <div class="alert-items">
-            <div class="alert-item static">
-              <div class="alert-icon-wrapper">
-                <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
-              </div>
-              <span *ngIf="connectionDetails.isPrepaid" class="alert-text">Add optional initial funding<span *ngIf="connectionDetails.useBusinessBalanceEnabled">, or use auto funding,</span> for your vendor cards. <span *ngIf="availableBalance >= 0">You have {{availableBalance | currency}} available for funding.</span></span>
-              <span *ngIf="connectionDetails.isCredit" class="alert-text">Add a required card limit for each vendor card.</span>
-            </div>
-          </div>
-        </div>
+        <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
+          <clr-alert-item>
+            <span *ngIf="connectionDetails.isPrepaid" class="alert-text">Add optional initial funding<span *ngIf="connectionDetails.useBusinessBalanceEnabled">, or use auto funding,</span> for your vendor cards. <span *ngIf="availableBalance >= 0">You have {{availableBalance | currency}} available for funding.</span></span>
+            <span *ngIf="connectionDetails.isCredit" class="alert-text">Add a required card limit for each vendor card.</span>
+          </clr-alert-item>
+        </clr-alert>
         <div class="map-vendors same-line">
           <clr-toggle-container>
             <clr-toggle-wrapper>
@@ -242,16 +226,11 @@
             </tbody>
           </table>
         </div>
-        <div *ngIf="connectionDetails.isPrepaid && availableBalance < 0" class="alert alert-danger" role="alert">
-          <div class="alert-items">
-            <div *ngIf="availableBalance < 0" class="alert-item static">
-              <div class="alert-icon-wrapper">
-                <cds-icon class="alert-icon" shape="exclamation-circle"></cds-icon>
-              </div>
-              <span class="alert-text">You don't have enough available balance to continue! <a target="_blank" href="https://dashboard.pexcard.com/transactions/transfers/make-transfer">Click here</a> to fund your account.</span>
-            </div>
-          </div>
-        </div>
+        <clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false" *ngIf="connectionDetails.isPrepaid && availableBalance < 0">
+          <clr-alert-item>
+            <span class="alert-text">You don't have enough available balance to continue! <a target="_blank" href="https://dashboard.pexcard.com/transactions/transfers/make-transfer">Click here</a> to fund your account.</span>
+          </clr-alert-item>
+        </clr-alert>
       </ng-container>
     </clr-wizard-page>
 
@@ -272,16 +251,11 @@
             </p>
           </ng-container>
 
-          <div class="alert alert-info" role="alert">
-            <div class="alert-items">
-              <div class="alert-item static">
-                <div class="alert-icon-wrapper">
-                  <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
-                </div>
-                <span class="alert-text">You can save {{selectedSaveAmount | currency}} of your vendor spend with a PEX vendor card(s) <span class="red-star">*</span></span>
-              </div>
-            </div>
-          </div>
+          <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
+            <clr-alert-item>
+              <span class="alert-text">You can save {{selectedSaveAmount | currency}} of your vendor spend with a PEX vendor card(s) <span class="red-star">*</span></span>
+            </clr-alert-item>
+          </clr-alert>
         </div>
         <div class="p7">
           <span class="red-star">*</span> Disclaimer: Estimated savings are based on all your Aplos vendors spend per last 180 days. <a target="_blank" href="https://www.pexcard.com/lp/vendor-card-rebate-all-vintages/">Terms and Conditions</a> apply.
@@ -297,13 +271,8 @@
   <clr-spinner [clrMedium]="true"></clr-spinner>
   <span>Creating Vendor Cards...</span>
 </div>
-<div *ngIf="createVendorCardsFailed" class="alert alert-danger" role="alert">
-  <div class="alert-items">
-    <div class="alert-item static">
-      <div class="alert-icon-wrapper">
-        <cds-icon class="alert-icon" shape="exclamation-circle"></cds-icon>
-      </div>
-      <span class="alert-text">Creating vendor cards failed. Please contact <code>appsupport&#64;pexcard.com</code>.</span>
-    </div>
-  </div>
-</div>
+<clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false" *ngIf="createVendorCardsFailed">
+  <clr-alert-item>
+    <span class="alert-text">Creating vendor cards failed. Please contact <code>appsupport&#64;pexcard.com</code>.</span>
+  </clr-alert-item>
+</clr-alert>

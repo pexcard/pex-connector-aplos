@@ -61,7 +61,11 @@ export class SyncHistoryComponent implements OnInit, OnDestroy {
       results => {
         if (results && results.length > 0) {
           console.log('got results', results);
-          this.syncResults = [...results];
+          this.syncResults = [...results].sort((a, b) => {
+            const timeDiff = new Date(b.createdUtc).getTime() - new Date(a.createdUtc).getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return a.syncType.localeCompare(b.syncType);
+          });
         }
         this.loadingHistory = false;
       }
