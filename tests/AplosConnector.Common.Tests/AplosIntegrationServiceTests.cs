@@ -510,6 +510,126 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public void WasPexTransactionSyncedToAplos_ReturnsTrue_WhenIdIsLastSegmentOfNote()
+        {
+            //Arrange - new note format "{ContactName} | {Notes} | {TransactionId}"
+            string pexTransactionId = "12489828";
+
+            var aplosTransactions = new List<AplosApiTransactionDetail>
+            {
+                new AplosApiTransactionDetail
+                {
+                    Note = $"John Doe | Office supplies | {pexTransactionId}",
+                },
+            };
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            bool wasSynced = service.WasPexTransactionSyncedToAplos(aplosTransactions, pexTransactionId);
+
+            //Assert
+            Assert.True(wasSynced);
+        }
+
+        [Fact]
+        public void WasPexTransactionSyncedToAplos_ReturnsTrue_WhenIdIsFirstSegmentOfNote()
+        {
+            //Arrange - legacy note format "{TransactionId} | {Name}"
+            string pexTransactionId = "12489828";
+
+            var aplosTransactions = new List<AplosApiTransactionDetail>
+            {
+                new AplosApiTransactionDetail
+                {
+                    Note = $"{pexTransactionId} | John Doe",
+                },
+            };
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            bool wasSynced = service.WasPexTransactionSyncedToAplos(aplosTransactions, pexTransactionId);
+
+            //Assert
+            Assert.True(wasSynced);
+        }
+
+        [Fact]
+        public void WasPexTransactionSyncedToAplos_ReturnsTrue_WhenIdIsLastSegmentOfMemo()
+        {
+            //Arrange - same delimiter-aware handling must apply to Memo
+            string pexTransactionId = "12489828";
+
+            var aplosTransactions = new List<AplosApiTransactionDetail>
+            {
+                new AplosApiTransactionDetail
+                {
+                    Memo = $"John Doe | Office supplies | {pexTransactionId}",
+                },
+            };
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            bool wasSynced = service.WasPexTransactionSyncedToAplos(aplosTransactions, pexTransactionId);
+
+            //Assert
+            Assert.True(wasSynced);
+        }
+
+        [Fact]
+        public void WasPexTransactionSyncedToAplos_ReturnsFalse_WhenInvoiceIdIsSubstringOfCardholderTransactionId()
+        {
+            //Arrange - invoice 89828 must NOT match a cardholder transaction whose Note ends with
+            //TransactionId 12489828 (the bug in work item 138157).
+            string invoiceId = "89828";
+
+            var aplosTransactions = new List<AplosApiTransactionDetail>
+            {
+                new AplosApiTransactionDetail
+                {
+                    Note = "John Doe | Office supplies | 12489828",
+                },
+                new AplosApiTransactionDetail
+                {
+                    Memo = "John Doe | Office supplies | 12489828",
+                },
+            };
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            bool wasSynced = service.WasPexTransactionSyncedToAplos(aplosTransactions, invoiceId);
+
+            //Assert
+            Assert.False(wasSynced);
+        }
+
+        [Fact]
+        public void WasPexTransactionSyncedToAplos_ReturnsTrue_WhenInvoiceIdIsExactNote()
+        {
+            //Arrange - invoices are synced with Note set to the bare invoice id
+            string invoiceId = "89828";
+
+            var aplosTransactions = new List<AplosApiTransactionDetail>
+            {
+                new AplosApiTransactionDetail
+                {
+                    Note = invoiceId,
+                },
+            };
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            bool wasSynced = service.WasPexTransactionSyncedToAplos(aplosTransactions, invoiceId);
+
+            //Assert
+            Assert.True(wasSynced);
+        }
+
+        [Fact]
         public void DedupeAplosAccounts_ReturnsUniqueAccounts_WhenThreeDupesExist()
         {
             //Arrange

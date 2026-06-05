@@ -2296,9 +2296,28 @@ namespace AplosConnector.Common.Services
         public bool WasPexTransactionSyncedToAplos(IEnumerable<AplosApiTransactionDetail> aplosTransactions, string pexTransactionId)
         {
             return aplosTransactions.Any(aplosTransaction =>
-                (!string.IsNullOrEmpty(aplosTransaction.Note) && (aplosTransaction.Note.StartsWith(pexTransactionId) || aplosTransaction.Note.EndsWith(pexTransactionId)))
-                ||
-                (!string.IsNullOrEmpty(aplosTransaction.Memo) && (aplosTransaction.Memo.StartsWith(pexTransactionId) || aplosTransaction.Memo.EndsWith(pexTransactionId))));
+                NoteOrMemoMatchesPexTransactionId(aplosTransaction.Note, pexTransactionId)
+                || NoteOrMemoMatchesPexTransactionId(aplosTransaction.Memo, pexTransactionId));
+        }
+
+        // The Aplos Note/Memo is built as a " | "-delimited string. Depending on the sync path and
+        // history the PEX id can appear as the whole value (invoices), as the last segment in the new
+        // format "{ContactName} | {Notes} | {TransactionId}", or as the first segment in the legacy
+        // format "{TransactionId} | {Name}". Matching must be delimiter-aware so that a cardholder
+        // TransactionId like 12489828 does NOT make a bare StartsWith/EndsWith collide with an
+        // unrelated invoice id such as 89828 and flag it as already synced (work item 138157).
+        private static bool NoteOrMemoMatchesPexTransactionId(string noteOrMemo, string pexTransactionId)
+        {
+            if (string.IsNullOrEmpty(noteOrMemo) || string.IsNullOrEmpty(pexTransactionId))
+            {
+                return false;
+            }
+
+            const string separator = " | ";
+
+            return noteOrMemo == pexTransactionId
+                || noteOrMemo.EndsWith(separator + pexTransactionId)
+                || noteOrMemo.StartsWith(pexTransactionId + separator);
         }
 
         private readonly ConcurrentDictionary<int, CardholderDetailsModel> _cardholderDetailsCache =
