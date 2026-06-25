@@ -248,9 +248,12 @@ namespace AplosConnector.Common.Services
 
                     ExpenseAccountMappings = model.ExpenseAccountMappings == null
                         ? null
-                        : JsonConvert.DeserializeObject<ExpenseAccountMappingModel[]>(model.ExpenseAccountMappings),                    TagMappings = model.TagMappings == null
+                        : JsonConvert.DeserializeObject<ExpenseAccountMappingModel[]>(model.ExpenseAccountMappings),
+
+                    TagMappings = model.TagMappings == null
                         ? null
                         : JsonConvert.DeserializeObject<TagMappingModel[]>(model.TagMappings),
+
                     TransferTagMappings = model.TransferTagMappings == null
                         ? null
                         : JsonConvert.DeserializeObject<AplosTagMappingModel[]>(model.TransferTagMappings),
