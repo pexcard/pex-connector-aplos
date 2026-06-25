@@ -26,6 +26,7 @@ namespace AplosConnector.Common.Models
             SyncPexFees = mapping.SyncPexFees;
             SyncInvoices = mapping.SyncInvoices;
             SyncRebates = mapping.SyncRebates;
+            SyncReimbursements = mapping.SyncReimbursements;
             LastSyncUtc = mapping.LastSync;
             EarliestTransactionDateToSync = mapping.EarliestTransactionDateToSync.ToUniversalTime();
             if (mapping.EndDateUtc != null)
@@ -64,6 +65,12 @@ namespace AplosConnector.Common.Models
             PexRebatesAplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber;
             PexRebatesAplosTaxTagId = mapping.PexRebatesAplosTaxTag;
 
+            SyncReimbursementsCreateContact = mapping.SyncReimbursementsCreateContact;
+            ReimbursementsAplosContactId = mapping.ReimbursementsAplosContactId;
+            ReimbursementsAplosFundId = mapping.ReimbursementsAplosFundId;
+            ReimbursementsAplosTransactionAccountNumber = mapping.ReimbursementsAplosTransactionAccountNumber;
+            ReimbursementsAplosTaxTagId = mapping.ReimbursementsAplosTaxTag;
+
             PexFundsTagId = mapping.PexFundsTagId;
             SyncFundsToPex = mapping.SyncFundsToPex;
 
@@ -74,6 +81,7 @@ namespace AplosConnector.Common.Models
             TransferTagMappings = mapping.TransferTagMappings;
             FeeTagMappings = mapping.FeeTagMappings;
             RebateTagMappings = mapping.RebateTagMappings;
+            ReimbursementTagMappings = mapping.ReimbursementTagMappings;
             PEXFundingSource = mapping.PEXFundingSource;
             MapVendorCards = mapping.MapVendorCards;
             UseNormalizedMerchantNames = mapping.UseNormalizedMerchantNames;
@@ -108,6 +116,7 @@ namespace AplosConnector.Common.Models
                 SyncInvoices = SyncInvoices,
                 SyncPexFees = SyncPexFees,
                 SyncRebates = SyncRebates,
+                SyncReimbursements = SyncReimbursements,
                 LastSync = LastSyncUtc,
                 EarliestTransactionDateToSync = EarliestTransactionDateToSync,
                 EndDateUtc = EndDateUtc,
@@ -146,6 +155,12 @@ namespace AplosConnector.Common.Models
                 PexRebatesAplosTransactionAccountNumber = PexRebatesAplosTransactionAccountNumber,
                 PexRebatesAplosTaxTag = PexRebatesAplosTaxTagId,
 
+                SyncReimbursementsCreateContact = SyncReimbursementsCreateContact,
+                ReimbursementsAplosContactId = ReimbursementsAplosContactId,
+                ReimbursementsAplosFundId = ReimbursementsAplosFundId,
+                ReimbursementsAplosTransactionAccountNumber = ReimbursementsAplosTransactionAccountNumber,
+                ReimbursementsAplosTaxTag = ReimbursementsAplosTaxTagId,
+
                 SyncFundsToPex = SyncFundsToPex,
 
                 ExpenseAccountMappings = ExpenseAccountMappings,
@@ -153,6 +168,7 @@ namespace AplosConnector.Common.Models
                 TransferTagMappings = TransferTagMappings,
                 FeeTagMappings = FeeTagMappings,
                 RebateTagMappings = RebateTagMappings,
+                ReimbursementTagMappings = ReimbursementTagMappings,
                 PEXFundingSource = PEXFundingSource,
 
                 SyncTransactionsIntervalDays = SyncTransactionsIntervalDays,
@@ -186,6 +202,7 @@ namespace AplosConnector.Common.Models
         public bool SyncPexFees { get; set; }
         public bool SyncInvoices { get; set; }
         public bool SyncRebates { get; set; }
+        public bool SyncReimbursements { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
         public DateTime? EndDateUtc { get; set; }
@@ -221,11 +238,18 @@ namespace AplosConnector.Common.Models
         public decimal PexRebatesAplosTransactionAccountNumber { get; set; }
         public string PexRebatesAplosTaxTagId { get; set; }
 
+        public bool SyncReimbursementsCreateContact { get; set; }
+        public int ReimbursementsAplosContactId { get; set; }
+        public int ReimbursementsAplosFundId { get; set; }
+        public decimal ReimbursementsAplosTransactionAccountNumber { get; set; }
+        public string ReimbursementsAplosTaxTagId { get; set; }
+
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
         public AplosTagMappingModel[] TransferTagMappings { get; set; }
         public AplosTagMappingModel[] FeeTagMappings { get; set; }
         public AplosTagMappingModel[] RebateTagMappings { get; set; }
+        public AplosTagMappingModel[] ReimbursementTagMappings { get; set; }
 
         public string PEXEmailAccount { get; set; }
         public string PEXNameAccount { get; set; }
