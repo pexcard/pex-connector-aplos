@@ -81,6 +81,7 @@ namespace AplosConnector.Common.Services
                     AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication,
                     SyncApprovedOnly = true,
                     SyncTransactionsCreateContact = true,
+                    SyncReimbursementsCreateContact = true,
                     MapVendorCards = true,
                     UseNormalizedMerchantNames = true
                 };
@@ -578,6 +579,15 @@ namespace AplosConnector.Common.Services
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, $"Exception during {nameof(SyncAplosTaxTagsToPex)} for business: {mapping.PEXBusinessAcctId}.");
+                    }
+
+                    try
+                    {
+                        await SyncReimbursements(_logger, mapping, utcNow, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Exception during {nameof(SyncReimbursements)} for business: {mapping.PEXBusinessAcctId}.");
                     }
                 }
 
@@ -2518,6 +2528,436 @@ namespace AplosConnector.Common.Services
         }
 
         #endregion
+
+        private async Task SyncReimbursements(
+            ILogger logger,
+            Pex2AplosMappingModel mapping,
+            DateTime utcNow,
+            CancellationToken cancellationToken)
+        {
+            if (!mapping.SyncReimbursements) return;
+
+            if (!(mapping.SyncReimbursementsCreateContact || mapping.ReimbursementsAplosContactId > 0)
+                || mapping.ReimbursementsAplosFundId <= 0
+                || mapping.ReimbursementsAplosTransactionAccountNumber <= 0)
+            {
+                logger.LogInformation($"Skipping sync reimbursements for business {mapping.PEXBusinessAcctId}. Reimbursements are not configured.");
+                return;
+            }
+
+            var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
+            var endDateUtc = GetEndDateUtc(mapping.EndDateUtc, utcNow);
+
+            if (startDateUtc.Date >= endDateUtc.Date)
+            {
+                return;
+            }
+
+            // Fetch Aplos transactions for dedup
+            var startDate = startDateUtc.ToStartOfDay(TimeZones.EST);
+            var aplosTransactions = await GetTransactions(mapping, startDate, cancellationToken);
+
+            // Fetch Aplos reference data for tag resolution
+            var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
+            var aplosAccountCategory = GetAplosAccountCategory();
+            var aplosExpenseAccounts = (await GetAplosAccounts(mapping, aplosAccountCategory, cancellationToken)).ToList();
+            var aplosTags = (await GetFlattenedAplosTagValues(mapping, cancellationToken)).ToList();
+
+            // Fetch PEX dropdown tag definitions for tag answer resolution
+            var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown, cancellationToken);
+            List<TagDropdownDetailsModel> dropdownTags = default;
+            if (useTags)
+            {
+                var dropdownTagTasks = new List<Task<TagDropdownDetailsModel>>();
+
+                if (!string.IsNullOrEmpty(mapping.PexFundsTagId))
+                {
+                    dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, mapping.PexFundsTagId, true, cancellationToken));
+                }
+                if (mapping.ExpenseAccountMappings != null)
+                {
+                    foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
+                    {
+                        dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, true, cancellationToken));
+                    }
+                }
+                if (mapping.TagMappings != null)
+                {
+                    foreach (var tagMapping in mapping.TagMappings)
+                    {
+                        dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, true, cancellationToken));
+                    }
+                }
+                await Task.WhenAll(dropdownTagTasks);
+                dropdownTags = dropdownTagTasks.Where(t => !t.IsFaulted).Select(t => t.Result).ToList();
+                foreach (var failedTask in dropdownTagTasks.Where(t => t.IsFaulted))
+                {
+                    logger.LogError(failedTask.Exception?.InnerException, $"Exception getting dropdown tag for business {mapping.PEXBusinessAcctId}. {failedTask.Exception?.InnerException}");
+                }
+
+                logger.LogInformation($"Retrieved {dropdownTags.Count} PEX dropdown tags for reimbursement sync.");
+            }
+
+            // Fetch reimbursement payments from PEX. Mirror the sibling connectors (QBO/Intacct/Blackbaud):
+            // pull the full in-flight-and-settled trigger set filtered by outbound ACH creation date, then
+            // only post the fully-settled ones below. In-flight payments are re-fetched on the next run.
+            var paymentRequest = new PaymentListRequestModel
+            {
+                PaymentStatuses = new List<PaymentStatus> { PaymentStatus.Pending, PaymentStatus.Closed },
+                PaymentStatusTriggers = new List<PaymentStatusTrigger>
+                {
+                    PaymentStatusTrigger.Settling,
+                    PaymentStatusTrigger.AwaitingOutboundCompletion,
+                    PaymentStatusTrigger.Settled,
+                    PaymentStatusTrigger.Returned,
+                    PaymentStatusTrigger.Cancelled,
+                },
+                OutboundAchCreationStartDate = startDateUtc,
+                OutboundAchCreationEndDate = endDateUtc,
+            };
+
+            // Page through all matching payments first.
+            var payments = new List<PaymentModel>();
+            var page = 1;
+            const int pageSize = 50;
+            long totalItems = 0;
+
+            do
+            {
+                var paymentsPage = await _pexApiClient.GetPayments(mapping.PEXExternalAPIToken, paymentRequest, page, pageSize, cancellationToken);
+
+                if (paymentsPage?.Items == null || paymentsPage.Items.Count == 0)
+                {
+                    break;
+                }
+
+                payments.AddRange(paymentsPage.Items);
+                totalItems = paymentsPage.PageInfo?.TotalItems ?? payments.Count;
+                page++;
+            } while (payments.Count < totalItems);
+
+            // Map each payment's settlement trigger by PaymentId so we can post only fully-settled reimbursements.
+            var paymentTriggersByPaymentId = payments
+                .GroupBy(p => p.PaymentId)
+                .ToDictionary(g => g.Key, g => g.First().PaymentStatusTrigger);
+
+            // Resolve the unique transfers for those payments, then their reimbursement payment requests.
+            var allPaymentRequests = new List<PaymentRequestModel>();
+            var transferIds = payments.Select(p => p.PaymentTransferId).Distinct().ToList();
+
+            foreach (var transferId in transferIds)
+            {
+                PaymentTransferModel transfer;
+                try
+                {
+                    transfer = await _pexApiClient.GetPaymentTransfer(mapping.PEXExternalAPIToken, transferId, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, $"Error fetching payment transfer {transferId} for business {mapping.PEXBusinessAcctId}. Skipping.");
+                    continue;
+                }
+
+                if (transfer?.PaymentRequests == null) continue;
+
+                foreach (var prLink in transfer.PaymentRequests)
+                {
+                    PaymentRequestModel pr;
+                    try
+                    {
+                        pr = await _pexApiClient.GetPaymentRequest(mapping.PEXExternalAPIToken, prLink.PaymentRequestId, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, $"Error fetching payment request {prLink.PaymentRequestId} for business {mapping.PEXBusinessAcctId}. Skipping.");
+                        continue;
+                    }
+
+                    if (pr != null && pr.PaymentRequestType == PaymentRequestType.Reimbursement)
+                    {
+                        allPaymentRequests.Add(pr);
+                    }
+                }
+            }
+
+            allPaymentRequests = allPaymentRequests
+                .DistinctBy(pr => pr.PaymentRequestId)
+                .ToList();
+
+            // Only sync reimbursements whose payment is fully settled (paid) and not already in Aplos.
+            // Returned/Cancelled/in-flight requests are skipped; in-flight ones settle on a later run.
+            var reimbursementsToSync = allPaymentRequests
+                .Where(pr => pr.PaymentId.HasValue
+                    && paymentTriggersByPaymentId.TryGetValue(pr.PaymentId.Value, out var trigger)
+                    && trigger == PaymentStatusTrigger.Settled)
+                .Where(pr => !WasPexTransactionSyncedToAplos(aplosTransactions, pr.PaymentRequestId.ToString()))
+                .ToList();
+
+            logger.LogInformation($"Found {allPaymentRequests.Count} reimbursement payment requests, {reimbursementsToSync.Count} to sync for business {mapping.PEXBusinessAcctId}.");
+
+            var syncCount = 0;
+            var failureCount = 0;
+
+            foreach (var pr in reimbursementsToSync)
+            {
+                using (logger.BeginScope(GetLoggingScopeForReimbursement(pr)))
+                {
+                    logger.LogDebug($"Starting sync for PEX reimbursement {pr.PaymentRequestId}");
+
+                    try
+                    {
+                        var pexTagValues = new PexTagValuesModel
+                        {
+                            AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
+                            AplosContactId = mapping.ReimbursementsAplosContactId,
+                            AplosFundId = mapping.ReimbursementsAplosFundId,
+                            AplosTaxTagId = mapping.ReimbursementsAplosTaxTagId,
+                            AplosTransactionAccountNumber = mapping.ReimbursementsAplosTransactionAccountNumber,
+                        };
+
+                        // Apply reimbursement default Aplos tags. Reimbursement category tags
+                        // (Fundraisers/Projects/Departments/Custom) are configured in
+                        // ReimbursementTagMappings, not TagMappings. Apply them unconditionally,
+                        // consistent with how transfers/fees/rebates apply their own *TagMappings.
+                        ApplyTagMappingsToTagValues(pexTagValues, mapping.ReimbursementTagMappings, logger);
+
+                        // Resolve fund, expense account, and tax tag dynamically from PEX tag answers if available
+                        var tagAnswers = pr.Metadata?.TagAnswers;
+                        if (useTags && tagAnswers != null)
+                        {
+                            // Resolve fund from tag answers
+                            var fundTagAnswer = GetReimbursementTagAnswer(tagAnswers, mapping.PexFundsTagId);
+                            if (fundTagAnswer != null)
+                            {
+                                var fundTagValueItem = new TagValueItem { TagId = fundTagAnswer.FieldId, Value = fundTagAnswer.Value };
+                                var fundTagDefinition = dropdownTags?.FirstOrDefault(t => t.Id.Equals(fundTagAnswer.FieldId, StringComparison.InvariantCultureIgnoreCase));
+                                var fundTagOptionValue = fundTagAnswer.Value?.ToString();
+                                var fundTagOptionName = fundTagValueItem.GetTagOptionName(fundTagDefinition?.Options);
+                                var fundEntity = aplosFunds.FindMatchingEntity(fundTagOptionValue, fundTagOptionName, ':', logger);
+                                if (fundEntity != null && int.TryParse(fundEntity.Id, out var aplosFundId))
+                                {
+                                    logger.LogDebug($"Matched PEX fund tag option ['{fundTagOptionName}' : '{fundTagOptionValue}'] with Aplos fund '{fundEntity.Name}' ({fundEntity.Id}) on reimbursement {pr.PaymentRequestId}.");
+                                    pexTagValues.AplosFundId = aplosFundId;
+                                }
+                                else
+                                {
+                                    logger.LogInformation($"Could not match fund tag on reimbursement {pr.PaymentRequestId}. Using default fund {mapping.ReimbursementsAplosFundId}.");
+                                }
+                            }
+
+                            // Resolve expense account from tag answers
+                            if (mapping.ExpenseAccountMappings != null)
+                            {
+                                TagValueItem expenseAccountTagItem = null;
+                                decimal defaultAccountNumber = 0;
+
+                                foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
+                                {
+                                    var accountTagAnswer = GetReimbursementTagAnswer(tagAnswers, expenseAccountMapping.ExpenseAccountsPexTagId);
+                                    if (accountTagAnswer != null)
+                                    {
+                                        expenseAccountTagItem = new TagValueItem { TagId = accountTagAnswer.FieldId, Value = accountTagAnswer.Value };
+                                        break;
+                                    }
+                                    defaultAccountNumber = expenseAccountMapping.DefaultAplosTransactionAccountNumber;
+                                }
+
+                                if (expenseAccountTagItem != null)
+                                {
+                                    var accountTagDefinition = dropdownTags?.FirstOrDefault(t => t.Id.Equals(expenseAccountTagItem.TagId, StringComparison.InvariantCultureIgnoreCase));
+                                    var accountTagOptionName = expenseAccountTagItem.GetTagOptionName(accountTagDefinition?.Options);
+                                    var accountTagOptionValue = expenseAccountTagItem.Value?.ToString();
+                                    var accountEntity = aplosExpenseAccounts.FindMatchingEntity(accountTagOptionValue, accountTagOptionName, ':', logger);
+                                    if (accountEntity != null && decimal.TryParse(accountEntity.Id, out var aplosAccountNumber))
+                                    {
+                                        logger.LogDebug($"Matched PEX account tag option ['{accountTagOptionName}' : '{accountTagOptionValue}'] with Aplos account '{accountEntity.Name}' ({accountEntity.Id}) on reimbursement {pr.PaymentRequestId}.");
+                                        pexTagValues.AplosTransactionAccountNumber = aplosAccountNumber;
+                                    }
+                                    else
+                                    {
+                                        logger.LogInformation($"Could not match expense account tag on reimbursement {pr.PaymentRequestId}. Using default account {mapping.ReimbursementsAplosTransactionAccountNumber}.");
+                                    }
+                                }
+                                else if (defaultAccountNumber > 0)
+                                {
+                                    pexTagValues.AplosTransactionAccountNumber = defaultAccountNumber;
+                                }
+                            }
+
+                            // Resolve 990 tax tag from tag answers
+                            var taxTagAnswer = GetReimbursementTagAnswer(tagAnswers, mapping.PexTaxTagId);
+                            if (taxTagAnswer?.Value != null)
+                            {
+                                logger.LogInformation($"Using reimbursement tag {mapping.PexTaxTagId} for reimbursement {pr.PaymentRequestId} as Aplos tax tag value '{taxTagAnswer.Value}'.");
+                                pexTagValues.AplosTaxTagId = taxTagAnswer.Value.ToString();
+                            }
+                        }
+
+                        // Build double-entry lines
+                        var amount = pr.Amount;
+
+                        var registerLine = new AplosApiTransactionLineDetail
+                        {
+                            Account = new AplosApiAccountDetail { AccountNumber = pexTagValues.AplosRegisterAccountNumber },
+                            Amount = -amount,
+                            Fund = new AplosApiFundDetail { Id = pexTagValues.AplosFundId },
+                        };
+
+                        var expenseLine = new AplosApiTransactionLineDetail
+                        {
+                            Account = new AplosApiAccountDetail { AccountNumber = pexTagValues.AplosTransactionAccountNumber },
+                            Amount = amount,
+                            Fund = new AplosApiFundDetail { Id = pexTagValues.AplosFundId },
+                        };
+
+                        if (pexTagValues.AplosTagIds != null)
+                        {
+                            expenseLine.Tags = new List<AplosApiTagDetail>();
+                            foreach (var aplosTagId in pexTagValues.AplosTagIds)
+                            {
+                                expenseLine.Tags.Add(new AplosApiTagDetail { Id = aplosTagId });
+                            }
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(pexTagValues.AplosTaxTagId))
+                        {
+                            expenseLine.TaxTag = new AplosApiTaxTagDetail { Id = pexTagValues.AplosTaxTagId };
+                        }
+
+                        // Build note with payee info and payment request ID for dedup
+                        const int noteMaxLength = 1000;
+                        var paymentRequestIdString = pr.PaymentRequestId.ToString();
+                        var idSuffix = $" | {paymentRequestIdString}";
+                        var maxContentLength = noteMaxLength - idSuffix.Length;
+
+                        var noteBuilder = new StringBuilder();
+                        if (!string.IsNullOrEmpty(pr.MerchantName))
+                        {
+                            noteBuilder.Append(pr.MerchantName);
+                        }
+
+                        var payeeName = $"{pr.UserFirstName} {pr.UserLastName}".Trim();
+                        if (!string.IsNullOrEmpty(payeeName))
+                        {
+                            if (noteBuilder.Length > 0) noteBuilder.Append(" | ");
+                            noteBuilder.Append(payeeName);
+                        }
+
+                        if (!string.IsNullOrEmpty(pr.Note))
+                        {
+                            if (noteBuilder.Length > 0) noteBuilder.Append(" | ");
+                            noteBuilder.Append(pr.Note);
+                        }
+
+                        var noteContent = noteBuilder.Length > maxContentLength
+                            ? noteBuilder.ToString(0, maxContentLength)
+                            : noteBuilder.ToString();
+
+                        var aplosNote = string.IsNullOrEmpty(noteContent)
+                            ? paymentRequestIdString
+                            : noteContent + idSuffix;
+
+                        // Determine post date
+                        DateTime postDate;
+                        if (mapping.PostDateType == PostDateType.Settlement && pr.PayoutDate.HasValue)
+                        {
+                            postDate = pr.PayoutDate.Value.DateTime;
+                        }
+                        else
+                        {
+                            postDate = pr.PurchaseDate.DateTime;
+                        }
+
+                        // Determine contact — auto-create from employee name or use default
+                        AplosApiContactDetail contact;
+                        if (mapping.SyncReimbursementsCreateContact)
+                        {
+                            if (!string.IsNullOrEmpty(payeeName))
+                            {
+                                contact = new AplosApiContactDetail { CompanyName = payeeName, Type = "individual" };
+                            }
+                            else
+                            {
+                                contact = new AplosApiContactDetail { Id = pexTagValues.AplosContactId };
+                            }
+                        }
+                        else
+                        {
+                            contact = new AplosApiContactDetail { Id = pexTagValues.AplosContactId };
+                        }
+
+                        var aplosTransaction = new AplosApiTransactionDetail
+                        {
+                            Contact = contact,
+                            Amount = amount,
+                            Date = postDate,
+                            Note = aplosNote,
+                            Lines = new[] { registerLine, expenseLine },
+                        };
+
+                        var aplosApiClient = MakeAplosApiClient(mapping);
+                        await aplosApiClient.CreateTransaction(aplosTransaction, cancellationToken);
+
+                        syncCount++;
+                        logger.LogInformation($"Synced reimbursement {pr.PaymentRequestId} with Aplos");
+                    }
+                    catch (Exception ex)
+                    {
+                        failureCount++;
+                        logger.LogError(ex, $"Error processing reimbursement {pr.PaymentRequestId}.");
+                    }
+                }
+            }
+
+            var syncNote = failureCount == 0 ? string.Empty : $"Failed to sync {failureCount} reimbursements from PEX.";
+            SyncStatus syncStatus;
+            if (failureCount == 0)
+            {
+                syncStatus = SyncStatus.Success;
+            }
+            else if (syncCount != 0)
+            {
+                syncStatus = SyncStatus.Partial;
+            }
+            else
+            {
+                syncStatus = SyncStatus.Failed;
+            }
+
+            var result = new SyncResultModel
+            {
+                PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                SyncType = "Reimbursements",
+                SyncStatus = syncStatus.ToString(),
+                SyncedRecords = syncCount,
+                SyncNotes = syncNote
+            };
+            await _historyStorage.CreateAsync(result, cancellationToken);
+        }
+
+        private static TagAnswerModel GetReimbursementTagAnswer(IEnumerable<TagAnswerModel> tagAnswers, string fieldId)
+        {
+            if (string.IsNullOrEmpty(fieldId) || tagAnswers == null) return null;
+            return tagAnswers.FirstOrDefault(ta => ta.FieldId != null && ta.FieldId.Equals(fieldId, StringComparison.InvariantCultureIgnoreCase));
+        }
+
+        private static IDictionary<string, object> GetLoggingScopeForReimbursement(PaymentRequestModel paymentRequest)
+        {
+            if (paymentRequest is null)
+            {
+                throw new ArgumentNullException(nameof(paymentRequest));
+            }
+
+            return new Dictionary<string, object>
+            {
+                ["PaymentRequestId"] = paymentRequest.PaymentRequestId,
+                ["PaymentRequestType"] = paymentRequest.PaymentRequestType,
+                ["Amount"] = paymentRequest.Amount,
+                ["MerchantName"] = paymentRequest.MerchantName,
+                ["PurchaseDate"] = paymentRequest.PurchaseDate,
+                ["PayoutDate"] = paymentRequest.PayoutDate,
+            };
+        }
 
         private void ApplyTagMappingsToTagValues(PexTagValuesModel pexTagValues, AplosTagMappingModel[] tagMappings, ILogger logger)
         {
