@@ -2561,7 +2561,6 @@ namespace AplosConnector.Common.Services
             var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
             var aplosAccountCategory = GetAplosAccountCategory();
             var aplosExpenseAccounts = (await GetAplosAccounts(mapping, aplosAccountCategory, cancellationToken)).ToList();
-            var aplosTags = (await GetFlattenedAplosTagValues(mapping, cancellationToken)).ToList();
 
             // Fetch PEX dropdown tag definitions for tag answer resolution
             var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown, cancellationToken);
