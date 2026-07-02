@@ -2587,7 +2587,7 @@ namespace AplosConnector.Common.Services
                         dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, true, cancellationToken));
                     }
                 }
-                await Task.WhenAll(dropdownTagTasks);
+                try { await Task.WhenAll(dropdownTagTasks); } catch { /* handled below */ }
                 dropdownTags = dropdownTagTasks.Where(t => !t.IsFaulted).Select(t => t.Result).ToList();
                 foreach (var failedTask in dropdownTagTasks.Where(t => t.IsFaulted))
                 {
