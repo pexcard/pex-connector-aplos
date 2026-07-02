@@ -2869,19 +2869,21 @@ namespace AplosConnector.Common.Services
 
                         // Determine contact — auto-create from employee name or use default
                         AplosApiContactDetail contact;
-                        if (mapping.SyncReimbursementsCreateContact)
+                        if (mapping.SyncReimbursementsCreateContact && !string.IsNullOrEmpty(payeeName))
                         {
-                            if (!string.IsNullOrEmpty(payeeName))
-                            {
-                                contact = new AplosApiContactDetail { CompanyName = payeeName, Type = "individual" };
-                            }
-                            else
-                            {
-                                contact = new AplosApiContactDetail { Id = pexTagValues.AplosContactId };
-                            }
+                            contact = new AplosApiContactDetail { CompanyName = payeeName, Type = "individual" };
                         }
                         else
                         {
+                            // Fall back to the configured default contact. In create-contact mode a blank
+                            // payee name has no valid contact to fall back to (the guard allows contact id 0),
+                            // so skip this reimbursement rather than post an invalid contact id to Aplos.
+                            if (pexTagValues.AplosContactId <= 0)
+                            {
+                                logger.LogWarning($"Skipping reimbursement {pr.PaymentRequestId} for business {mapping.PEXBusinessAcctId}. Create-contact is enabled but the payee name is blank and no default contact is configured.");
+                                continue;
+                            }
+
                             contact = new AplosApiContactDetail { Id = pexTagValues.AplosContactId };
                         }
 
