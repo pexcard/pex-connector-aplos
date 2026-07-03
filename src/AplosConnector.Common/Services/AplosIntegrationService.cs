@@ -2882,6 +2882,9 @@ namespace AplosConnector.Common.Services
                             else
                             {
                                 // Create-contact mode with a blank employee name and no fallback contact configured.
+                                // Count as a failure (not a silent skip) so the misconfiguration surfaces in the sync
+                                // status, matching how SyncTransactions/SyncInvoices treat ineligible-but-expected records.
+                                failureCount++;
                                 logger.LogWarning($"Skipping reimbursement {pr.PaymentRequestId} for business {mapping.PEXBusinessAcctId}. Auto-create contact is enabled but the payee name is empty and no default contact is configured.");
                                 continue;
                             }
