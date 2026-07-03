@@ -1016,7 +1016,7 @@ namespace AplosConnector.Common.Services
                         dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, true, cancellationToken));
                     }
                 }
-                await Task.WhenAll(dropdownTagTasks);
+                try { await Task.WhenAll(dropdownTagTasks); } catch { /* faulted tasks handled below */ }
                 dropdownTags = dropdownTagTasks.Where(t => !t.IsFaulted).Select(t => t.Result).ToList();
                 foreach (var failedTask in dropdownTagTasks.Where(t => t.IsFaulted))
                 {
@@ -2758,7 +2758,12 @@ namespace AplosConnector.Common.Services
                                         expenseAccountTagItem = new TagValueItem { TagId = accountTagAnswer.FieldId, Value = accountTagAnswer.Value };
                                         break;
                                     }
-                                    defaultAccountNumber = expenseAccountMapping.DefaultAplosTransactionAccountNumber;
+                                    // Keep the first configured positive default so the fallback is deterministic
+                                    // and not dependent on ExpenseAccountMappings ordering.
+                                    if (defaultAccountNumber <= 0 && expenseAccountMapping.DefaultAplosTransactionAccountNumber > 0)
+                                    {
+                                        defaultAccountNumber = expenseAccountMapping.DefaultAplosTransactionAccountNumber;
+                                    }
                                 }
 
                                 if (expenseAccountTagItem != null)
