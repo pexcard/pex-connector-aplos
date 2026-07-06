@@ -1,14 +1,11 @@
 <clr-main-container>
-  <clr-header class="header-4">
+  <clr-header>
     <div class="branding">
-      <a [routerLink]="['/connect']" class="nav-link" style="color:white;">
-        <img src="../assets/Logo-Standard.png" alt="PEX Web Application" style="padding-right: 10px; max-width: 100%; max-height: 100%" />
+      <a [routerLink]="['/connect']" class="nav-link branding-link"
+         aria-label="PEX Connector for Aplos">
+        <span class="logo logo-pex"></span>
         <cds-icon shape="two-way-arrows"></cds-icon>
-        <img
-          src="../assets/Aplos-Logo-White.png"
-          alt="Aplos Logo"
-          style="max-width:100%; max-height:100%"
-        />
+        <span class="logo logo-aplos"></span>
       </a>
     </div>
     <div class="header-nav">

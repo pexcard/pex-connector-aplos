@@ -61,7 +61,7 @@ export class PexService {
     return this.httpClient.post<void>(this.buildUrl(sessionId, "VendorCards"), selectedVendors);
   }
 
-  getVendorCards(sessionId: string) {
+  getVendorCards(sessionId: string): Observable<VendorCardsOrdered[]> {
     return this.httpClient.get<VendorCardsOrdered[]>(this.buildUrl(sessionId, "VendorCards"));
   }
 

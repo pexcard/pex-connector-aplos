@@ -1,0 +1,149 @@
+// PEX Design System
+// pex-styles imports pex-tokens + pex-themes internally.
+// pex-clarity-styles imports pex-tokens + pex-mixins internally.
+// Do NOT import tokens/themes/mixins separately -- follow Start's 2-import pattern.
+@import "pex-styles";
+@import "pex-clarity-styles";
+
+// Connector-specific overrides (extracted from Start's clarity.scss)
+@import "styles/connector-overrides";
+
+// Partner: Aplos — currently inactive (index.html uses data-theme="pexcard-fresh" only).
+// Activate by adding "aplos" to data-theme: data-theme="pexcard-fresh aplos"
+@import "styles/partners/aplos";
+
+// --- Existing connector styles ---
+
+/* clarity update fixes & changes - start */
+header .header-nav::before,
+.header .header-nav::before {
+  display: none;
+}
+header .header-actions .nav-link::before,
+.header .header-actions .nav-link::before {
+  display: none;
+}
+header .settings > :not(.dropdown):before,
+header .settings > .dropdown > .dropdown-toggle:before,
+header .header-actions > :not(.dropdown):before,
+header .header-actions > .dropdown > .dropdown-toggle:before,
+.header .settings > :not(.dropdown):before,
+.header .settings > .dropdown > .dropdown-toggle:before,
+.header .header-actions > :not(.dropdown):before,
+.header .header-actions > .dropdown > .dropdown-toggle:before {
+  display: none;
+}
+a:not(.btn, .nav-link, .dropdown-item, .label, .alert-action, .badge, .clr-treenode-link) {
+  color: var(--clr-link-color) !important;
+  font-size: unset !important;
+}
+a:not(.btn, .nav-link, .dropdown-item, .label, .alert-action, .badge, .clr-treenode-link):visited {
+  color: var(--clr-link-color) !important;
+  font-size: unset !important;
+}
+.focus-fix :focus:not(.focus-visible) {
+  outline: none;
+}
+/* clarity update fixes & changes - end */
+
+.nav-link.active {
+  background-color: hsla(0, 0%, 100%, 0.15) !important;
+}
+
+.pex-color {
+  color: var(--pex-app-color-primary);
+}
+.same-line {
+  display: flex;
+  flex-direction: row;
+}
+.h-centered {
+  text-align: center;
+}
+.v-centered {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.no-margins {
+  margin: 0;
+}
+.page-status {
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+}
+.page-status > clr-icon {
+  margin: 0.5em;
+}
+.page-status > clr-spinner {
+  margin: 0.5em;
+}
+
+.bald {
+  margin-top: 0;
+}
+
+.page-container {
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+.alert-item {
+  align-items: center;
+}
+
+.alert-action,
+.alert-action:hover,
+.alert-action:focus {
+  text-decoration: none !important;
+}
+
+// Alert icons should match the alert's border (status) color rather than the
+// default font color, per status.
+[data-theme] {
+  --clr-alert-info-icon-color: var(--clr-alert-info-border-color);
+  --clr-alert-success-icon-color: var(--clr-alert-success-border-color);
+  --clr-alert-warning-icon-color: var(--clr-alert-warning-border-color);
+  --clr-alert-danger-icon-color: var(--clr-alert-danger-border-color);
+  --clr-alert-neutral-icon-color: var(--clr-alert-neutral-border-color);
+}
+
+:root {
+  --table-header-bg: #F1F6F8;
+}
+
+.table th,
+.table td {
+  padding: 12px 18px !important;
+  font-size: 14px !important;
+  vertical-align: middle !important;
+}
+
+.table thead th {
+  background: var(--table-header-bg) !important;
+}
+
+.badge-new {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  margin-left: 8px;
+  border-radius: 200px;
+  background: var(--pex-color-primary-50, #E7EAFE);
+  color: var(--pex-color-primary-600, #0042EB);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.page-heading {
+  font-weight: 300;
+  font-size: 26px;
+  line-height: 32px;
+  color: var(--pex-text-global-color);
+  margin: 8px 0 14px;
+}

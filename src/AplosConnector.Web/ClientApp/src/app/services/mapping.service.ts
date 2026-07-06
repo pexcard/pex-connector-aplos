@@ -109,6 +109,7 @@ export interface SettingsModel {
   syncInvoices: boolean,
   syncPexFees: boolean;
   syncRebates: boolean;
+  syncReimbursements: boolean;
 
   transfersAplosContactId: number;
   transfersAplosFundId: number;
@@ -124,6 +125,12 @@ export interface SettingsModel {
   pexRebatesAplosFundId: number;
   pexRebatesAplosTransactionAccountNumber: number;
   pexRebatesAplosTaxTag: string;
+
+  syncReimbursementsCreateContact: boolean;
+  reimbursementsAplosContactId: number;
+  reimbursementsAplosFundId: number;
+  reimbursementsAplosTransactionAccountNumber: number;
+  reimbursementsAplosTaxTag: string;
 
   aplosRegisterAccountNumber: number;
 
@@ -157,6 +164,7 @@ export interface SettingsModel {
   transferTagMappings: AplosTagMappingModel[];
   feeTagMappings: AplosTagMappingModel[];
   rebateTagMappings: AplosTagMappingModel[];
+  reimbursementTagMappings: AplosTagMappingModel[];
   syncInvoicesMethod: SyncInvoicesMethod;
 }
 

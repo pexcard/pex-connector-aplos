@@ -37,7 +37,7 @@
 }
 
 .red-star {
-  color: #E62700;
+  color: var(--pex-color-danger);
 }
 
 .text-weight-500 {

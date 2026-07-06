@@ -1,0 +1,75 @@
+// Vendored from: Start/src/styles/partners/aplos.scss
+// Last synced: 2026-05-22
+// DO NOT EDIT -- update by copying from source repo
+
+:root {
+  --pex-partner-aplos-primary-color: #1e77a8;
+  --pex-partner-aplos-secondary-color: #16587d;
+  --pex-partner-aplos-dark-color: #124967;
+}
+
+[data-theme~='aplos'] {
+  --pex-app-color-primary: var(--pex-partner-aplos-primary-color);
+  --pex-login-page-media-overlay-bg: var(--pex-partner-aplos-primary-color);
+  --pex-header-bg: var(--pex-app-color-primary);
+  --pex-header-btn-bg: var(--pex-app-color-primary);
+  --pex-header-btn-hover-bg: var(--pex-partner-aplos-secondary-color);
+  --pex-app-header-logo-url: url(/assets/logos/aplos.svg);
+  --pex-app-email-letter-circle-icon-url: url(/assets/logos/partners/aplos_email_icon.svg);
+  --pex-object-interaction-background-highlight: var(--pex-partner-aplos-primary-color);
+
+  // Primary (solid) button
+  --pex-btn-primary-bg: var(--pex-partner-aplos-primary-color);
+  --pex-btn-primary-color: white;
+  --pex-btn-primary-hover-bg: var(--pex-partner-aplos-secondary-color);
+  --pex-btn-primary-hover-color: white;
+  --pex-btn-primary-pressed-bg: var(--pex-partner-aplos-dark-color);
+  --pex-btn-primary-pressed-color: white;
+  --pex-btn-primary-disabled-opacity: 0.4;
+
+  // Outline button
+  --pex-btn-outline-color: var(--pex-partner-aplos-primary-color);
+  --pex-btn-outline-border-color: var(--pex-partner-aplos-primary-color);
+  --pex-btn-outline-hover-bg: var(--pex-partner-aplos-primary-color);
+  --pex-btn-outline-hover-color: white;
+  --pex-btn-outline-pressed-bg: var(--pex-partner-aplos-secondary-color);
+  --pex-btn-outline-pressed-color: white;
+  --pex-btn-outline-disabled-opacity: 0.6;
+
+  // Flat (link) button
+  --pex-btn-link-color: var(--pex-partner-aplos-primary-color);
+  --pex-btn-link-hover-color: var(--pex-partner-aplos-secondary-color);
+  --pex-btn-link-pressed-color: var(--pex-partner-aplos-dark-color);
+
+  // Text links
+  --pex-text-link-color: var(--pex-partner-aplos-primary-color);
+  --pex-text-link-hover-color: var(--pex-partner-aplos-secondary-color);
+  --pex-text-link-visited-color: var(--pex-partner-aplos-secondary-color);
+
+  // Sidebar
+  --pex-sidebar-item-finished-bg: var(--pex-partner-aplos-primary-color);
+
+  .pex-custom-checkmark-icon cds-icon {
+    --pex-icon-checkmark-color: white;
+  }
+
+  cds-icon[shape~='success-standard'] {
+    --pex-icon-checkmark-color: white;
+  }
+
+  a:visited {
+    color: var(--pex-text-link-visited-color) !important;
+  }
+
+  .btn {
+    text-transform: inherit !important;
+  }
+
+  --clr-btn-danger-outline-color: var(--pex-btn-outline-color);
+  --clr-btn-danger-outline-bg-color: transparent;
+  --clr-btn-danger-outline-border-color: var(--pex-btn-outline-color);
+  --clr-btn-danger-outline-hover-color: var(--pex-btn-outline-hover-color);
+  --clr-btn-danger-outline-hover-bg-color: var(--pex-btn-outline-hover-bg);
+  --clr-btn-danger-outline-active-color: var(--pex-btn-outline-pressed-color);
+  --clr-btn-danger-outline-active-bg-color: var(--pex-btn-outline-pressed-bg);
+}

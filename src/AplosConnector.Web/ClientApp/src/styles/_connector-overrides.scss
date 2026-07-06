@@ -1,0 +1,24 @@
+// Connector-specific Clarity overrides
+// Extracted from Start/src/styles/clarity.scss -- only rules applicable to the connector
+
+// Header background -- token-driven (overridden by Aplos theme)
+// The connector must NOT use numbered header classes (header-2 through header-7)
+// because they bind to level-specific Clarity variables not mapped by the PEX token system.
+.header {
+  background: var(--pex-header-bg);
+  --clr-header-font-color: #fff !important;
+  --clr-header-font-color-hover: #fff !important;
+}
+
+// Force white text on header nav links and actions
+.header .nav-link,
+.header .header-nav .nav-link,
+.header .header-actions .nav-link {
+  color: #fff !important;
+}
+
+// Global hr reset (matches Start's styles.scss pattern)
+hr {
+  border: 0;
+  border-top: 1px solid var(--pex-color-neutral-150);
+}

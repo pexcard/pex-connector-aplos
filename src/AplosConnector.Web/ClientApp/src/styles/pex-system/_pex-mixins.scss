@@ -1,0 +1,101 @@
+// Vendored from: Start/projects/ngx-pex-core/src/lib/styles/pex-mixins.scss
+// Last synced: 2026-05-22
+// DO NOT EDIT -- update by copying from source repo
+
+@mixin screen-reader-only() {
+  position: absolute;
+  clip: rect(1px, 1px, 1px, 1px);
+  clip-path: inset(50%);
+  height: 1px;
+  width: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+}
+
+@mixin pex-space($direction: all, $size, $type: margin) {
+  @if ($direction == all) {
+    #{$type}: $spacer * $size !important;
+  }
+
+  @if ($direction == top) {
+    #{$type}-top: $spacer * $size !important;
+  }
+
+  @if ($direction == bottom) {
+    #{$type}-bottom: $spacer * $size !important;
+  }
+
+  @if ($direction == vertical) {
+    #{$type}-top: $spacer * $size !important;
+    #{$type}-bottom: $spacer * $size !important;
+  }
+
+  @if ($direction == left) {
+    #{$type}-left: $spacer * $size !important;
+  }
+
+  @if ($direction == right) {
+    #{$type}-right: $spacer * $size !important;
+  }
+
+  @if ($direction == horizontal) {
+    #{$type}-right: $spacer * $size !important;
+    #{$type}-left: $spacer * $size !important;
+  }
+}
+
+@mixin pex-clr-full-width-form($max-width) {
+  max-width: $max-width;
+
+  .clr-control-container {
+    width: 100%;
+
+    input {
+      width: 100%;
+    }
+
+    textarea {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .clr-input-wrapper,
+    .clr-input-group {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .clr-input-group-icon-action {
+      margin-left: -1.5rem;
+    }
+
+    .clr-select-wrapper {
+      width: 100%;
+
+      select {
+        width: 100%;
+      }
+    }
+  }
+
+  .clr-error {
+    .clr-textarea-wrapper {
+      .clr-validate-icon {
+        margin-right: -1rem;
+      }
+    }
+  }
+}
+
+@mixin centeredContentFlex($justifyCenter: center) {
+  display: flex;
+  justify-content: $justifyCenter;
+  align-items: center;
+}
+
+@mixin shadowedBlock() {
+  border: 1px solid #CCCCCC;
+  box-shadow: 6px 4px 15px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}

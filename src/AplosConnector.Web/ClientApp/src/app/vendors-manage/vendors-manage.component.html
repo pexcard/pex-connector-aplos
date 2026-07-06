@@ -1,3 +1,4 @@
+<div class="page-container">
 <div *ngIf="!isReady" class="page-status">
   <clr-spinner [clrMedium]="true"></clr-spinner>
   Loading...
@@ -7,36 +8,22 @@
   <p>
     View PEX Vendor Cards automatically created from your Aplos vendor list. To manage a vendor card, click on it.
   </p>
-  <div *ngIf="!connectionDetails?.syncingSetup && hasVendorCards" class="alert alert-success clr-col clr-col-sm-8 clr-col-m-6 clr-col-xl-6" role="alert">
-    <div class="alert-items">
-      <div class="alert-item static">
-        <div class="alert-icon-wrapper">
-          <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
-        </div>
-        <span class="alert-text">Sync your transactions to Aplos nightly.</span>
-        <div class="alert-actions">
-          <button class="btn btn-sm alert-action no-margins" [routerLink]="['../sync-connect']">
-            GET STARTED
-          </button>
-        </div>
+  <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false" *ngIf="!connectionDetails?.syncingSetup && hasVendorCards">
+    <clr-alert-item>
+      <span class="alert-text">Sync your transactions to Aplos nightly.</span>
+      <div class="alert-actions">
+        <button class="btn btn-sm alert-action" [routerLink]="['../sync-connect']">GET STARTED</button>
       </div>
-    </div>
-  </div>
-  <div *ngIf="!hasVendorCards" class="alert alert-success clr-col clr-col-sm-8 clr-col-m-6 clr-col-xl-6" role="alert">
-    <div class="alert-items">
-      <div class="alert-item static">
-        <div class="alert-icon-wrapper">
-          <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
-        </div>
-        <span class="alert-text">Earn 1% rebates on all eligible Vendor card payments.</span>
-        <div class="alert-actions">
-          <button class="btn btn-sm alert-action no-margins" [routerLink]="['../vendors-select']">
-            GET STARTED
-          </button>
-        </div>
+    </clr-alert-item>
+  </clr-alert>
+  <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false" *ngIf="!hasVendorCards">
+    <clr-alert-item>
+      <span class="alert-text">Earn 1% rebates on all eligible Vendor card payments.</span>
+      <div class="alert-actions">
+        <button class="btn btn-sm alert-action" [routerLink]="['../vendors-select']">GET STARTED</button>
       </div>
-    </div>
-  </div>
+    </clr-alert-item>
+  </clr-alert>
   <div *ngIf="hasVendorCards" class="vendor-cards">
     <table class="table">
       <thead>
@@ -89,3 +76,4 @@
     </table>
   </div>
 </ng-container>
+</div>
