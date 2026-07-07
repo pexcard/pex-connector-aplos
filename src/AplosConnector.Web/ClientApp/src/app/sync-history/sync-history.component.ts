@@ -61,7 +61,15 @@ export class SyncHistoryComponent implements OnInit, OnDestroy {
       results => {
         if (results && results.length > 0) {
           console.log('got results', results);
-          this.syncResults = [...results];
+          // Sort by sync time truncated to the minute (newest first), then
+          // alphanumerically by the Data (syncType) column so rows from the
+          // same sync run group together in a stable order.
+          const toMinute = (value: string) => Math.floor(new Date(value).getTime() / 60000);
+          this.syncResults = [...results].sort((a, b) => {
+            const minuteDiff = toMinute(b.createdUtc) - toMinute(a.createdUtc);
+            if (minuteDiff !== 0) return minuteDiff;
+            return a.syncType.localeCompare(b.syncType, undefined, { numeric: true });
+          });
         }
         this.loadingHistory = false;
       }

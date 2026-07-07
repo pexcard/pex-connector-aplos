@@ -1,3 +1,4 @@
+<div class="page-container">
 <h1>Connect to Aplos</h1>
 <div *ngIf="!isReady" class="page-status">
   <clr-spinner [clrMedium]="true"></clr-spinner>
@@ -7,18 +8,11 @@
   <p>
     Please select all use cases you would like to integrate PEX and Aplos.
   </p>
-  <div class="alert alert-info" role="alert">
-    <div class="alert-items">
-      <div class="alert-item static">
-        <div class="alert-icon-wrapper">
-          <cds-icon class="alert-icon" shape="info-circle"></cds-icon>
-        </div>
-        <span class="alert-text">
-          For the optimal expense and reconciliation experience, we advise auto creating vendor cards from your Aplos vendor list and configuring nightly transaction syncing from PEX to Aplos.
-        </span>
-      </div>
-    </div>
-  </div>
+  <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
+    <clr-alert-item>
+      <span class="alert-text">For the optimal expense and reconciliation experience, we advise auto creating vendor cards from your Aplos vendor list and configuring nightly transaction syncing from PEX to Aplos.</span>
+    </clr-alert-item>
+  </clr-alert>
   <div *ngIf="isReady" class="clr-row">
     <div class="clr-col-6 left-col">
       <div class="card clickable selector" [routerLink]="[vendorCardsRoute]">
@@ -50,3 +44,4 @@
     </div>
   </div>
 </ng-container>
+</div>

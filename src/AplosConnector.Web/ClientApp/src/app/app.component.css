@@ -1,7 +1,33 @@
-.header {
-	background-color: #249CE0;
+.branding-link {
+  display: flex;
+  align-items: center;
+  color: white;
 }
 
-.content-area{
-	background-color: white;
+.logo {
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.logo-pex {
+  width: 80px;
+  height: 36px;
+  background-image: url(/assets/logos/pex-logo-white.svg);
+  margin-right: 8px;
+}
+
+/* Hardcoded to always show Aplos logo regardless of active theme.
+   The --pex-app-header-logo-url token changes per theme but the connector
+   is always Aplos-branded in the header. */
+.logo-aplos {
+  width: 100px;
+  height: 36px;
+  background-image: url(/assets/logos/aplos.svg);
+  margin-left: 8px;
+}
+
+.content-area {
+  background-color: white;
 }

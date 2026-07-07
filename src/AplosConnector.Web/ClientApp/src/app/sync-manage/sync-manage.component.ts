@@ -34,6 +34,7 @@ export class SyncManageComponent implements OnInit {
   transfersAplosTaxTagName: string = ''
   pexFeesAplosTaxTagName: string = ''
   pexRebatesAplosTaxTagName: string = ''
+  reimbursementsAplosTaxTagName: string = ''
 
   defaultContact: AplosObject;
   defaultFund: AplosObject;
@@ -51,6 +52,10 @@ export class SyncManageComponent implements OnInit {
   rebatesContact: AplosObject;
   rebatesFund: AplosObject;
   rebatesAccount: AplosObject;
+
+  reimbursementsContact: AplosObject;
+  reimbursementsFund: AplosObject;
+  reimbursementsAccount: AplosObject;
 
   AplosPreferences: AplosPreferences = { isClassEnabled: false, isLocationEnabled: false, locationFieldName: '' };
   isPrepaid: boolean = false;
@@ -99,6 +104,7 @@ export class SyncManageComponent implements OnInit {
         this.getTransferInfo();
         this.getFeesInfo();
         this.getRebatesInfo();
+        this.getReimbursementsInfo();
       }
     }
     );
@@ -192,8 +198,11 @@ export class SyncManageComponent implements OnInit {
     if (this.settings.pexFeesAplosTaxTag) {
       this.pexFeesAplosTaxTagName = this.getTaxTagName(this.settings.pexFeesAplosTaxTag.toString());
     }
-    if (this.settings.pexFeesAplosTaxTag) {
+    if (this.settings.pexRebatesAplosTaxTag) {
       this.pexRebatesAplosTaxTagName = this.getTaxTagName(this.settings.pexRebatesAplosTaxTag.toString());
+    }
+    if (this.settings.reimbursementsAplosTaxTag) {
+      this.reimbursementsAplosTaxTagName = this.getTaxTagName(this.settings.reimbursementsAplosTaxTag.toString());
     }
   }
 
@@ -277,6 +286,33 @@ export class SyncManageComponent implements OnInit {
         account => {
           console.log('got rebates account', account);
           this.rebatesAccount = { ...account };
+        }
+      );
+    }
+  }
+
+  getReimbursementsInfo() {
+    if (this.settings.syncReimbursements) {
+      if (!this.settings.syncReimbursementsCreateContact) {
+        this.aplos.getContact(this.sessionId, this.settings.reimbursementsAplosContactId).subscribe(
+          contact => {
+            console.log('got reimbursements contact', contact);
+            this.reimbursementsContact = { ...contact };
+          }
+        );
+      }
+
+      this.aplos.getFund(this.sessionId, this.settings.reimbursementsAplosFundId).subscribe(
+        fund => {
+          console.log('got reimbursements fund', fund);
+          this.reimbursementsFund = { ...fund };
+        }
+      );
+
+      this.aplos.getAccount(this.sessionId, this.settings.reimbursementsAplosTransactionAccountNumber).subscribe(
+        account => {
+          console.log('got reimbursements account', account);
+          this.reimbursementsAccount = { ...account };
         }
       );
     }

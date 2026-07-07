@@ -4,18 +4,11 @@
     </div>
 </div>
 
-<div *ngIf="errorState" class="alert alert-app-level alert-danger" style="margin-bottom:24px" role="alert">
-    <div class="alert-items">
-        <div class="alert-item static">
-            <div class="alert-icon-wrapper">
-                <cds-icon class="alert-icon" shape="exclamation-circle"></cds-icon>
-            </div>
-            <div class="alert-text">
-                {{errorText}}
-            </div>
-            <div class="alert-actions" *ngIf="allowRetry">
-                <button type="button" (click)="onRetry()" class="btn alert-action">Retry</button>
-            </div>
-        </div>
+<clr-alert [clrAlertType]="'danger'" [clrAlertAppLevel]="true" [clrAlertClosable]="false" *ngIf="errorState" style="margin-bottom:24px">
+  <clr-alert-item>
+    <span class="alert-text">{{errorText}}</span>
+    <div class="alert-actions" *ngIf="allowRetry">
+      <button type="button" (click)="onRetry()" class="btn alert-action">Retry</button>
     </div>
-</div>
+  </clr-alert-item>
+</clr-alert>

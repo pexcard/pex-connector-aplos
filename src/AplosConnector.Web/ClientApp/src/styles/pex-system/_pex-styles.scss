@@ -1,0 +1,50 @@
+﻿// Vendored from: Start/projects/ngx-pex-core/src/lib/styles/pex-styles.scss
+// Last synced: 2026-05-22
+// DO NOT EDIT -- update by copying from source repo
+
+@import "./pex-tokens";
+@import "./pex-themes";
+
+// Put shared PEX-specific styles here
+[data-theme~='pexcard-fresh'] {
+  .pex-custom-checkmark-icon {
+    cds-icon {
+      &.is-green {
+        fill: var(--pex-app-color-accent) !important;
+      }
+    }
+  }
+}
+
+a.btn-link,
+a.pex-btn-link,
+a:visited.btn-link {
+  text-decoration: none !important;
+  color: var(--pex-text-link-color) !important;
+}
+
+a.link:link,
+a.link:visited,
+a.link:active,
+a.link {
+  color: var(--pex-text-link-color) !important;
+}
+
+a.link:hover,
+a.link:active,
+a.btn-link:hover,
+a.pex-btn-link:hover {
+  color: var(--pex-text-link-hover-color) !important;
+}
+
+.text-decoration-none {
+  text-decoration: none;
+}
+
+.text-transform-none {
+  text-transform: inherit;
+}
+
+.pex-button-text-transform {
+  text-transform: inherit;
+}
