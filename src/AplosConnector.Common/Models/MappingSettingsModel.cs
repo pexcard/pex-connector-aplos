@@ -91,16 +91,13 @@ namespace AplosConnector.Common.Models
 
         public bool SyncReimbursementsCreateContact { get; set; }
         public int ReimbursementsAplosContactId { get; set; }
-        public int ReimbursementsAplosFundId { get; set; }
-        public decimal ReimbursementsAplosTransactionAccountNumber { get; set; }
-        public string ReimbursementsAplosTaxTag { get; set; }
+        public decimal ReimbursementsAplosRegisterAccountNumber { get; set; }
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
         public AplosTagMappingModel[] TransferTagMappings { get; set; }
         public AplosTagMappingModel[] FeeTagMappings { get; set; }
         public AplosTagMappingModel[] RebateTagMappings { get; set; }
-        public AplosTagMappingModel[] ReimbursementTagMappings { get; set; }
         public FundingSource PEXFundingSource { get; set; }
 
         public double? SyncTransactionsIntervalDays { get; set; }

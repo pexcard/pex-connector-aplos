@@ -67,9 +67,7 @@ namespace AplosConnector.Common.Models
 
             SyncReimbursementsCreateContact = mapping.SyncReimbursementsCreateContact;
             ReimbursementsAplosContactId = mapping.ReimbursementsAplosContactId;
-            ReimbursementsAplosFundId = mapping.ReimbursementsAplosFundId;
-            ReimbursementsAplosTransactionAccountNumber = mapping.ReimbursementsAplosTransactionAccountNumber;
-            ReimbursementsAplosTaxTagId = mapping.ReimbursementsAplosTaxTag;
+            ReimbursementsAplosRegisterAccountNumber = mapping.ReimbursementsAplosRegisterAccountNumber;
 
             PexFundsTagId = mapping.PexFundsTagId;
             SyncFundsToPex = mapping.SyncFundsToPex;
@@ -81,7 +79,6 @@ namespace AplosConnector.Common.Models
             TransferTagMappings = mapping.TransferTagMappings;
             FeeTagMappings = mapping.FeeTagMappings;
             RebateTagMappings = mapping.RebateTagMappings;
-            ReimbursementTagMappings = mapping.ReimbursementTagMappings;
             PEXFundingSource = mapping.PEXFundingSource;
             MapVendorCards = mapping.MapVendorCards;
             UseNormalizedMerchantNames = mapping.UseNormalizedMerchantNames;
@@ -157,9 +154,7 @@ namespace AplosConnector.Common.Models
 
                 SyncReimbursementsCreateContact = SyncReimbursementsCreateContact,
                 ReimbursementsAplosContactId = ReimbursementsAplosContactId,
-                ReimbursementsAplosFundId = ReimbursementsAplosFundId,
-                ReimbursementsAplosTransactionAccountNumber = ReimbursementsAplosTransactionAccountNumber,
-                ReimbursementsAplosTaxTag = ReimbursementsAplosTaxTagId,
+                ReimbursementsAplosRegisterAccountNumber = ReimbursementsAplosRegisterAccountNumber,
 
                 SyncFundsToPex = SyncFundsToPex,
 
@@ -168,7 +163,6 @@ namespace AplosConnector.Common.Models
                 TransferTagMappings = TransferTagMappings,
                 FeeTagMappings = FeeTagMappings,
                 RebateTagMappings = RebateTagMappings,
-                ReimbursementTagMappings = ReimbursementTagMappings,
                 PEXFundingSource = PEXFundingSource,
 
                 SyncTransactionsIntervalDays = SyncTransactionsIntervalDays,
@@ -240,16 +234,13 @@ namespace AplosConnector.Common.Models
 
         public bool SyncReimbursementsCreateContact { get; set; }
         public int ReimbursementsAplosContactId { get; set; }
-        public int ReimbursementsAplosFundId { get; set; }
-        public decimal ReimbursementsAplosTransactionAccountNumber { get; set; }
-        public string ReimbursementsAplosTaxTagId { get; set; }
+        public decimal ReimbursementsAplosRegisterAccountNumber { get; set; }
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
         public AplosTagMappingModel[] TransferTagMappings { get; set; }
         public AplosTagMappingModel[] FeeTagMappings { get; set; }
         public AplosTagMappingModel[] RebateTagMappings { get; set; }
-        public AplosTagMappingModel[] ReimbursementTagMappings { get; set; }
 
         public string PEXEmailAccount { get; set; }
         public string PEXNameAccount { get; set; }

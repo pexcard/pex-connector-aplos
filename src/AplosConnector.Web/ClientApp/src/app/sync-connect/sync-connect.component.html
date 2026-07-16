@@ -135,7 +135,7 @@
     (clrWizardPageOnCommit)="onSettingsCommit()"
     (clrWizardPageOnCancel)="onCloseWizard()"
     [clrWizardPageNextDisabled]="!optionsForm.valid
-                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements) && !settingsModel.aplosRegisterAccountNumber)
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees) && !settingsModel.aplosRegisterAccountNumber)
                    || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements) && !settingsModel.earliestTransactionDateToSync)">
 
     <ng-template clrPageNavTitle>Sync Selection</ng-template>
@@ -246,7 +246,7 @@
         <label>Automatically import bill payments and rebates into Aplos.</label>
       </clr-toggle-wrapper>
 
-      <clr-toggle-wrapper *ngIf="settingsModel.syncTransactions">
+      <clr-toggle-wrapper>
         <input
           type="checkbox"
           clrToggle
@@ -276,7 +276,9 @@
 
       <hr *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements" />
 
-      <div class="card" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements">
+      <!-- Reimbursements don't use the PEX register account — their cash side is the
+           reimbursements Bank Account on Other Options. -->
+      <div class="card" *ngIf="settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees">
         <div class="card-block">
           <app-loading-placeholder
             [loadingState]="loadingAplosAccounts"
@@ -346,8 +348,9 @@
 
   </clr-wizard-page>
 
-  <clr-wizard-page *ngIf="isPexAccountLinked && aplosAuthenticationStatus?.hasAplosAccountId && (settingsModel?.syncTransactions || settingsModel?.syncInvoices)"
-                   [clrWizardPageNextDisabled]="!settingsModel.syncTransactionsCreateContact && !(settingsModel.defaultAplosContactId > 0)"
+  <clr-wizard-page *ngIf="isPexAccountLinked && aplosAuthenticationStatus?.hasAplosAccountId && (settingsModel?.syncTransactions || settingsModel?.syncInvoices || settingsModel?.syncReimbursements)"
+                   [clrWizardPageNextDisabled]="((settingsModel.syncTransactions || settingsModel.syncInvoices) && !settingsModel.syncTransactionsCreateContact && !(settingsModel.defaultAplosContactId > 0))
+                     || (settingsModel.syncReimbursements && !settingsModel.syncReimbursementsCreateContact && !(settingsModel.reimbursementsAplosContactId > 0))"
                    (clrWizardPageOnCommit)="onVendorCommit()">
 
     <ng-template clrPageNavTitle>Contact Options</ng-template>
@@ -356,34 +359,62 @@
     <app-loading-placeholder *ngIf="loadingAplosContacts" [loadingState]="loadingAplosContacts" [errorState]="errorLoadingAplosContacts" (retry)="getContacts()"></app-loading-placeholder>
 
     <form clrForm #vendorForm="ngForm" [class.hide]="!savingSettings || loadingVendors">
-      <clr-radio-container>
-        <clr-radio-wrapper>
-          <input type="radio" clrRadio required name="syncTransactionsCreateContact" [value]="false" [(ngModel)]="settingsModel.syncTransactionsCreateContact" />
-          <label>
-            <span>Use a single contact for your expenses </span>
-            <div *ngIf="!settingsModel.syncTransactionsCreateContact" class="clr-select-wrapper">
-              <select id="select-full-vendor"
-                      class="clr-select"
-                      name="defaultAplosContactId"
-                      [(ngModel)]="settingsModel.defaultAplosContactId">
-                <option [value]="vendor.id" *ngFor="let vendor of aplosContacts">{{vendor.name}}</option>
-              </select>
-            </div>
-          </label>
-        </clr-radio-wrapper>
-        <clr-radio-wrapper>
-          <input type="radio" clrRadio required name="syncTransactionsCreateContact" [value]="true" [(ngModel)]="settingsModel.syncTransactionsCreateContact" />
-          <label>Create a contact for each unique merchant</label>
-        </clr-radio-wrapper>
-        <clr-control-helper *ngIf="!settingsModel.syncTransactionsCreateContact" class="single-vendor-help"><strong>Tip:</strong> Consider creating a new contact in Aplos called 'PEX' to book PEX purchases with a single contact</clr-control-helper>
-      </clr-radio-container>
-      <clr-checkbox-container *ngIf="settingsModel.syncTransactionsCreateContact" class="normalized-vendors">
-        <clr-checkbox-wrapper>
-          <input type="checkbox" clrCheckbox name="useNormalizedMerchantNames" [value]="true" [(ngModel)]="settingsModel.useNormalizedMerchantNames" />
-          <label>Use standardized merchant names</label>
-        </clr-checkbox-wrapper>
-        <clr-control-helper class="normalized-vendors-help"><strong>Example:</strong> "Target" instead of "Target #0973226"</clr-control-helper>
-      </clr-checkbox-container>
+      <div *ngIf="settingsModel.syncTransactions || settingsModel.syncInvoices">
+        <h5>Purchases</h5>
+        <clr-radio-container>
+          <clr-radio-wrapper>
+            <input type="radio" clrRadio required name="syncTransactionsCreateContact" [value]="false" [(ngModel)]="settingsModel.syncTransactionsCreateContact" />
+            <label>
+              <span>Use a single contact for your expenses </span>
+              <div *ngIf="!settingsModel.syncTransactionsCreateContact" class="clr-select-wrapper">
+                <select id="select-full-vendor"
+                        class="clr-select"
+                        name="defaultAplosContactId"
+                        [(ngModel)]="settingsModel.defaultAplosContactId">
+                  <option [value]="vendor.id" *ngFor="let vendor of aplosContacts">{{vendor.name}}</option>
+                </select>
+              </div>
+            </label>
+          </clr-radio-wrapper>
+          <clr-radio-wrapper>
+            <input type="radio" clrRadio required name="syncTransactionsCreateContact" [value]="true" [(ngModel)]="settingsModel.syncTransactionsCreateContact" />
+            <label>Create a contact for each unique merchant</label>
+          </clr-radio-wrapper>
+          <clr-control-helper *ngIf="!settingsModel.syncTransactionsCreateContact" class="single-vendor-help"><strong>Tip:</strong> Consider creating a new contact in Aplos called 'PEX' to book PEX purchases with a single contact</clr-control-helper>
+        </clr-radio-container>
+        <clr-checkbox-container *ngIf="settingsModel.syncTransactionsCreateContact" class="normalized-vendors">
+          <clr-checkbox-wrapper>
+            <input type="checkbox" clrCheckbox name="useNormalizedMerchantNames" [value]="true" [(ngModel)]="settingsModel.useNormalizedMerchantNames" />
+            <label>Use standardized merchant names</label>
+          </clr-checkbox-wrapper>
+          <clr-control-helper class="normalized-vendors-help"><strong>Example:</strong> "Target" instead of "Target #0973226"</clr-control-helper>
+        </clr-checkbox-container>
+      </div>
+
+      <div *ngIf="settingsModel.syncReimbursements">
+        <h5>Reimbursements</h5>
+        <clr-radio-container>
+          <clr-radio-wrapper>
+            <input type="radio" clrRadio required name="syncReimbursementsCreateContact" [value]="false" [(ngModel)]="settingsModel.syncReimbursementsCreateContact" />
+            <label>
+              <span>Use a single contact </span>
+              <div *ngIf="!settingsModel.syncReimbursementsCreateContact" class="clr-select-wrapper">
+                <select id="select-reimbursements-contact"
+                        class="clr-select"
+                        name="reimbursementsAplosContactId"
+                        [(ngModel)]="settingsModel.reimbursementsAplosContactId">
+                  <option></option>
+                  <option [value]="contact.id" *ngFor="let contact of aplosContacts">{{contact.name}}</option>
+                </select>
+              </div>
+            </label>
+          </clr-radio-wrapper>
+          <clr-radio-wrapper>
+            <input type="radio" clrRadio required name="syncReimbursementsCreateContact" [value]="true" [(ngModel)]="settingsModel.syncReimbursementsCreateContact" />
+            <label>Create a contact for each employee</label>
+          </clr-radio-wrapper>
+        </clr-radio-container>
+      </div>
     </form>
 
     <clr-spinner *ngIf="savingSettings">
@@ -400,7 +431,7 @@
                    || !expenseAccountForm.valid
                    || (this.aplosTagCategories.length > 0 && !tagMappingForm.valid)">
 
-    <ng-template clrPageNavTitle>Purchases and Reimbursements</ng-template>
+    <ng-template clrPageNavTitle>{{ tagMappingPageTitle }}</ng-template>
     <ng-template clrPageTitle>Configure tag mapping options</ng-template>
 
     <clr-spinner *ngIf="savingSettings">
@@ -412,7 +443,7 @@
       <ul class="circle-list">
         <li><p class="display-inline">Map each Aplos field to a PEX tag. Only dropdown tags can be mapped.</p></li>
         <li><p class="display-inline">Enable the sync toggle for fields you want to sync as tag values.</p></li>
-        <li><p class="display-inline">Optionally, set a default value — applied to purchases and reimbursements when a transaction isn't tagged before syncing.</p></li>
+        <li><p class="display-inline">Optionally, set a default value — applied to {{ tagMappingPageTitle.toLowerCase() }} when a transaction isn't tagged before syncing.</p></li>
       </ul>
 
       <table class="table table-5col">
@@ -616,10 +647,7 @@
       (clrWizardPageOnLoad)="updateOtherOptionsValidators()"
       (clrWizardPageOnCommit)="onDefaultCategoryCommit()"
       (clrWizardPageOnCancel)="onCloseWizard()"
-      [clrWizardPageNextDisabled]="!defaultCategoryForm.valid
-        || (settingsModel.syncReimbursements
-            && !defaultCategoryForm.get('syncReimbursementsCreateContact').value
-            && !(defaultCategoryForm.get('reimbursementsAplosContactId').value > 0))">
+      [clrWizardPageNextDisabled]="!defaultCategoryForm.valid">
 
     <ng-template clrPageNavTitle>Other Options</ng-template>
     <ng-template  clrPageTitle>
@@ -641,9 +669,9 @@
 
     <form clrForm [formGroup]="defaultCategoryForm" [class.hide]="!savingSettings">
 
-      <!-- Purchases -->
-      <table class="table table-2col" *ngIf="!hasTagsAvailable  && settingsModel.syncTransactions">
-        <caption>Purchases</caption>
+      <!-- Purchases / Reimbursements shared defaults (no-tags businesses only) -->
+      <table class="table table-2col" *ngIf="!hasTagsAvailable && (settingsModel.syncTransactions || settingsModel.syncReimbursements)">
+        <caption>{{ tagMappingPageTitle }}</caption>
         <thead>
           <tr>
             <th class="left">Field</th>
@@ -1015,82 +1043,12 @@
           </thead>
           <tbody>
             <tr>
-              <td class="left contact-mapping-cell" colspan="2">
-                <div class="contact-mapping-box">
-                  <h5 class="contact-mapping-label">Contact mapping</h5>
-                  <clr-radio-container>
-                    <clr-radio-wrapper>
-                      <input type="radio" clrRadio [value]="false" formControlName="syncReimbursementsCreateContact" />
-                      <label>
-                        Use a single contact
-                        <span *ngIf="!defaultCategoryForm.get('syncReimbursementsCreateContact')?.value" class="inline-select">
-                          <div class="clr-select-wrapper">
-                            <select class="clr-select select" formControlName="reimbursementsAplosContactId" aria-label="Contact for reimbursements">
-                              <option></option>
-                              <option [value]="aplosContact.id" *ngFor="let aplosContact of aplosContacts">{{aplosContact.name}}</option>
-                            </select>
-                          </div>
-                        </span>
-                      </label>
-                    </clr-radio-wrapper>
-                    <clr-radio-wrapper>
-                      <input type="radio" clrRadio [value]="true" formControlName="syncReimbursementsCreateContact" />
-                      <label>Create a contact for each employee</label>
-                    </clr-radio-wrapper>
-                  </clr-radio-container>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td class="left">Fund</td>
+              <td class="left">Bank Account</td>
               <td class="left">
                 <div class="clr-select-wrapper">
-                  <select class="clr-select select" required formControlName="reimbursementsAplosFundId" aria-label="Fund for reimbursements">
+                  <select class="clr-select select" required formControlName="reimbursementsAplosRegisterAccountNumber" aria-label="Bank account for reimbursements">
                     <option></option>
-                    <option [value]="aplosFund.id" *ngFor="let aplosFund of aplosFunds">{{aplosFund.name}}</option>
-                  </select>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td class="left">Account</td>
-              <td class="left">
-                <div class="clr-select-wrapper">
-                  <select class="clr-select select" required formControlName="reimbursementsAplosTransactionAccountNumber" aria-label="Account for reimbursements">
-                    <option></option>
-                    <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosExpenseAccounts">{{aplosAccount | aplosAccount}}</option>
-                  </select>
-                </div>
-              </td>
-            </tr>
-            <tr *ngIf="settingsModel.syncTaxTagToPex">
-              <td class="left">990 Tag Option</td>
-              <td class="left">
-                <div class="clr-select-wrapper">
-                  <select class="clr-select select clr-col-12" required formControlName="reimbursementsAplosTaxTag" aria-label="990 tag for reimbursements">
-                    <option></option>
-                    <optgroup *ngFor="let aplosTaxTagCategory of aplosTaxTagCategories" label="{{aplosTaxTagCategory.name}}">
-                      <option [value]="aplosTaxTag.id" *ngFor="let aplosTaxTag of aplosTaxTagCategory.tax_tags">{{aplosTaxTag.name}} - {{aplosTaxTag.group_name}}</option>
-                    </optgroup>
-                  </select>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <table class="table table-2col table-no-top-margin">
-          <caption class="caption-border">Reimbursement tags default values</caption>
-          <tbody formArrayName="reimbursementTagMappings">
-            <tr *ngFor="let tagMapping of getReimbursementTagMappingFormElements().controls; let i = index" [formGroupName]="i">
-              <td class="left">{{tagMapping.get('aplosTagCategoryName')?.value}}</td>
-              <td class="left">
-                <div class="clr-select-wrapper">
-                  <select class="clr-select" formControlName="defaultAplosTagValue">
-                    <option value=""></option>
-                    <option [value]="tagValue.id" *ngFor="let tagValue of getTagValuesForCategory(tagMapping.get('aplosTagCategoryId')?.value)">
-                      {{tagValue.name}}
-                    </option>
+                    <option [value]="aplosAccount.id" *ngFor="let aplosAccount of aplosAssetAccounts">{{aplosAccount | aplosAccount}}</option>
                   </select>
                 </div>
               </td>

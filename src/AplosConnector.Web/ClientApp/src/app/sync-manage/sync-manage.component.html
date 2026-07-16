@@ -238,17 +238,9 @@
                 <span *ngIf="!settings.syncReimbursementsCreateContact && reimbursementsContact">{{reimbursementsContact.name}}</span>
               </td>
             </tr>
-            <tr class="left" *ngIf="settings.syncReimbursements && reimbursementsFund">
-              <th>Fund for reimbursements</th>
-              <td>{{reimbursementsFund.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncReimbursements && reimbursementsAccount">
-              <th>Transaction account for reimbursements</th>
-              <td>{{reimbursementsAccount | aplosAccount}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncTaxTagToPex && settings.reimbursementsAplosTaxTag">
-              <th>990 tag for reimbursements</th>
-              <td>{{reimbursementsAplosTaxTagName}}</td>
+            <tr class="left" *ngIf="settings.syncReimbursements && reimbursementsBankAccount">
+              <th>Bank account for reimbursements</th>
+              <td>{{reimbursementsBankAccount | aplosAccount}}</td>
             </tr>
           </tbody>
         </table>

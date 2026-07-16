@@ -753,22 +753,25 @@ namespace AplosConnector.Common.Tests
         [InlineData(0, 1, 1, "Contact not configured")]
         [InlineData(1, 0, 1, "Fund not configured")]
         [InlineData(1, 1, 0, "Account not configured")]
-        public void Pex2AplosMappingModel_SyncReimbursements_RequiresAllDefaults(
+        public void Pex2AplosMappingModel_SyncReimbursements_RequiresSharedConfig(
             int contactId, int fundId, decimal accountNumber, string scenario)
         {
-            //Arrange — verify the mapping model can hold reimbursement config
+            //Arrange — reimbursements use the shared purchases mapping config plus their own contact
             var mapping = new Pex2AplosMappingModel
             {
                 SyncReimbursements = true,
                 ReimbursementsAplosContactId = contactId,
-                ReimbursementsAplosFundId = fundId,
-                ReimbursementsAplosTransactionAccountNumber = accountNumber,
+                DefaultAplosFundId = fundId,
+                DefaultAplosTransactionAccountNumber = accountNumber,
             };
 
-            //Act
+            //Act — mirrors the guard check in SyncReimbursements (defaults-only configuration)
+            bool hasFundConfig = mapping.DefaultAplosFundId > 0 || !string.IsNullOrEmpty(mapping.PexFundsTagId);
+            bool hasAccountConfig = mapping.DefaultAplosTransactionAccountNumber > 0;
             bool isConfigured = mapping.ReimbursementsAplosContactId > 0
-                && mapping.ReimbursementsAplosFundId > 0
-                && mapping.ReimbursementsAplosTransactionAccountNumber > 0;
+                && mapping.ReimbursementsAplosRegisterAccountNumber > 0
+                && hasFundConfig
+                && hasAccountConfig;
 
             //Assert
             Assert.False(isConfigured, $"Should not be fully configured when: {scenario}");
@@ -793,10 +796,7 @@ namespace AplosConnector.Common.Tests
                 SyncReimbursements = true,
                 SyncReimbursementsCreateContact = true,
                 ReimbursementsAplosContactId = 42,
-                ReimbursementsAplosFundId = 7,
-                ReimbursementsAplosTransactionAccountNumber = 5010,
-                ReimbursementsAplosTaxTagId = "990-1",
-                ReimbursementTagMappings = new[] { new AplosTagMappingModel { AplosTagId = "cat1", DefaultAplosTagValue = "val1" } },
+                ReimbursementsAplosRegisterAccountNumber = 1200,
             };
 
             //Act
@@ -806,12 +806,7 @@ namespace AplosConnector.Common.Tests
             Assert.True(storageModel.SyncReimbursements);
             Assert.True(storageModel.SyncReimbursementsCreateContact);
             Assert.Equal(42, storageModel.ReimbursementsAplosContactId);
-            Assert.Equal(7, storageModel.ReimbursementsAplosFundId);
-            Assert.Equal(5010, storageModel.ReimbursementsAplosTransactionAccountNumber);
-            Assert.Equal("990-1", storageModel.ReimbursementsAplosTaxTag);
-            Assert.NotNull(storageModel.ReimbursementTagMappings);
-            Assert.Single(storageModel.ReimbursementTagMappings);
-            Assert.Equal("cat1", storageModel.ReimbursementTagMappings[0].AplosTagId);
+            Assert.Equal(1200, storageModel.ReimbursementsAplosRegisterAccountNumber);
         }
 
         [Fact]
@@ -822,10 +817,7 @@ namespace AplosConnector.Common.Tests
             var settings = mapping.ToStorageModel();
             settings.SyncReimbursements = true;
             settings.ReimbursementsAplosContactId = 10;
-            settings.ReimbursementsAplosFundId = 20;
-            settings.ReimbursementsAplosTransactionAccountNumber = 3000;
-            settings.ReimbursementsAplosTaxTag = "990-2";
-            settings.ReimbursementTagMappings = new[] { new AplosTagMappingModel { AplosTagId = "c2", DefaultAplosTagValue = "v2" } };
+            settings.ReimbursementsAplosRegisterAccountNumber = 1300;
 
             //Act
             mapping.UpdateFromSettings(settings);
@@ -833,10 +825,7 @@ namespace AplosConnector.Common.Tests
             //Assert
             Assert.True(mapping.SyncReimbursements);
             Assert.Equal(10, mapping.ReimbursementsAplosContactId);
-            Assert.Equal(20, mapping.ReimbursementsAplosFundId);
-            Assert.Equal(3000, mapping.ReimbursementsAplosTransactionAccountNumber);
-            Assert.Equal("990-2", mapping.ReimbursementsAplosTaxTagId);
-            Assert.Single(mapping.ReimbursementTagMappings);
+            Assert.Equal(1300, mapping.ReimbursementsAplosRegisterAccountNumber);
         }
 
         [Fact]
@@ -854,8 +843,6 @@ namespace AplosConnector.Common.Tests
             {
                 SyncReimbursementsCreateContact = true,
                 ReimbursementsAplosContactId = 42,
-                ReimbursementsAplosFundId = 7,
-                ReimbursementsAplosTransactionAccountNumber = 5010,
             };
 
             //Act
@@ -889,14 +876,16 @@ namespace AplosConnector.Common.Tests
                 SyncReimbursements = true,
                 SyncReimbursementsCreateContact = true,
                 ReimbursementsAplosContactId = 0,
-                ReimbursementsAplosFundId = 200,
-                ReimbursementsAplosTransactionAccountNumber = 5000,
+                ReimbursementsAplosRegisterAccountNumber = 1200,
+                DefaultAplosFundId = 200,
+                DefaultAplosTransactionAccountNumber = 5000,
             };
 
             //Act — mirrors the guard check in SyncReimbursements
             bool isConfigured = (mapping.SyncReimbursementsCreateContact || mapping.ReimbursementsAplosContactId > 0)
-                && mapping.ReimbursementsAplosFundId > 0
-                && mapping.ReimbursementsAplosTransactionAccountNumber > 0;
+                && mapping.ReimbursementsAplosRegisterAccountNumber > 0
+                && (mapping.DefaultAplosFundId > 0 || !string.IsNullOrEmpty(mapping.PexFundsTagId))
+                && mapping.DefaultAplosTransactionAccountNumber > 0;
 
             //Assert
             Assert.True(isConfigured, "Should be configured when SyncReimbursementsCreateContact is true even without a contact ID");
