@@ -1162,8 +1162,11 @@ namespace AplosConnector.Common.Services
                                         {
                                             if (tagMapping.AplosTagId == "990")
                                             {
-                                                _logger.LogInformation($"Using default Aplos tax tag value '{tagMapping.DefaultAplosTagId}' on transaction {transaction.TransactionId}.");
-                                                pexTagValues.AplosTaxTagId = tagMapping.DefaultAplosTagId;
+                                                if (mapping.SyncTaxTagToPex)
+                                                {
+                                                    _logger.LogInformation($"Using default Aplos tax tag value '{tagMapping.DefaultAplosTagId}' on transaction {transaction.TransactionId}.");
+                                                    pexTagValues.AplosTaxTagId = tagMapping.DefaultAplosTagId;
+                                                }
                                             }
                                             else
                                             {
@@ -1202,11 +1205,14 @@ namespace AplosConnector.Common.Services
                                         _logger.LogInformation($"No Aplos tag mappings to process.");
                                     }
 
-                                    var taxTag = allocation.GetTagValue(mapping.PexTaxTagId);
-                                    if (taxTag != null && taxTag.Value != null)
+                                    if (mapping.SyncTaxTagToPex)
                                     {
-                                        _logger.LogInformation($"Using transaction tag {mapping.PexTaxTagId} for transaction {transaction.TransactionId} as Aplos tax tag value '{taxTag.Value}'.");
-                                        pexTagValues.AplosTaxTagId = taxTag.Value.ToString();
+                                        var taxTag = allocation.GetTagValue(mapping.PexTaxTagId);
+                                        if (taxTag != null && taxTag.Value != null)
+                                        {
+                                            _logger.LogInformation($"Using transaction tag {mapping.PexTaxTagId} for transaction {transaction.TransactionId} as Aplos tax tag value '{taxTag.Value}'.");
+                                            pexTagValues.AplosTaxTagId = taxTag.Value.ToString();
+                                        }
                                     }
                                 }
                                 else
@@ -1427,7 +1433,7 @@ namespace AplosConnector.Common.Services
                                 AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
                                 AplosContactId = mapping.PexRebatesAplosContactId,
                                 AplosFundId = mapping.PexRebatesAplosFundId,
-                                AplosTaxTagId = mapping.PexRebatesAplosTaxTagId,
+                                AplosTaxTagId = mapping.SyncTaxTagToPex ? mapping.PexRebatesAplosTaxTagId : null,
                                 AplosTransactionAccountNumber = mapping.PexRebatesAplosTransactionAccountNumber
                             };
 
@@ -1692,7 +1698,7 @@ namespace AplosConnector.Common.Services
                 };
                 var nonCashTagValues = new PexTagValuesModel
                 {
-                    AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
+                    AplosTaxTagId = mapping.SyncTaxTagToPex ? mapping.PexRebatesAplosTaxTagId : null
                 };
                 ApplyTagMappingsToTagValues(nonCashTagValues, mapping.RebateTagMappings, logger);
                 ApplyTagsToLine(nonCashCreditLine, nonCashTagValues);
@@ -1863,7 +1869,7 @@ namespace AplosConnector.Common.Services
                     };
                     var checkingOffsetTagValues = new PexTagValuesModel
                     {
-                        AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
+                        AplosTaxTagId = mapping.SyncTaxTagToPex ? mapping.PexRebatesAplosTaxTagId : null
                     };
                     ApplyTagMappingsToTagValues(checkingOffsetTagValues, mapping.RebateTagMappings, logger);
                     ApplyTagsToLine(checkingOffsetLine, checkingOffsetTagValues);
@@ -2026,7 +2032,7 @@ namespace AplosConnector.Common.Services
                     };
                     var rebateTagValues = new PexTagValuesModel
                     {
-                        AplosTaxTagId = mapping.PexRebatesAplosTaxTagId
+                        AplosTaxTagId = mapping.SyncTaxTagToPex ? mapping.PexRebatesAplosTaxTagId : null
                     };
                     ApplyTagMappingsToTagValues(rebateTagValues, mapping.RebateTagMappings, logger);
                     ApplyTagsToLine(rebateIncomeLine, rebateTagValues);
@@ -2232,7 +2238,7 @@ namespace AplosConnector.Common.Services
                                 AplosRegisterAccountNumber = model.AplosRegisterAccountNumber,
                                 AplosContactId = model.PexFeesAplosContactId,
                                 AplosFundId = model.PexFeesAplosFundId,
-                                AplosTaxTagId = model.PexFeesAplosTaxTagId,
+                                AplosTaxTagId = model.SyncTaxTagToPex ? model.PexFeesAplosTaxTagId : null,
                                 AplosTransactionAccountNumber = model.PexFeesAplosTransactionAccountNumber
                             };
 
@@ -2537,9 +2543,24 @@ namespace AplosConnector.Common.Services
         {
             if (!mapping.SyncReimbursements) return;
 
+            // Reimbursements share the purchases mapping configuration (the "Purchases and
+            // Reimbursements" wizard page): fund, expense account, category tags, and 990
+            // resolve from the shared mappings and their defaults.
+            var defaultReimbursementsFundId = mapping.DefaultAplosFundId;
+            var defaultReimbursementsAccountNumber = mapping.ExpenseAccountMappings?.FirstOrDefault(m => m.DefaultAplosTransactionAccountNumber > 0)?.DefaultAplosTransactionAccountNumber ?? 0;
+            if (defaultReimbursementsAccountNumber <= 0)
+            {
+                defaultReimbursementsAccountNumber = mapping.DefaultAplosTransactionAccountNumber;
+            }
+
+            var hasFundConfig = defaultReimbursementsFundId > 0 || !string.IsNullOrEmpty(mapping.PexFundsTagId);
+            var hasAccountConfig = defaultReimbursementsAccountNumber > 0
+                || mapping.ExpenseAccountMappings?.Any(m => !string.IsNullOrEmpty(m.ExpenseAccountsPexTagId)) == true;
+
             if (!(mapping.SyncReimbursementsCreateContact || mapping.ReimbursementsAplosContactId > 0)
-                || mapping.ReimbursementsAplosFundId <= 0
-                || mapping.ReimbursementsAplosTransactionAccountNumber <= 0)
+                || mapping.ReimbursementsAplosRegisterAccountNumber <= 0
+                || !hasFundConfig
+                || !hasAccountConfig)
             {
                 logger.LogInformation($"Skipping sync reimbursements for business {mapping.PEXBusinessAcctId}. Reimbursements are not configured.");
                 return;
@@ -2562,6 +2583,14 @@ namespace AplosConnector.Common.Services
             var aplosAccountCategory = GetAplosAccountCategory();
             var aplosExpenseAccounts = (await GetAplosAccounts(mapping, aplosAccountCategory, cancellationToken)).ToList();
 
+            // Flattened Aplos tag values are only needed for per-request category tag
+            // resolution, which requires configured tag mappings.
+            List<PexAplosApiObject> aplosTags = default;
+            if (mapping.TagMappings?.Any() == true)
+            {
+                aplosTags = (await GetFlattenedAplosTagValues(mapping, cancellationToken)).ToList();
+            }
+
             // Fetch PEX dropdown tag definitions for tag answer resolution
             var useTags = await _pexApiClient.IsTagsAvailable(mapping.PEXExternalAPIToken, CustomFieldType.Dropdown, cancellationToken);
             List<TagDropdownDetailsModel> dropdownTags = default;
@@ -2577,6 +2606,7 @@ namespace AplosConnector.Common.Services
                 {
                     foreach (var expenseAccountMapping in mapping.ExpenseAccountMappings)
                     {
+                        if (string.IsNullOrEmpty(expenseAccountMapping.ExpenseAccountsPexTagId)) continue;
                         dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, expenseAccountMapping.ExpenseAccountsPexTagId, true, cancellationToken));
                     }
                 }
@@ -2584,6 +2614,7 @@ namespace AplosConnector.Common.Services
                 {
                     foreach (var tagMapping in mapping.TagMappings)
                     {
+                        if (string.IsNullOrEmpty(tagMapping.PexTagId)) continue;
                         dropdownTagTasks.Add(_pexApiClient.GetDropdownTag(mapping.PEXExternalAPIToken, tagMapping.PexTagId, true, cancellationToken));
                     }
                 }
@@ -2707,21 +2738,63 @@ namespace AplosConnector.Common.Services
                     {
                         var pexTagValues = new PexTagValuesModel
                         {
-                            AplosRegisterAccountNumber = mapping.AplosRegisterAccountNumber,
+                            // Reimbursements are paid out of the org's bank account, not the PEX
+                            // register — the register line always uses the reimbursement bank account.
+                            AplosRegisterAccountNumber = mapping.ReimbursementsAplosRegisterAccountNumber,
                             AplosContactId = mapping.ReimbursementsAplosContactId,
-                            AplosFundId = mapping.ReimbursementsAplosFundId,
-                            AplosTaxTagId = mapping.ReimbursementsAplosTaxTagId,
-                            AplosTransactionAccountNumber = mapping.ReimbursementsAplosTransactionAccountNumber,
+                            AplosFundId = defaultReimbursementsFundId,
+                            AplosTransactionAccountNumber = defaultReimbursementsAccountNumber,
                         };
 
-                        // Apply reimbursement default Aplos tags. Reimbursement category tags
-                        // (Fundraisers/Projects/Departments/Custom) are configured in
-                        // ReimbursementTagMappings, not TagMappings. Apply them unconditionally,
-                        // consistent with how transfers/fees/rebates apply their own *TagMappings.
-                        ApplyTagMappingsToTagValues(pexTagValues, mapping.ReimbursementTagMappings, logger);
+                        var tagAnswers = pr.Metadata?.TagAnswers;
+
+                        if (mapping.TagMappings?.Any() == true)
+                        {
+                            // Resolve category tags (Fundraisers/Projects/Departments/Custom/990) from the
+                            // reimbursement's PEX tag answers using the shared tag mappings, falling back
+                            // to each mapping's default — mirrors the purchases sync.
+                            pexTagValues.AplosTagIds = new List<string>();
+
+                            foreach (var tagMapping in mapping.TagMappings)
+                            {
+                                if (tagMapping.AplosTagId == "990")
+                                {
+                                    if (mapping.SyncTaxTagToPex && !string.IsNullOrEmpty(tagMapping.DefaultAplosTagId))
+                                    {
+                                        logger.LogInformation($"Using default Aplos tax tag value '{tagMapping.DefaultAplosTagId}' on reimbursement {pr.PaymentRequestId}.");
+                                        pexTagValues.AplosTaxTagId = tagMapping.DefaultAplosTagId;
+                                    }
+                                    continue;
+                                }
+
+                                var categoryTagAnswer = useTags ? GetReimbursementTagAnswer(tagAnswers, tagMapping.PexTagId) : null;
+                                // Mirror the purchases loop: the 990 tag answer is handled separately
+                                // below and must not be matched as a category tag.
+                                if (categoryTagAnswer != null
+                                    && !string.Equals(categoryTagAnswer.FieldId, mapping.PexTaxTagId, StringComparison.InvariantCultureIgnoreCase))
+                                {
+                                    var categoryTagValueItem = new TagValueItem { TagId = categoryTagAnswer.FieldId, Value = categoryTagAnswer.Value };
+                                    var categoryTagDefinition = dropdownTags?.FirstOrDefault(t => t.Id.Equals(categoryTagAnswer.FieldId, StringComparison.InvariantCultureIgnoreCase));
+                                    var categoryTagOptionValue = categoryTagAnswer.Value?.ToString();
+                                    var categoryTagOptionName = categoryTagValueItem.GetTagOptionName(categoryTagDefinition?.Options);
+                                    var categoryTagEntity = aplosTags.FindMatchingEntity(categoryTagOptionValue, categoryTagOptionName, ':', logger);
+                                    if (categoryTagEntity != null)
+                                    {
+                                        logger.LogDebug($"Matched PEX tag '{categoryTagDefinition?.Name}' option ['{categoryTagOptionName}' : '{categoryTagOptionValue}'] with Aplos tag '{categoryTagEntity.Name}' ({categoryTagEntity.Id}) on reimbursement {pr.PaymentRequestId}.");
+                                        pexTagValues.AplosTagIds.Add(categoryTagEntity.Id);
+                                        continue;
+                                    }
+                                }
+
+                                if (!string.IsNullOrEmpty(tagMapping.DefaultAplosTagId))
+                                {
+                                    logger.LogInformation($"Using default Aplos tag value '{tagMapping.DefaultAplosTagId}' on reimbursement {pr.PaymentRequestId}.");
+                                    pexTagValues.AplosTagIds.Add(tagMapping.DefaultAplosTagId);
+                                }
+                            }
+                        }
 
                         // Resolve fund, expense account, and tax tag dynamically from PEX tag answers if available
-                        var tagAnswers = pr.Metadata?.TagAnswers;
                         if (useTags && tagAnswers != null)
                         {
                             // Resolve fund from tag answers
@@ -2740,7 +2813,7 @@ namespace AplosConnector.Common.Services
                                 }
                                 else
                                 {
-                                    logger.LogInformation($"Could not match fund tag on reimbursement {pr.PaymentRequestId}. Using default fund {mapping.ReimbursementsAplosFundId}.");
+                                    logger.LogInformation($"Could not match fund tag on reimbursement {pr.PaymentRequestId}. Using default fund {defaultReimbursementsFundId}.");
                                 }
                             }
 
@@ -2779,7 +2852,7 @@ namespace AplosConnector.Common.Services
                                     }
                                     else
                                     {
-                                        logger.LogInformation($"Could not match expense account tag on reimbursement {pr.PaymentRequestId}. Using default account {mapping.ReimbursementsAplosTransactionAccountNumber}.");
+                                        logger.LogInformation($"Could not match expense account tag on reimbursement {pr.PaymentRequestId}. Using default account {defaultReimbursementsAccountNumber}.");
                                     }
                                 }
                                 else if (defaultAccountNumber > 0)
@@ -2789,15 +2862,29 @@ namespace AplosConnector.Common.Services
                             }
 
                             // Resolve 990 tax tag from tag answers
-                            var taxTagAnswer = GetReimbursementTagAnswer(tagAnswers, mapping.PexTaxTagId);
-                            if (taxTagAnswer?.Value != null)
+                            if (mapping.SyncTaxTagToPex)
                             {
-                                logger.LogInformation($"Using reimbursement tag {mapping.PexTaxTagId} for reimbursement {pr.PaymentRequestId} as Aplos tax tag value '{taxTagAnswer.Value}'.");
-                                pexTagValues.AplosTaxTagId = taxTagAnswer.Value.ToString();
+                                var taxTagAnswer = GetReimbursementTagAnswer(tagAnswers, mapping.PexTaxTagId);
+                                if (taxTagAnswer?.Value != null)
+                                {
+                                    logger.LogInformation($"Using reimbursement tag {mapping.PexTaxTagId} for reimbursement {pr.PaymentRequestId} as Aplos tax tag value '{taxTagAnswer.Value}'.");
+                                    pexTagValues.AplosTaxTagId = taxTagAnswer.Value.ToString();
+                                }
                             }
                         }
 
                         // Build double-entry lines
+                        // With a tag-only configuration (no defaults) an untagged or unmatched
+                        // reimbursement can end up without a resolved fund or expense account.
+                        // Posting Id/AccountNumber = 0 would create a broken entry in Aplos, so
+                        // count it as a failure and surface the misconfiguration in the sync status.
+                        if (pexTagValues.AplosFundId <= 0 || pexTagValues.AplosTransactionAccountNumber <= 0)
+                        {
+                            failureCount++;
+                            logger.LogWarning($"Skipping reimbursement {pr.PaymentRequestId} for business {mapping.PEXBusinessAcctId}. Could not resolve a fund ({pexTagValues.AplosFundId}) or expense account ({pexTagValues.AplosTransactionAccountNumber}) from tag answers and no default is configured.");
+                            continue;
+                        }
+
                         var amount = pr.Amount;
 
                         var registerLine = new AplosApiTransactionLineDetail
@@ -2814,7 +2901,7 @@ namespace AplosConnector.Common.Services
                             Fund = new AplosApiFundDetail { Id = pexTagValues.AplosFundId },
                         };
 
-                        if (pexTagValues.AplosTagIds != null)
+                        if (pexTagValues.AplosTagIds?.Count > 0)
                         {
                             expenseLine.Tags = new List<AplosApiTagDetail>();
                             foreach (var aplosTagId in pexTagValues.AplosTagIds)
@@ -2880,17 +2967,12 @@ namespace AplosConnector.Common.Services
                             {
                                 contact = new AplosApiContactDetail { CompanyName = payeeName, Type = "individual" };
                             }
-                            else if (pexTagValues.AplosContactId > 0)
-                            {
-                                contact = new AplosApiContactDetail { Id = pexTagValues.AplosContactId };
-                            }
                             else
                             {
-                                // Create-contact mode with a blank employee name and no fallback contact configured.
-                                // Count as a failure (not a silent skip) so the misconfiguration surfaces in the sync
-                                // status, matching how SyncTransactions/SyncInvoices treat ineligible-but-expected records.
+                                // Create-contact mode with a blank employee name. Count as a failure
+                                // (not a silent skip) so the anomaly surfaces in the sync status.
                                 failureCount++;
-                                logger.LogWarning($"Skipping reimbursement {pr.PaymentRequestId} for business {mapping.PEXBusinessAcctId}. Auto-create contact is enabled but the payee name is empty and no default contact is configured.");
+                                logger.LogWarning($"Skipping reimbursement {pr.PaymentRequestId} for business {mapping.PEXBusinessAcctId}. Auto-create contact is enabled but the payee name is empty.");
                                 continue;
                             }
                         }

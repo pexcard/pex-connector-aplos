@@ -128,9 +128,7 @@ export interface SettingsModel {
 
   syncReimbursementsCreateContact: boolean;
   reimbursementsAplosContactId: number;
-  reimbursementsAplosFundId: number;
-  reimbursementsAplosTransactionAccountNumber: number;
-  reimbursementsAplosTaxTag: string;
+  reimbursementsAplosRegisterAccountNumber: number;
 
   aplosRegisterAccountNumber: number;
 
@@ -164,7 +162,6 @@ export interface SettingsModel {
   transferTagMappings: AplosTagMappingModel[];
   feeTagMappings: AplosTagMappingModel[];
   rebateTagMappings: AplosTagMappingModel[];
-  reimbursementTagMappings: AplosTagMappingModel[];
   syncInvoicesMethod: SyncInvoicesMethod;
 }
 

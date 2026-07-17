@@ -70,12 +70,6 @@ export class SyncConnectComponent implements OnInit {
         defaultAplosTagValue: new UntypedFormControl()
       })
     ]),
-    reimbursementTagMappings: new UntypedFormArray([
-      new UntypedFormGroup({
-        aplosTagId: new UntypedFormControl(),
-        defaultAplosTagValue: new UntypedFormControl()
-      })
-    ]),
     defaultAplosFundId: new UntypedFormControl(),
     defaultAplosTransactionAccountNumber: new UntypedFormControl(),
     transfersAplosContactId: new UntypedFormControl(),
@@ -89,11 +83,7 @@ export class SyncConnectComponent implements OnInit {
     pexRebatesAplosFundId: new UntypedFormControl(),
     pexRebatesAplosTransactionAccountNumber: new UntypedFormControl(),
     pexRebatesAplosTaxTag: new UntypedFormControl(),
-    syncReimbursementsCreateContact: new UntypedFormControl(),
-    reimbursementsAplosContactId: new UntypedFormControl(),
-    reimbursementsAplosFundId: new UntypedFormControl(),
-    reimbursementsAplosTransactionAccountNumber: new UntypedFormControl(),
-    reimbursementsAplosTaxTag: new UntypedFormControl()
+    reimbursementsAplosRegisterAccountNumber: new UntypedFormControl()
   });
 
 
@@ -188,9 +178,7 @@ export class SyncConnectComponent implements OnInit {
     pexRebatesAplosTaxTag: '',
     syncReimbursementsCreateContact: true, // default new mappings to "Create a contact for each employee"
     reimbursementsAplosContactId: 0,
-    reimbursementsAplosFundId: 0,
-    reimbursementsAplosTransactionAccountNumber: 0,
-    reimbursementsAplosTaxTag: '',
+    reimbursementsAplosRegisterAccountNumber: 0,
     expenseAccountMappings: [],
     tagMappings: [],
     taxTagCategoryDetails: [],
@@ -201,7 +189,6 @@ export class SyncConnectComponent implements OnInit {
     transferTagMappings: [],
     feeTagMappings: [],
     rebateTagMappings: [],
-    reimbursementTagMappings: [],
     syncInvoicesMethod: SyncInvoicesMethod.RebateDistribute
   };
 
@@ -247,6 +234,16 @@ export class SyncConnectComponent implements OnInit {
         tagMappingRowValidator
       )
     );
+  }
+
+  // Single shared mapping step: the title reflects which syncs are enabled.
+  get tagMappingPageTitle(): string {
+    const purchases = this.settingsModel.syncTransactions;
+    const reimbursements = this.settingsModel.syncReimbursements;
+    if (purchases && reimbursements) {
+      return 'Purchases and Reimbursements';
+    }
+    return reimbursements ? 'Reimbursements' : 'Purchases';
   }
 
   get earliestTransactionDateToSync() {
@@ -506,7 +503,6 @@ export class SyncConnectComponent implements OnInit {
       this.initializeTransferTagMappings();
       this.initializeFeeTagMappings();
       this.initializeRebateTagMappings();
-      this.initializeReimbursementTagMappings();
     }
   }
 
@@ -546,7 +542,6 @@ export class SyncConnectComponent implements OnInit {
         this.initializeTransferTagMappings();
         this.initializeFeeTagMappings();
         this.initializeRebateTagMappings();
-        this.initializeReimbursementTagMappings();
       },
       () => {
         this.loadingAplosTaxTags = false;
@@ -614,12 +609,11 @@ export class SyncConnectComponent implements OnInit {
       this.initExpenseAccountMappingFormFromSettings(this.settingsModel);
       this.initTagMappingFormFromSettings(this.settingsModel);
       this.initDefaultCategoryFormFromSettings(this.settingsModel);
-      
+
       // Initialize tag mappings from settings
       this.initializeTransferTagMappings();
       this.initializeFeeTagMappings();
       this.initializeRebateTagMappings();
-      this.initializeReimbursementTagMappings();
 
       if (this.settingsModel.tagMappings.length > 0) {
         this.settingsModel.tagMappings.forEach(
@@ -682,21 +676,20 @@ export class SyncConnectComponent implements OnInit {
       pexRebatesAplosFundId: settings.pexRebatesAplosFundId,
       pexRebatesAplosTransactionAccountNumber: settings.pexRebatesAplosTransactionAccountNumber,
       pexRebatesAplosTaxTag: settings.pexRebatesAplosTaxTag,
-      syncReimbursementsCreateContact: settings.syncReimbursementsCreateContact,
-      reimbursementsAplosContactId: settings.reimbursementsAplosContactId,
-      reimbursementsAplosFundId: settings.reimbursementsAplosFundId,
-      reimbursementsAplosTransactionAccountNumber: settings.reimbursementsAplosTransactionAccountNumber,
-      reimbursementsAplosTaxTag: settings.reimbursementsAplosTaxTag
+      reimbursementsAplosRegisterAccountNumber: settings.reimbursementsAplosRegisterAccountNumber
     });
 
     this.updateOtherOptionsValidators();
   }
 
-  private applyRequired(controlName: string, isRequired: boolean) {
+  // Numeric id selects are patched with the server's 0, which Validators.required
+  // treats as a present value — min(1) is what actually forces a selection. String
+  // controls (tax tags) keep plain required.
+  private applyRequired(controlName: string, isRequired: boolean, isNumericId = true) {
     const control = this.defaultCategoryForm.get(controlName);
     if (!control) { return; }
     if (isRequired) {
-      control.setValidators(Validators.required);
+      control.setValidators(isNumericId ? [Validators.required, Validators.min(1)] : Validators.required);
     } else {
       control.clearValidators();
     }
@@ -720,8 +713,8 @@ export class SyncConnectComponent implements OnInit {
     const transfersOrInvoices = s.syncTransfers || s.syncInvoices;
     const rebatesVisible = (s.syncTransactions && s.syncRebates) || s.syncInvoices;
 
-    // Purchases (only shown when tags unavailable)
-    const purchasesVisible = !this.hasTagsAvailable && s.syncTransactions;
+    // Shared purchases/reimbursements defaults (only shown when tags unavailable)
+    const purchasesVisible = !this.hasTagsAvailable && (s.syncTransactions || s.syncReimbursements);
     this.applyRequired('defaultAplosFundId', purchasesVisible);
     this.applyRequired('defaultAplosTransactionAccountNumber', purchasesVisible);
 
@@ -734,18 +727,17 @@ export class SyncConnectComponent implements OnInit {
     this.applyRequired('pexFeesAplosContactId', s.syncPexFees);
     this.applyRequired('pexFeesAplosFundId', s.syncPexFees);
     this.applyRequired('pexFeesAplosTransactionAccountNumber', s.syncPexFees);
-    this.applyRequired('pexFeesAplosTaxTag', s.syncPexFees && s.syncTaxTagToPex);
+    this.applyRequired('pexFeesAplosTaxTag', s.syncPexFees && s.syncTaxTagToPex, false);
 
     // Rebates
     this.applyRequired('pexRebatesAplosContactId', rebatesVisible && this.isPrepaid);
     this.applyRequired('pexRebatesAplosFundId', rebatesVisible && (this.isPrepaid || (this.isCredit && this.invoiceMethodRequiresRebateFund)));
     this.applyRequired('pexRebatesAplosTransactionAccountNumber', rebatesVisible);
-    this.applyRequired('pexRebatesAplosTaxTag', rebatesVisible && s.syncTaxTagToPex);
+    this.applyRequired('pexRebatesAplosTaxTag', rebatesVisible && s.syncTaxTagToPex, false);
 
-    // Reimbursements
-    this.applyRequired('reimbursementsAplosFundId', s.syncReimbursements);
-    this.applyRequired('reimbursementsAplosTransactionAccountNumber', s.syncReimbursements);
-    this.applyRequired('reimbursementsAplosTaxTag', s.syncReimbursements && s.syncTaxTagToPex);
+    // Reimbursements: only the bank account (register line) is configured here —
+    // fund/expense/tags come from the shared mapping page or the shared defaults above.
+    this.applyRequired('reimbursementsAplosRegisterAccountNumber', s.syncReimbursements);
   }
 
   updateSettingsFromDefaultCategoryForm() {
@@ -753,8 +745,8 @@ export class SyncConnectComponent implements OnInit {
     const formValue = this.defaultCategoryForm.value;
     
     // Only update defaultAplosFundId if it's being used in the transaction options form
-    // (when tags are not available and sync transactions is enabled)
-    if (!this.hasTagsAvailable && this.settingsModel.syncTransactions) {
+    // (when tags are not available and purchases or reimbursements sync is enabled)
+    if (!this.hasTagsAvailable && (this.settingsModel.syncTransactions || this.settingsModel.syncReimbursements)) {
       this.settingsModel.defaultAplosFundId = formValue.defaultAplosFundId;
       this.settingsModel.defaultAplosTransactionAccountNumber = formValue.defaultAplosTransactionAccountNumber;
     }
@@ -770,11 +762,7 @@ export class SyncConnectComponent implements OnInit {
     this.settingsModel.pexRebatesAplosFundId = formValue.pexRebatesAplosFundId;
     this.settingsModel.pexRebatesAplosTransactionAccountNumber = formValue.pexRebatesAplosTransactionAccountNumber;
     this.settingsModel.pexRebatesAplosTaxTag = formValue.pexRebatesAplosTaxTag;
-    this.settingsModel.syncReimbursementsCreateContact = formValue.syncReimbursementsCreateContact;
-    this.settingsModel.reimbursementsAplosContactId = formValue.reimbursementsAplosContactId;
-    this.settingsModel.reimbursementsAplosFundId = formValue.reimbursementsAplosFundId;
-    this.settingsModel.reimbursementsAplosTransactionAccountNumber = formValue.reimbursementsAplosTransactionAccountNumber;
-    this.settingsModel.reimbursementsAplosTaxTag = formValue.reimbursementsAplosTaxTag;
+    this.settingsModel.reimbursementsAplosRegisterAccountNumber = formValue.reimbursementsAplosRegisterAccountNumber;
   }
 
   private validatePexSetup() {
@@ -861,7 +849,6 @@ export class SyncConnectComponent implements OnInit {
   onSyncTransactionChange() {
     if (!this.settingsModel.syncTransactions) {
       this.settingsModel.syncRebates = false;
-      this.settingsModel.syncReimbursements = false;
       if (this.isCredit) {
         this.settingsModel.syncInvoices = false;
       }
@@ -1032,52 +1019,6 @@ export class SyncConnectComponent implements OnInit {
     console.log('Updated feeTagMappings:', this.settingsModel.feeTagMappings);
   }
 
-  getReimbursementTagMappingFormElements() {
-    return this.defaultCategoryForm.get('reimbursementTagMappings') as FormArray;
-  }
-
-  initializeReimbursementTagMappings() {
-    const reimbursementTagMappingsArray = this.defaultCategoryForm.get('reimbursementTagMappings') as FormArray;
-
-    // Clear existing form controls
-    while (reimbursementTagMappingsArray.length !== 0) {
-      reimbursementTagMappingsArray.removeAt(0);
-    }
-
-    // Add a form group for each aplos tag category
-    this.aplosTagCategories.forEach(category => {
-      // Find existing setting for this category
-      const existingMapping = this.settingsModel.reimbursementTagMappings?.find(
-        mapping => mapping.aplosTagId === category.id.toString()
-      );
-
-      const formGroup = new UntypedFormGroup({
-        aplosTagCategoryId: new UntypedFormControl(category.id.toString()),
-        aplosTagCategoryName: new UntypedFormControl(category.name),
-        defaultAplosTagValue: new UntypedFormControl(existingMapping?.defaultAplosTagValue || '')
-      });
-      reimbursementTagMappingsArray.push(formGroup);
-    });
-  }
-
-  updateSettingsFromReimbursementTagMappingsForm() {
-    const formArray = this.getReimbursementTagMappingFormElements();
-    this.settingsModel.reimbursementTagMappings = [];
-
-    formArray.controls.forEach(control => {
-      const categoryId = control.get('aplosTagCategoryId')?.value;
-      const selectedValue = control.get('defaultAplosTagValue')?.value;
-
-      if (categoryId && selectedValue) {
-        this.settingsModel.reimbursementTagMappings.push({
-          aplosTagId: categoryId,
-          defaultAplosTagValue: selectedValue
-        });
-      }
-    });
-    console.log('Updated reimbursementTagMappings:', this.settingsModel.reimbursementTagMappings);
-  }
-
   updateSettingsFromRebateTagMappingsForm() {
     const formArray = this.getRebateTagMappingFormElements();
     this.settingsModel.rebateTagMappings = [];
@@ -1157,6 +1098,9 @@ export class SyncConnectComponent implements OnInit {
     } else {
       this.settingsModel.useNormalizedMerchantNames = false;
     }
+    if (this.settingsModel.syncReimbursementsCreateContact) {
+      this.settingsModel.reimbursementsAplosContactId = 0;
+    }
     console.log('saving contact options settings', this.settingsModel);
     return this.mapping.saveSettings(this.sessionId, this.settingsModel);
   }
@@ -1177,7 +1121,6 @@ export class SyncConnectComponent implements OnInit {
     this.updateSettingsFromTransferTagMappingsForm();
     this.updateSettingsFromFeeTagMappingsForm();
     this.updateSettingsFromRebateTagMappingsForm();
-    this.updateSettingsFromReimbursementTagMappingsForm();
     console.log('saving transaction options settings', this.settingsModel);
     return this.mapping.saveSettings(this.sessionId, this.settingsModel);
   }

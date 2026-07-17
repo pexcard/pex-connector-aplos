@@ -97,9 +97,7 @@ namespace AplosConnector.Common.Services
 
                     SyncReimbursementsCreateContact = model.SyncReimbursementsCreateContact,
                     ReimbursementsAplosContactId = model.ReimbursementsAplosContactId,
-                    ReimbursementsAplosFundId = model.ReimbursementsAplosFundId,
-                    ReimbursementsAplosTransactionAccountNumber = model.ReimbursementsAplosTransactionAccountNumber.ToString(),
-                    ReimbursementsAplosTaxTagId = model.ReimbursementsAplosTaxTagId,
+                    ReimbursementsAplosRegisterAccountNumber = model.ReimbursementsAplosRegisterAccountNumber.ToString(),
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
@@ -109,7 +107,6 @@ namespace AplosConnector.Common.Services
                     TransferTagMappings = JsonConvert.SerializeObject(model.TransferTagMappings),
                     FeeTagMappings = JsonConvert.SerializeObject(model.FeeTagMappings),
                     RebateTagMappings = JsonConvert.SerializeObject(model.RebateTagMappings),
-                    ReimbursementTagMappings = JsonConvert.SerializeObject(model.ReimbursementTagMappings),
 
                     PexTaxTagId = model.PexTaxTagId,
 
@@ -178,7 +175,7 @@ namespace AplosConnector.Common.Services
                 decimal.TryParse(model.TransfersAplosTransactionAccountNumber, out var transfersAplosTransactionAccountNumber);
                 decimal.TryParse(model.PexFeesAplosTransactionAccountNumber, out var pexFeesAplosTransactionAccountNumber);
                 decimal.TryParse(model.PexRebatesAplosTransactionAccountNumber, out var pexRebatesAplosTransactionAccountNumber);
-                decimal.TryParse(model.ReimbursementsAplosTransactionAccountNumber, out var reimbursementsAplosTransactionAccountNumber);
+                decimal.TryParse(model.ReimbursementsAplosRegisterAccountNumber, out var reimbursementsAplosRegisterAccountNumber);
 
                 result = new Pex2AplosMappingModel
                 {
@@ -236,9 +233,7 @@ namespace AplosConnector.Common.Services
 
                     SyncReimbursementsCreateContact = model.SyncReimbursementsCreateContact,
                     ReimbursementsAplosContactId = model.ReimbursementsAplosContactId,
-                    ReimbursementsAplosFundId = model.ReimbursementsAplosFundId,
-                    ReimbursementsAplosTransactionAccountNumber = reimbursementsAplosTransactionAccountNumber,
-                    ReimbursementsAplosTaxTagId = model.ReimbursementsAplosTaxTagId,
+                    ReimbursementsAplosRegisterAccountNumber = reimbursementsAplosRegisterAccountNumber,
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
@@ -265,10 +260,6 @@ namespace AplosConnector.Common.Services
                     RebateTagMappings = model.RebateTagMappings == null
                         ? null
                         : JsonConvert.DeserializeObject<AplosTagMappingModel[]>(model.RebateTagMappings),
-
-                    ReimbursementTagMappings = model.ReimbursementTagMappings == null
-                        ? null
-                        : JsonConvert.DeserializeObject<AplosTagMappingModel[]>(model.ReimbursementTagMappings),
 
                     PexTaxTagId = model.PexTaxTagId,
 

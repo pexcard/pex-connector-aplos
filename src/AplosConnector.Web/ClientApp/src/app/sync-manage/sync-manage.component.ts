@@ -34,7 +34,6 @@ export class SyncManageComponent implements OnInit {
   transfersAplosTaxTagName: string = ''
   pexFeesAplosTaxTagName: string = ''
   pexRebatesAplosTaxTagName: string = ''
-  reimbursementsAplosTaxTagName: string = ''
 
   defaultContact: AplosObject;
   defaultFund: AplosObject;
@@ -54,8 +53,7 @@ export class SyncManageComponent implements OnInit {
   rebatesAccount: AplosObject;
 
   reimbursementsContact: AplosObject;
-  reimbursementsFund: AplosObject;
-  reimbursementsAccount: AplosObject;
+  reimbursementsBankAccount: AplosObject;
 
   AplosPreferences: AplosPreferences = { isClassEnabled: false, isLocationEnabled: false, locationFieldName: '' };
   isPrepaid: boolean = false;
@@ -201,9 +199,6 @@ export class SyncManageComponent implements OnInit {
     if (this.settings.pexRebatesAplosTaxTag) {
       this.pexRebatesAplosTaxTagName = this.getTaxTagName(this.settings.pexRebatesAplosTaxTag.toString());
     }
-    if (this.settings.reimbursementsAplosTaxTag) {
-      this.reimbursementsAplosTaxTagName = this.getTaxTagName(this.settings.reimbursementsAplosTaxTag.toString());
-    }
   }
 
   getTaxTagName(taxTagId: string) {
@@ -293,7 +288,7 @@ export class SyncManageComponent implements OnInit {
 
   getReimbursementsInfo() {
     if (this.settings.syncReimbursements) {
-      if (!this.settings.syncReimbursementsCreateContact) {
+      if (!this.settings.syncReimbursementsCreateContact && this.settings.reimbursementsAplosContactId > 0) {
         this.aplos.getContact(this.sessionId, this.settings.reimbursementsAplosContactId).subscribe(
           contact => {
             console.log('got reimbursements contact', contact);
@@ -302,19 +297,14 @@ export class SyncManageComponent implements OnInit {
         );
       }
 
-      this.aplos.getFund(this.sessionId, this.settings.reimbursementsAplosFundId).subscribe(
-        fund => {
-          console.log('got reimbursements fund', fund);
-          this.reimbursementsFund = { ...fund };
-        }
-      );
-
-      this.aplos.getAccount(this.sessionId, this.settings.reimbursementsAplosTransactionAccountNumber).subscribe(
-        account => {
-          console.log('got reimbursements account', account);
-          this.reimbursementsAccount = { ...account };
-        }
-      );
+      if (this.settings.reimbursementsAplosRegisterAccountNumber > 0) {
+        this.aplos.getAccount(this.sessionId, this.settings.reimbursementsAplosRegisterAccountNumber).subscribe(
+          account => {
+            console.log('got reimbursements bank account', account);
+            this.reimbursementsBankAccount = { ...account };
+          }
+        );
+      }
     }
   }
 

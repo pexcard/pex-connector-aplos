@@ -72,16 +72,13 @@ namespace AplosConnector.Common.Entities
 
         public bool SyncReimbursementsCreateContact { get; set; }
         public int ReimbursementsAplosContactId { get; set; }
-        public int ReimbursementsAplosFundId { get; set; }
-        public string ReimbursementsAplosTransactionAccountNumber { get; set; }
-        public string ReimbursementsAplosTaxTagId { get; set; }
+        public string ReimbursementsAplosRegisterAccountNumber { get; set; }
 
         public string ExpenseAccountMappings { get; set; }
         public string TagMappings { get; set; }
         public string TransferTagMappings { get; set; }
         public string FeeTagMappings { get; set; }
         public string RebateTagMappings { get; set; }
-        public string ReimbursementTagMappings { get; set; }
         
         public string PEXEmailAccount { get; set; }
         public string PEXNameAccount { get; set; }
