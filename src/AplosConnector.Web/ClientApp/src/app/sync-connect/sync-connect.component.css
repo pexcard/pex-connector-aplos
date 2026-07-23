@@ -9,6 +9,18 @@
   margin-left: 2.1em;
 }
 
+.selected-option {
+  font-weight: 600;
+}
+
+.contact-options-divider {
+  margin: 8px 0;
+}
+
+.contact-options-divider + clr-radio-container {
+  margin-top: 0;
+}
+
 .circle-list {
   list-style: circle;
   font-size: 13px;
