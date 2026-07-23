@@ -361,10 +361,11 @@
     <form clrForm #vendorForm="ngForm" [class.hide]="!savingSettings || loadingVendors">
       <div *ngIf="settingsModel.syncTransactions || settingsModel.syncInvoices">
         <h5>Purchases</h5>
+        <hr class="contact-options-divider" />
         <clr-radio-container>
           <clr-radio-wrapper>
             <input type="radio" clrRadio required name="syncTransactionsCreateContact" [value]="false" [(ngModel)]="settingsModel.syncTransactionsCreateContact" />
-            <label>
+            <label [class.selected-option]="!settingsModel.syncTransactionsCreateContact">
               <span>Use a single contact for your expenses </span>
               <div *ngIf="!settingsModel.syncTransactionsCreateContact" class="clr-select-wrapper">
                 <select id="select-full-vendor"
@@ -378,7 +379,7 @@
           </clr-radio-wrapper>
           <clr-radio-wrapper>
             <input type="radio" clrRadio required name="syncTransactionsCreateContact" [value]="true" [(ngModel)]="settingsModel.syncTransactionsCreateContact" />
-            <label>Create a contact for each unique merchant</label>
+            <label [class.selected-option]="settingsModel.syncTransactionsCreateContact">Create a contact for each unique merchant</label>
           </clr-radio-wrapper>
           <clr-control-helper *ngIf="!settingsModel.syncTransactionsCreateContact" class="single-vendor-help"><strong>Tip:</strong> Consider creating a new contact in Aplos called 'PEX' to book PEX purchases with a single contact</clr-control-helper>
         </clr-radio-container>
@@ -393,10 +394,11 @@
 
       <div *ngIf="settingsModel.syncReimbursements">
         <h5>Reimbursements</h5>
+        <hr class="contact-options-divider" />
         <clr-radio-container>
           <clr-radio-wrapper>
             <input type="radio" clrRadio required name="syncReimbursementsCreateContact" [value]="false" [(ngModel)]="settingsModel.syncReimbursementsCreateContact" />
-            <label>
+            <label [class.selected-option]="!settingsModel.syncReimbursementsCreateContact">
               <span>Use a single contact </span>
               <div *ngIf="!settingsModel.syncReimbursementsCreateContact" class="clr-select-wrapper">
                 <select id="select-reimbursements-contact"
@@ -411,7 +413,7 @@
           </clr-radio-wrapper>
           <clr-radio-wrapper>
             <input type="radio" clrRadio required name="syncReimbursementsCreateContact" [value]="true" [(ngModel)]="settingsModel.syncReimbursementsCreateContact" />
-            <label>Create a contact for each employee</label>
+            <label [class.selected-option]="settingsModel.syncReimbursementsCreateContact">Create a contact for each unique employee</label>
           </clr-radio-wrapper>
         </clr-radio-container>
       </div>
