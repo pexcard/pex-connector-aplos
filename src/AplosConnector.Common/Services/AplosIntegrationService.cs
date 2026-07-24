@@ -745,12 +745,39 @@ namespace AplosConnector.Common.Services
             return taxTags.Where(c => c.Type == "expense");
         }
 
-        public async Task<Pex2AplosMappingModel> UpdateFundingSource(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        public async Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
+            BusinessSettingsModel businessSettings;
+            try
+            {
+                businessSettings = await _pexApiClient.GetBusinessSettings(mapping.PEXExternalAPIToken, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                if (mapping.PEXFundingSource == 0)
+                {
+                    // First-time load: there's no prior known state to fall back to, so surface the
+                    // failure rather than silently returning a wizard with everything unresolved.
+                    throw;
+                }
+
+                // Degrade gracefully: a PEX outage here shouldn't fail Settings load/save for
+                // businesses that don't strictly need fresh data (e.g. funding source already cached).
+                _logger.LogWarning(ex, $"Failed to refresh business settings for business {mapping.PEXBusinessAcctId}. Using last-known values.");
+                return mapping;
+            }
+
             if (mapping.PEXFundingSource == 0)
             {
-                var businessSettings = await _pexApiClient.GetBusinessSettings(mapping.PEXExternalAPIToken, cancellationToken);
                 mapping.PEXFundingSource = businessSettings.FundingSource;
+            }
+
+            mapping.UseReimbursementsEnabled = businessSettings.UseReimbursements;
+
+            if (mapping.SyncReimbursements && !businessSettings.UseReimbursements)
+            {
+                mapping.SyncReimbursements = false;
+                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
             }
 
             return mapping;
@@ -2542,6 +2569,13 @@ namespace AplosConnector.Common.Services
             CancellationToken cancellationToken)
         {
             if (!mapping.SyncReimbursements) return;
+
+            await RefreshBusinessSettings(mapping, cancellationToken);
+            if (!mapping.SyncReimbursements)
+            {
+                logger.LogInformation($"Skipping sync reimbursements for business {mapping.PEXBusinessAcctId}. Reimbursements are disabled for this business account.");
+                return;
+            }
 
             // Reimbursements share the purchases mapping configuration (the "Purchases and
             // Reimbursements" wizard page): fund, expense account, category tags, and 990

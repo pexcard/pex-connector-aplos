@@ -58,6 +58,10 @@ namespace AplosConnector.Common.Models
         /// Whether to sync PEX reimbursements to Aplos.
         /// </summary>
         public bool SyncReimbursements { get; set; }
+        /// <summary>
+        /// Whether the PEX business account has the Reimbursements feature enabled on CSP. Read-only; ignored if sent by the client.
+        /// </summary>
+        public bool UseReimbursementsEnabled { get; set; }
 
         /// <summary>
         /// The AccountId for the register to use in Aplos. This is the account from which money will be taken from in the transaction created in Aplos.

@@ -246,7 +246,7 @@
         <label>Automatically import bill payments and rebates into Aplos.</label>
       </clr-toggle-wrapper>
 
-      <clr-toggle-wrapper>
+      <clr-toggle-wrapper *ngIf="settingsModel.useReimbursementsEnabled">
         <input
           type="checkbox"
           clrToggle
