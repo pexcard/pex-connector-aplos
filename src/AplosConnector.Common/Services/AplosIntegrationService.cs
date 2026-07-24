@@ -747,7 +747,25 @@ namespace AplosConnector.Common.Services
 
         public async Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
-            var businessSettings = await _pexApiClient.GetBusinessSettings(mapping.PEXExternalAPIToken, cancellationToken);
+            BusinessSettingsModel businessSettings;
+            try
+            {
+                businessSettings = await _pexApiClient.GetBusinessSettings(mapping.PEXExternalAPIToken, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                if (mapping.PEXFundingSource == 0)
+                {
+                    // First-time load: there's no prior known state to fall back to, so surface the
+                    // failure rather than silently returning a wizard with everything unresolved.
+                    throw;
+                }
+
+                // Degrade gracefully: a PEX outage here shouldn't fail Settings load/save for
+                // businesses that don't strictly need fresh data (e.g. funding source already cached).
+                _logger.LogWarning(ex, $"Failed to refresh business settings for business {mapping.PEXBusinessAcctId}. Using last-known values.");
+                return mapping;
+            }
 
             if (mapping.PEXFundingSource == 0)
             {

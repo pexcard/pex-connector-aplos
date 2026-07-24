@@ -893,6 +893,24 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public async Task RefreshBusinessSettings_Throws_WhenPexCallFailsOnFirstLoad()
+        {
+            //Arrange — no prior known state (PEXFundingSource unset) to fall back to
+            var mapping = GetMapping();
+            mapping.SyncReimbursements = false;
+            mapping.PEXFundingSource = 0;
+
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessSettings(mapping.PEXExternalAPIToken, default))
+                .ThrowsAsync(new Exception("PEX is down"));
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act & Assert — surface the failure instead of silently returning an unresolved mapping
+            await Assert.ThrowsAsync<Exception>(() => service.RefreshBusinessSettings(mapping, default));
+        }
+
+        [Fact]
         public async Task RefreshBusinessSettings_SetsUseReimbursementsEnabled_FromPexBusinessSettings()
         {
             //Arrange
@@ -910,6 +928,29 @@ namespace AplosConnector.Common.Tests
 
             //Assert
             Assert.True(result.UseReimbursementsEnabled);
+        }
+
+        [Fact]
+        public async Task RefreshBusinessSettings_ReturnsMappingUnchanged_WhenPexCallThrows()
+        {
+            //Arrange
+            var mapping = GetMapping();
+            mapping.SyncReimbursements = false;
+            mapping.PEXFundingSource = FundingSource.Credit;
+            mapping.UseReimbursementsEnabled = false;
+
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessSettings(mapping.PEXExternalAPIToken, default))
+                .ThrowsAsync(new Exception("PEX is down"));
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            var result = await service.RefreshBusinessSettings(mapping, default);
+
+            //Assert — degrades gracefully instead of throwing, leaving last-known values intact
+            Assert.Equal(FundingSource.Credit, result.PEXFundingSource);
+            Assert.False(result.UseReimbursementsEnabled);
         }
 
         [Fact]
