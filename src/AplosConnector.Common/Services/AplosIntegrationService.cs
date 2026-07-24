@@ -745,12 +745,21 @@ namespace AplosConnector.Common.Services
             return taxTags.Where(c => c.Type == "expense");
         }
 
-        public async Task<Pex2AplosMappingModel> UpdateFundingSource(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        public async Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
         {
+            var businessSettings = await _pexApiClient.GetBusinessSettings(mapping.PEXExternalAPIToken, cancellationToken);
+
             if (mapping.PEXFundingSource == 0)
             {
-                var businessSettings = await _pexApiClient.GetBusinessSettings(mapping.PEXExternalAPIToken, cancellationToken);
                 mapping.PEXFundingSource = businessSettings.FundingSource;
+            }
+
+            mapping.UseReimbursementsEnabled = businessSettings.UseReimbursements;
+
+            if (mapping.SyncReimbursements && !businessSettings.UseReimbursements)
+            {
+                mapping.SyncReimbursements = false;
+                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
             }
 
             return mapping;
@@ -2542,6 +2551,13 @@ namespace AplosConnector.Common.Services
             CancellationToken cancellationToken)
         {
             if (!mapping.SyncReimbursements) return;
+
+            await RefreshBusinessSettings(mapping, cancellationToken);
+            if (!mapping.SyncReimbursements)
+            {
+                logger.LogInformation($"Skipping sync reimbursements for business {mapping.PEXBusinessAcctId}. Reimbursements are disabled for this business account.");
+                return;
+            }
 
             // Reimbursements share the purchases mapping configuration (the "Purchases and
             // Reimbursements" wizard page): fund, expense account, category tags, and 990

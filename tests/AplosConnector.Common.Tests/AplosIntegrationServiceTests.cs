@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using PexCard.Api.Client.Core;
+using PexCard.Api.Client.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -889,6 +890,88 @@ namespace AplosConnector.Common.Tests
 
             //Assert
             Assert.True(isConfigured, "Should be configured when SyncReimbursementsCreateContact is true even without a contact ID");
+        }
+
+        [Fact]
+        public async Task RefreshBusinessSettings_SetsUseReimbursementsEnabled_FromPexBusinessSettings()
+        {
+            //Arrange
+            var mapping = GetMapping();
+            mapping.SyncReimbursements = false; // avoid the auto-disable/persist branch, which needs live storage
+
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessSettings(mapping.PEXExternalAPIToken, default))
+                .ReturnsAsync(new BusinessSettingsModel { UseReimbursements = true });
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            var result = await service.RefreshBusinessSettings(mapping, default);
+
+            //Assert
+            Assert.True(result.UseReimbursementsEnabled);
+        }
+
+        [Fact]
+        public async Task RefreshBusinessSettings_ReportsDisabled_WhenPexBusinessSettingsHasReimbursementsOff()
+        {
+            //Arrange
+            var mapping = GetMapping();
+            mapping.SyncReimbursements = false; // avoid the auto-disable/persist branch, which needs live storage
+
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessSettings(mapping.PEXExternalAPIToken, default))
+                .ReturnsAsync(new BusinessSettingsModel { UseReimbursements = false });
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            var result = await service.RefreshBusinessSettings(mapping, default);
+
+            //Assert
+            Assert.False(result.UseReimbursementsEnabled);
+        }
+
+        [Fact]
+        public async Task RefreshBusinessSettings_DoesNotOverwriteFundingSource_WhenAlreadySet()
+        {
+            //Arrange
+            var mapping = GetMapping();
+            mapping.SyncReimbursements = false;
+            mapping.PEXFundingSource = FundingSource.Credit;
+
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessSettings(mapping.PEXExternalAPIToken, default))
+                .ReturnsAsync(new BusinessSettingsModel { FundingSource = FundingSource.Prepaid, UseReimbursements = true });
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            var result = await service.RefreshBusinessSettings(mapping, default);
+
+            //Assert
+            Assert.Equal(FundingSource.Credit, result.PEXFundingSource);
+        }
+
+        [Fact]
+        public async Task RefreshBusinessSettings_SetsFundingSource_WhenNotYetSet()
+        {
+            //Arrange
+            var mapping = GetMapping();
+            mapping.SyncReimbursements = false;
+            mapping.PEXFundingSource = 0;
+
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessSettings(mapping.PEXExternalAPIToken, default))
+                .ReturnsAsync(new BusinessSettingsModel { FundingSource = FundingSource.Prepaid, UseReimbursements = true });
+
+            AplosIntegrationService service = GetAplosIntegrationService();
+
+            //Act
+            var result = await service.RefreshBusinessSettings(mapping, default);
+
+            //Assert
+            Assert.Equal(FundingSource.Prepaid, result.PEXFundingSource);
         }
 
         private AplosIntegrationService GetAplosIntegrationService()

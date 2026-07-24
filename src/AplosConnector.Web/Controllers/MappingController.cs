@@ -72,7 +72,7 @@ namespace AplosConnector.Web.Controllers
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(pexAcctId, cancellationToken);
             mapping.UpdateFromSettings(settings);
 
-            await _aplosIntegrationService.UpdateFundingSource(mapping, cancellationToken);
+            await _aplosIntegrationService.RefreshBusinessSettings(mapping, cancellationToken);
 
             await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
 
@@ -92,7 +92,7 @@ namespace AplosConnector.Web.Controllers
 
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
 
-            await _aplosIntegrationService.UpdateFundingSource(mapping, cancellationToken);
+            await _aplosIntegrationService.RefreshBusinessSettings(mapping, cancellationToken);
 
             // Migrate legacy credit businesses: SyncInvoices used to gate everything.
             // Now that purchases and fees have their own toggles, auto-enable them

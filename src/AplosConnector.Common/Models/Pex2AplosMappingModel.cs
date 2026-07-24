@@ -176,7 +176,9 @@ namespace AplosConnector.Common.Models
                 IsTokenExpired = IsTokenExpired,
 
                 SyncInvoicesMethod = SyncInvoicesMethod,
-                SyncInvoiceAggregated = SyncInvoiceAggregated
+                SyncInvoiceAggregated = SyncInvoiceAggregated,
+
+                UseReimbursementsEnabled = UseReimbursementsEnabled
             };
         }
 
@@ -197,6 +199,9 @@ namespace AplosConnector.Common.Models
         public bool SyncInvoices { get; set; }
         public bool SyncRebates { get; set; }
         public bool SyncReimbursements { get; set; }
+
+        // Live PEX business-account flag, refreshed on each read via RefreshBusinessSettings — never persisted.
+        public bool UseReimbursementsEnabled { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
         public DateTime? EndDateUtc { get; set; }

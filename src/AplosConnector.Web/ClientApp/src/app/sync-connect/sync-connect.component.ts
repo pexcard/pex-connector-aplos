@@ -169,6 +169,7 @@ export class SyncConnectComponent implements OnInit {
     syncPexFees: false,
     syncRebates: false,
     syncReimbursements: false,
+    useReimbursementsEnabled: false,
     transfersAplosContactId: 0,
     transfersAplosFundId: 0,
     transfersAplosTransactionAccountNumber: 0,

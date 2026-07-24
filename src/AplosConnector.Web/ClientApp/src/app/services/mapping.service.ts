@@ -110,6 +110,7 @@ export interface SettingsModel {
   syncPexFees: boolean;
   syncRebates: boolean;
   syncReimbursements: boolean;
+  useReimbursementsEnabled: boolean;
 
   transfersAplosContactId: number;
   transfersAplosFundId: number;
