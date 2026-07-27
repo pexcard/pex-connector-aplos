@@ -2602,15 +2602,13 @@ namespace AplosConnector.Common.Services
 
             var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
             var endDateUtc = GetEndDateUtc(mapping.EndDateUtc, utcNow);
+            var (startDate, endDate) = GetEstDayWindow(startDateUtc, endDateUtc);
 
-            if (startDateUtc.Date >= endDateUtc.Date)
+            if (startDate.Date >= endDate.Date)
             {
+                logger.LogInformation($"Skipping sync reimbursements for business {mapping.PEXBusinessAcctId}. Empty sync window {startDate:yyyy-MM-dd}..{endDate:yyyy-MM-dd}.");
                 return;
             }
-
-            // Fetch Aplos transactions for dedup
-            var startDate = startDateUtc.ToStartOfDay(TimeZones.EST);
-            var aplosTransactions = await GetTransactions(mapping, startDate, cancellationToken);
 
             // Fetch Aplos reference data for tag resolution
             var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
@@ -2676,8 +2674,8 @@ namespace AplosConnector.Common.Services
                     PaymentStatusTrigger.Returned,
                     PaymentStatusTrigger.Cancelled,
                 },
-                OutboundAchCreationStartDate = startDateUtc,
-                OutboundAchCreationEndDate = endDateUtc,
+                OutboundAchCreationStartDate = startDate,
+                OutboundAchCreationEndDate = endDate,
             };
 
             // Page through all matching payments first.
@@ -2748,12 +2746,38 @@ namespace AplosConnector.Common.Services
                 .DistinctBy(pr => pr.PaymentRequestId)
                 .ToList();
 
-            // Only sync reimbursements whose payment is fully settled (paid) and not already in Aplos.
+            // Only sync reimbursements whose payment is fully settled (paid).
             // Returned/Cancelled/in-flight requests are skipped; in-flight ones settle on a later run.
-            var reimbursementsToSync = allPaymentRequests
+            var settledReimbursements = allPaymentRequests
                 .Where(pr => pr.PaymentId.HasValue
                     && paymentTriggersByPaymentId.TryGetValue(pr.PaymentId.Value, out var trigger)
                     && trigger == PaymentStatusTrigger.Settled)
+                .ToList();
+
+            // Reimbursements post under their expense/payout date, which is independent of the
+            // outbound-ACH creation date this sync filters on: an expense incurred before the window
+            // still pays out inside it. The dedup lookup is date-scoped, so an entry written under an
+            // older post date falls outside it and the reimbursement would be re-posted on every run
+            // until its ACH date ages out. Widen the lookup to the oldest date we are about to write.
+            var dedupFromDate = startDate;
+            foreach (var settled in settledReimbursements)
+            {
+                var settledPostDate = GetReimbursementPostDate(mapping, settled).ToStartOfDay(TimeZones.EST);
+                if (settledPostDate < dedupFromDate)
+                {
+                    dedupFromDate = settledPostDate;
+                }
+            }
+
+            if (dedupFromDate < startDate)
+            {
+                logger.LogInformation($"Widening the Aplos dedup lookup from {startDate:yyyy-MM-dd} to {dedupFromDate:yyyy-MM-dd} for business {mapping.PEXBusinessAcctId} to cover back-dated reimbursements.");
+            }
+
+            // Fetch Aplos transactions for dedup
+            var aplosTransactions = await GetTransactions(mapping, dedupFromDate, cancellationToken);
+
+            var reimbursementsToSync = settledReimbursements
                 .Where(pr => !WasPexTransactionSyncedToAplos(aplosTransactions, pr.PaymentRequestId.ToString()))
                 .ToList();
 
@@ -2982,16 +3006,8 @@ namespace AplosConnector.Common.Services
                             ? paymentRequestIdString
                             : noteContent + idSuffix;
 
-                        // Determine post date
-                        DateTime postDate;
-                        if (mapping.PostDateType == PostDateType.Settlement && pr.PayoutDate.HasValue)
-                        {
-                            postDate = pr.PayoutDate.Value.DateTime;
-                        }
-                        else
-                        {
-                            postDate = pr.PurchaseDate.DateTime;
-                        }
+                        // Determine post date. Must stay in sync with the dedup window widening above.
+                        var postDate = GetReimbursementPostDate(mapping, pr);
 
                         // Determine contact — auto-create from employee name or use default
                         AplosApiContactDetail contact;
@@ -3062,6 +3078,30 @@ namespace AplosConnector.Common.Services
                 SyncNotes = syncNote
             };
             await _historyStorage.CreateAsync(result, cancellationToken);
+        }
+
+        /// <summary>
+        /// Resolves a UTC sync window onto EST day boundaries. Comparing the raw UTC dates treated a
+        /// start date of "today" as an empty window and skipped the whole run, because the default end
+        /// date is utcNow on the same UTC day (work item 144293). The purchases and business-account
+        /// syncs inline this same conversion and could adopt this helper.
+        /// </summary>
+        public static (DateTime StartDate, DateTime EndDate) GetEstDayWindow(DateTime startDateUtc, DateTime endDateUtc)
+        {
+            return (startDateUtc.ToStartOfDay(TimeZones.EST), endDateUtc.ToEndOfDay(TimeZones.EST));
+        }
+
+        /// <summary>
+        /// The Aplos post date for a reimbursement: the payout date when the mapping posts on
+        /// settlement (and PEX has one), otherwise the date the expense was incurred. Shared by the
+        /// posting loop and the dedup window so the date written can never fall outside the date
+        /// searched.
+        /// </summary>
+        public static DateTime GetReimbursementPostDate(Pex2AplosMappingModel mapping, PaymentRequestModel paymentRequest)
+        {
+            return mapping.PostDateType == PostDateType.Settlement && paymentRequest.PayoutDate.HasValue
+                ? paymentRequest.PayoutDate.Value.DateTime
+                : paymentRequest.PurchaseDate.DateTime;
         }
 
         private static TagAnswerModel GetReimbursementTagAnswer(IEnumerable<TagAnswerModel> tagAnswers, string fieldId)

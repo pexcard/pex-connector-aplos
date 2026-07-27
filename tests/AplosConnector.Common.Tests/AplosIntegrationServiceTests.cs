@@ -750,6 +750,125 @@ namespace AplosConnector.Common.Tests
             Assert.Equal("Resources (1004)", dedupedAccounts[3].Name);
         }
 
+        [Fact]
+        public void GetEstDayWindow_LeavesWindowOpen_WhenStartDateIsToday()
+        {
+            //Arrange — work item 144293: the daily sync runs at 03:16 UTC, so with a start date of
+            //"today" the raw UTC dates are the same calendar day and the run was skipped entirely.
+            var utcNow = new DateTime(2026, 7, 27, 3, 16, 0, DateTimeKind.Utc);
+            var startDateUtc = utcNow.Date;
+
+            //Act
+            var (startDate, endDate) = AplosIntegrationService.GetEstDayWindow(startDateUtc, utcNow);
+
+            //Assert
+            Assert.True(startDate.Date < endDate.Date, "A start date of today must still produce a syncable window.");
+        }
+
+        [Theory]
+        [InlineData(12)]
+        [InlineData(23)]
+        public void GetEstDayWindow_LeavesWindowOpen_WhenStartDateIsToday_RegardlessOfHour(int utcHour)
+        {
+            //Arrange — the skip must not come back at other times of day
+            var utcNow = new DateTime(2026, 7, 27, utcHour, 30, 0, DateTimeKind.Utc);
+            var startDateUtc = utcNow.Date;
+
+            //Act
+            var (startDate, endDate) = AplosIntegrationService.GetEstDayWindow(startDateUtc, utcNow);
+
+            //Assert
+            Assert.True(startDate.Date < endDate.Date, $"Window must stay open at {utcHour}:30 UTC.");
+        }
+
+        [Fact]
+        public void GetEstDayWindow_ClosesWindow_WhenEndDatePrecedesStartDate()
+        {
+            //Arrange — a configured end date before the start date is still a degenerate window
+            var startDateUtc = new DateTime(2026, 7, 27, 0, 0, 0, DateTimeKind.Utc);
+            var endDateUtc = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);
+
+            //Act
+            var (startDate, endDate) = AplosIntegrationService.GetEstDayWindow(startDateUtc, endDateUtc);
+
+            //Assert
+            Assert.True(startDate.Date >= endDate.Date);
+        }
+
+        [Fact]
+        public void GetReimbursementPostDate_UsesPurchaseDate_ByDefault()
+        {
+            //Arrange
+            var mapping = new Pex2AplosMappingModel { PostDateType = PostDateType.Transaction };
+            var purchaseDate = new DateTimeOffset(2026, 4, 15, 0, 0, 0, TimeSpan.Zero);
+            var pr = new PaymentRequestModel
+            {
+                PurchaseDate = purchaseDate,
+                PayoutDate = new DateTimeOffset(2026, 7, 20, 0, 0, 0, TimeSpan.Zero),
+            };
+
+            //Act
+            var postDate = AplosIntegrationService.GetReimbursementPostDate(mapping, pr);
+
+            //Assert
+            Assert.Equal(purchaseDate.DateTime, postDate);
+        }
+
+        [Fact]
+        public void GetReimbursementPostDate_UsesPayoutDate_WhenPostingOnSettlement()
+        {
+            //Arrange
+            var mapping = new Pex2AplosMappingModel { PostDateType = PostDateType.Settlement };
+            var payoutDate = new DateTimeOffset(2026, 7, 20, 0, 0, 0, TimeSpan.Zero);
+            var pr = new PaymentRequestModel
+            {
+                PurchaseDate = new DateTimeOffset(2026, 4, 15, 0, 0, 0, TimeSpan.Zero),
+                PayoutDate = payoutDate,
+            };
+
+            //Act
+            var postDate = AplosIntegrationService.GetReimbursementPostDate(mapping, pr);
+
+            //Assert
+            Assert.Equal(payoutDate.DateTime, postDate);
+        }
+
+        [Fact]
+        public void GetReimbursementPostDate_FallsBackToPurchaseDate_WhenSettlementHasNoPayoutDate()
+        {
+            //Arrange — this fallback is why the dedup window must be derived from the same helper
+            var mapping = new Pex2AplosMappingModel { PostDateType = PostDateType.Settlement };
+            var purchaseDate = new DateTimeOffset(2026, 4, 15, 0, 0, 0, TimeSpan.Zero);
+            var pr = new PaymentRequestModel { PurchaseDate = purchaseDate, PayoutDate = null };
+
+            //Act
+            var postDate = AplosIntegrationService.GetReimbursementPostDate(mapping, pr);
+
+            //Assert
+            Assert.Equal(purchaseDate.DateTime, postDate);
+        }
+
+        [Fact]
+        public void GetReimbursementPostDate_CanPredateSyncWindowStart_WhichIsWhyDedupMustWiden()
+        {
+            //Arrange — the PEX query filters on outbound-ACH creation date, but the post date is the
+            //expense date. An old expense paid out today posts outside the window, so a dedup lookup
+            //scoped to the window start would miss it and re-post it on every run.
+            var mapping = new Pex2AplosMappingModel { PostDateType = PostDateType.Transaction };
+            var utcNow = new DateTime(2026, 7, 27, 3, 16, 0, DateTimeKind.Utc);
+            var (windowStart, _) = AplosIntegrationService.GetEstDayWindow(utcNow.AddDays(-60), utcNow);
+            var pr = new PaymentRequestModel
+            {
+                PurchaseDate = new DateTimeOffset(2026, 4, 15, 0, 0, 0, TimeSpan.Zero), // ~100 days back
+            };
+
+            //Act
+            var postDate = AplosIntegrationService.GetReimbursementPostDate(mapping, pr);
+
+            //Assert
+            Assert.True(postDate < windowStart, "Post date must be able to precede the window start; the dedup lookup has to widen to cover it.");
+        }
+
         [Theory]
         [InlineData(0, 1, 1, "Contact not configured")]
         [InlineData(1, 0, 1, "Fund not configured")]
