@@ -147,3 +147,23 @@ a:not(.btn, .nav-link, .dropdown-item, .label, .alert-action, .badge, .clr-treen
   color: var(--pex-text-global-color);
   margin: 8px 0 14px;
 }
+
+// Clarity 18 introduced vertical divider lines between header sections
+// (drawn as ::before bars colored by this variable); the previous design had none.
+:root {
+  --clr-header-divider-color: transparent;
+}
+
+// Clarity 18 paints the UA focus ring on plain :focus (so it shows when the
+// dropdown opens by mouse and moves focus programmatically) but zeroes it on
+// :focus-visible. Invert that: ring for keyboard focus only.
+.dropdown-menu .dropdown-item:focus:not(:focus-visible) {
+  outline: 0;
+}
+
+.dropdown-menu .dropdown-item:focus-visible {
+  outline-color: Highlight;
+  outline-color: -webkit-focus-ring-color;
+  outline-style: auto;
+  outline-offset: calc(-1 * var(--cds-global-space-2));
+}

@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 
 import { FinishPexLoginComponent } from './finish-pex-login.component';
 import { ActivatedRoute } from '@angular/router';
@@ -16,7 +16,7 @@ describe('FinishPexLoginComponent', () => {
   let component: FinishPexLoginComponent;
   let fixture: ComponentFixture<FinishPexLoginComponent>;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [ FinishPexLoginComponent ],
       imports:[RouterTestingModule, HttpClientTestingModule],

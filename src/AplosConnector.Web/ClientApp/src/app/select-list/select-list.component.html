@@ -19,13 +19,15 @@
       </div>
       <div class="items-list">
         <ul class="list-unstyled">
-          <li *ngFor="let item of allItemsFiltered"
+          @for (item of allItemsFiltered; track item) {
+            <li
               (mouseenter)="selectMany($event, item, allItems, selectedItems, true)"
               (mousedown)="selectOne($event, item, allItems, selectedItems, true)"
               [ngClass]="item.selected ? 'selected-item': ''"
               tabindex="1">
-            <span class="p3 no-top-margin">{{_displayFn(item)}}</span>
-          </li>
+              <span class="p3 no-top-margin">{{_displayFn(item)}}</span>
+            </li>
+          }
         </ul>
       </div>
     </div>
@@ -34,11 +36,11 @@
   <div class="clr-col clr-col-md-2">
     <div class="items-action-container">
       <button (click)="moveSelectedToRight()" [disabled]="allItems.length === 0 || (maxSelectedItems > 0 && selectedItems.length === maxSelectedItems)" aria-label="arrow"
-              class="btn btn-icon items-btn move-to-suggested" type="button">
+        class="btn btn-icon items-btn move-to-suggested" type="button">
         <cds-icon direction="right" shape="arrow" size="16"></cds-icon>
       </button>
       <button (click)="moveSelectedToLeft()" [disabled]="selectedItems.length === 0" aria-label="arrow"
-              class="btn btn-icon items-btn move-back" type="button">
+        class="btn btn-icon items-btn move-back" type="button">
         <cds-icon direction="left" shape="arrow" size="16"></cds-icon>
       </button>
       <button class="btn btn-sm btn-link" (click)="reset()">RESET</button>
@@ -64,13 +66,15 @@
       </div>
       <div class="items-list">
         <ul class="list-unstyled">
-          <li *ngFor="let item of selectedItemsFiltered"
+          @for (item of selectedItemsFiltered; track item) {
+            <li
               (mouseenter)="selectMany($event, item, selectedItems, selectedItems, false)"
               (mousedown)="selectOne($event, item, selectedItems, selectedItems, false)"
               [ngClass]="item.selected ? 'selected-item': ''"
               tabindex="1">
-            <span class="p3 no-top-margin">{{_displayFn(item)}}</span>
-          </li>
+              <span class="p3 no-top-margin">{{_displayFn(item)}}</span>
+            </li>
+          }
         </ul>
       </div>
     </div>

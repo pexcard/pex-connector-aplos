@@ -1,79 +1,103 @@
 <div class="page-container">
-<div *ngIf="!isReady" class="page-status">
-  <clr-spinner [clrMedium]="true"></clr-spinner>
-  Loading...
-</div>
-<ng-container *ngIf="isReady">
-  <h1>Manage Vendor Cards</h1>
-  <p>
-    View PEX Vendor Cards automatically created from your Aplos vendor list. To manage a vendor card, click on it.
-  </p>
-  <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false" *ngIf="!connectionDetails?.syncingSetup && hasVendorCards">
-    <clr-alert-item>
-      <span class="alert-text">Sync your transactions to Aplos nightly.</span>
-      <div class="alert-actions">
-        <button class="btn btn-sm alert-action" [routerLink]="['../sync-connect']">GET STARTED</button>
+  @if (!isReady) {
+    <div class="page-status">
+      <clr-spinner [clrMedium]="true"></clr-spinner>
+      Loading...
+    </div>
+  }
+  @if (isReady) {
+    <h1>Manage Vendor Cards</h1>
+    <p>
+      View PEX Vendor Cards automatically created from your Aplos vendor list. To manage a vendor card, click on it.
+    </p>
+    @if (!connectionDetails?.syncingSetup && hasVendorCards) {
+      <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false">
+        <clr-alert-item>
+          <span class="alert-text">Sync your transactions to Aplos nightly.</span>
+          <div class="alert-actions">
+            <button class="btn btn-sm alert-action" [routerLink]="['../sync-connect']">GET STARTED</button>
+          </div>
+        </clr-alert-item>
+      </clr-alert>
+    }
+    @if (!hasVendorCards) {
+      <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false">
+        <clr-alert-item>
+          <span class="alert-text">Earn 1% rebates on all eligible Vendor card payments.</span>
+          <div class="alert-actions">
+            <button class="btn btn-sm alert-action" [routerLink]="['../vendors-select']">GET STARTED</button>
+          </div>
+        </clr-alert-item>
+      </clr-alert>
+    }
+    @if (hasVendorCards) {
+      <div class="vendor-cards">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="left">Date Created</th>
+              <th class="left">Vendor Card</th>
+              @if (connectionDetails?.isPrepaid) {
+                <th class="left">Auto Funding</th>
+              }
+              @if (connectionDetails?.isPrepaid) {
+                <th class="left">Initial Funding</th>
+              }
+              @if (!connectionDetails?.isPrepaid) {
+                <th class="left">Card Limit</th>
+              }
+              <th class="left">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (v of vendorCardOrders; track v) {
+              <tr>
+                <td class="left">{{v.orderDate | date : 'medium'}}</td>
+                <td class="left"><a [href]="v.accountUrl" target="_blank">{{v.name | truncate : 25}}</a></td>
+                @if (connectionDetails?.isPrepaid) {
+                  <td class="left">
+                    <input type="checkbox" clrCheckbox [ngModel]="v.autoFunding" [disabled]="true"/>
+                  </td>
+                }
+                @if (connectionDetails?.isPrepaid) {
+                  <td class="left">
+                    @if (!v.autoFunding) {
+                      <span>
+                        {{v.initialFunding | currency}}
+                      </span>
+                    }
+                  </td>
+                }
+                @if (!connectionDetails?.isPrepaid) {
+                  <td class="left">
+                    <span>
+                      {{v.initialFunding | currency}}
+                    </span>
+                  </td>
+                }
+                <td class="left same-line">
+                  <clr-signpost>
+                    <div clrSignpostTrigger>
+                      <span class="label"
+                        [class.label-danger]="v.status === 'Unstored'"
+                        [class.label-info]="v.status === 'Processing'"
+                        [class.label-info]="v.status === 'Pending'"
+                        [class.label-success]="v.status === 'Success'"
+                        [class.label-warning]="v.status === 'NotProcessed'"
+                        [class.label-danger]="v.status === 'Failed'">
+                        {{v.status}}
+                      </span>
+                    </div>
+                    <clr-signpost-content *clrIfOpen [clrPosition]="'left-bottom'">
+                      <span class="p8">{{v.error}}</span>
+                    </clr-signpost-content>
+                  </clr-signpost>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-    </clr-alert-item>
-  </clr-alert>
-  <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false" *ngIf="!hasVendorCards">
-    <clr-alert-item>
-      <span class="alert-text">Earn 1% rebates on all eligible Vendor card payments.</span>
-      <div class="alert-actions">
-        <button class="btn btn-sm alert-action" [routerLink]="['../vendors-select']">GET STARTED</button>
-      </div>
-    </clr-alert-item>
-  </clr-alert>
-  <div *ngIf="hasVendorCards" class="vendor-cards">
-    <table class="table">
-      <thead>
-        <tr>
-          <th class="left">Date Created</th>
-          <th class="left">Vendor Card</th>
-          <th *ngIf="connectionDetails?.isPrepaid" class="left">Auto Funding</th>
-          <th *ngIf="connectionDetails?.isPrepaid" class="left">Initial Funding</th>
-          <th *ngIf="!connectionDetails?.isPrepaid" class="left">Card Limit</th>
-          <th class="left">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let v of vendorCardOrders">
-          <td class="left">{{v.orderDate | date : 'medium'}}</td>
-          <td class="left"><a [href]="v.accountUrl" target="_blank">{{v.name | truncate : 25}}</a></td>
-          <td *ngIf="connectionDetails?.isPrepaid" class="left">
-            <input type="checkbox" clrCheckbox [ngModel]="v.autoFunding" [disabled]="true"/>
-          </td>
-          <td *ngIf="connectionDetails?.isPrepaid" class="left">
-            <span *ngIf="!v.autoFunding">
-              {{v.initialFunding | currency}}
-            </span>
-          </td>
-          <td *ngIf="!connectionDetails?.isPrepaid" class="left">
-            <span>
-              {{v.initialFunding | currency}}
-            </span>
-          </td>
-          <td class="left same-line">
-            <clr-signpost>
-              <div clrSignpostTrigger>
-                <span class="label"
-                      [class.label-danger]="v.status === 'Unstored'"
-                      [class.label-info]="v.status === 'Processing'"
-                      [class.label-info]="v.status === 'Pending'"
-                      [class.label-success]="v.status === 'Success'"
-                      [class.label-warning]="v.status === 'NotProcessed'"
-                      [class.label-danger]="v.status === 'Failed'">
-                  {{v.status}}
-                </span>
-              </div>
-              <clr-signpost-content *clrIfOpen [clrPosition]="'left-bottom'">
-                <span class="p8">{{v.error}}</span>
-              </clr-signpost-content>
-            </clr-signpost>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</ng-container>
+    }
+  }
 </div>

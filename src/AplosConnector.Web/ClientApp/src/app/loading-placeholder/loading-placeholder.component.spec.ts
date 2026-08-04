@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 
 import { LoadingPlaceholderComponent } from './loading-placeholder.component';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
@@ -8,7 +8,7 @@ describe('LoadingPlaceholderComponent', () => {
   let component: LoadingPlaceholderComponent;
   let fixture: ComponentFixture<LoadingPlaceholderComponent>;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [ LoadingPlaceholderComponent ],
       schemas: [NO_ERRORS_SCHEMA],

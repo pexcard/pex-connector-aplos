@@ -1,14 +1,20 @@
-<div class="clr-row" *ngIf="loadingState">
+@if (loadingState) {
+  <div class="clr-row">
     <div class="clr-col">
-        <div class="progress loop"><progress></progress></div>
+      <div class="progress loop"><progress></progress></div>
     </div>
-</div>
+  </div>
+}
 
-<clr-alert [clrAlertType]="'danger'" [clrAlertAppLevel]="true" [clrAlertClosable]="false" *ngIf="errorState" style="margin-bottom:24px">
-  <clr-alert-item>
-    <span class="alert-text">{{errorText}}</span>
-    <div class="alert-actions" *ngIf="allowRetry">
-      <button type="button" (click)="onRetry()" class="btn alert-action">Retry</button>
-    </div>
-  </clr-alert-item>
-</clr-alert>
+@if (errorState) {
+  <clr-alert [clrAlertType]="'danger'" [clrAlertAppLevel]="true" [clrAlertClosable]="false" style="margin-bottom:24px">
+    <clr-alert-item>
+      <span class="alert-text">{{errorText}}</span>
+      @if (allowRetry) {
+        <div class="alert-actions">
+          <button type="button" (click)="onRetry()" class="btn alert-action">Retry</button>
+        </div>
+      }
+    </clr-alert-item>
+  </clr-alert>
+}

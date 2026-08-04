@@ -4,9 +4,13 @@ import { Component, Input } from '@angular/core';
   standalone: false,
   selector: 'app-status-icon',
   template: `
-    <cds-icon *ngIf="value"  shape="success-standard" solid status="success" [attr.size]="size"></cds-icon>
-    <cds-icon *ngIf="!value" shape="ban"              solid status="danger"  [attr.size]="size"></cds-icon>
-  `
+    @if (value) {
+      <cds-icon shape="success-standard" solid status="success" [size]="size"></cds-icon>
+    }
+    @if (!value) {
+      <cds-icon shape="ban" solid status="danger" [size]="size"></cds-icon>
+    }
+    `
 })
 export class StatusIconComponent {
   @Input() value: boolean = false;

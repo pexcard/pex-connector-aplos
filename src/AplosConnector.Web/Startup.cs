@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.SpaServices.AngularCli;
+using AplosConnector.Web.Spa;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -266,7 +266,10 @@ namespace AplosConnector.Web
 
                 if (env.IsDevelopment())
                 {
-                    spa.UseAngularCliServer(npmScript: "start");
+                    var lifetime = app.ApplicationServices.GetRequiredService<IHostApplicationLifetime>();
+                    var clientAppPath = System.IO.Path.Combine(env.ContentRootPath, spa.Options.SourcePath);
+                    spa.UseProxyToSpaDevelopmentServer(() => AngularDevServer.EnsureStarted(
+                        clientAppPath, spa.Options.StartupTimeout, lifetime.ApplicationStopping));
                 }
             });
         }

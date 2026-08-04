@@ -24,7 +24,7 @@ import { CommonModule, CurrencyPipe } from '@angular/common';
 import { SelectListComponent } from './select-list/select-list.component';
 import { StatusIconComponent } from './status-icon/status-icon.component';
 import { TruncateModule } from '@yellowspot/ng-truncate';
-import { ClarityIcons, twoWayArrowsIcon, helpIcon, infoCircleIcon, creditCardIcon, successStandardIcon, syncIcon, checkCircleIcon, exclamationCircleIcon, exclamationTriangleIcon, linkIcon, plusIcon, trashIcon, angleIcon, searchIcon, arrowIcon, checkIcon, timesCircleIcon, cogIcon, refreshIcon, disconnectIcon, banIcon } from '@cds/core/icon';
+import { ClarityIcons, twoWayArrowsIcon, helpIcon, infoCircleIcon, creditCardIcon, successStandardIcon, syncIcon, checkCircleIcon, exclamationCircleIcon, exclamationTriangleIcon, linkIcon, plusIcon, trashIcon, angleIcon, searchIcon, arrowIcon, checkIcon, timesCircleIcon, cogIcon, refreshIcon, disconnectIcon, banIcon } from '@clr/angular/icon';
 
 ClarityIcons.addIcons(
   twoWayArrowsIcon,

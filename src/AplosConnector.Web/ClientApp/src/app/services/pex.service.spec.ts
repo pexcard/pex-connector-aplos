@@ -10,7 +10,7 @@ describe('PexService', () => {
   }));
 
   it('should be created', () => {
-    const service: PexService = TestBed.get(PexService);
+    const service: PexService = TestBed.inject(PexService);
     expect(service).toBeTruthy();
   });
 });

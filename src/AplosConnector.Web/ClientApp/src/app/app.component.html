@@ -2,7 +2,7 @@
   <clr-header>
     <div class="branding">
       <a [routerLink]="['/connect']" class="nav-link branding-link"
-         aria-label="PEX Connector for Aplos">
+        aria-label="PEX Connector for Aplos">
         <span class="logo logo-pex"></span>
         <cds-icon shape="two-way-arrows"></cds-icon>
         <span class="logo logo-aplos"></span>
@@ -10,50 +10,64 @@
     </div>
     <div class="header-nav">
       <a [routerLink]="['connect']"
-         routerLinkActive="active"
-         class="nav-link">
+        routerLinkActive="active"
+        class="nav-link">
         <span class="nav-text">Connect</span>
       </a>
 
-      <a *ngIf="isLoggedIn"
-         [routerLink]="['sync-manage']"
-         routerLinkActive="active"
-         class="nav-link">
+      @if (isLoggedIn) {
+        <a
+          [routerLink]="['sync-manage']"
+          routerLinkActive="active"
+          class="nav-link">
           <span class="nav-text">Manage sync</span>
-      </a>
+        </a>
+      }
 
-      <a *ngIf="isLoggedIn"
-        [routerLink]="['sync-history']"
-        routerLinkActive="active"
-        class="nav-link">
-        <span class="nav-text">History</span>
-      </a>
+      @if (isLoggedIn) {
+        <a
+          [routerLink]="['sync-history']"
+          routerLinkActive="active"
+          class="nav-link">
+          <span class="nav-text">History</span>
+        </a>
+      }
 
-      <a *ngIf="isLoggedIn"
-         [routerLink]="['vendors-manage']"
-         routerLinkActive="active"
-         class="nav-link">
-        <span class="nav-text">Manage vendor cards</span>
-      </a>
+      @if (isLoggedIn) {
+        <a
+          [routerLink]="['vendors-manage']"
+          routerLinkActive="active"
+          class="nav-link">
+          <span class="nav-text">Manage vendor cards</span>
+        </a>
+      }
 
     </div>
     <div class="header-actions">
-      <a *ngIf="!isLoggedIn"
-         [routerLink]="['/authenticate-with-pex']"
-         routerLinkActive="active"
-         class="nav-link">
-        <span class="nav-text">Authenticate with PEX</span>
-      </a>
+      @if (!isLoggedIn) {
+        <a
+          [routerLink]="['/authenticate-with-pex']"
+          routerLinkActive="active"
+          class="nav-link">
+          <span class="nav-text">Authenticate with PEX</span>
+        </a>
+      }
 
       <a (click)="onLogout()" class="nav-link">
-      <span *ngIf="isLoggedIn" class="nav-text" style="cursor: pointer">Logout</span>
+        @if (isLoggedIn) {
+          <span class="nav-text" style="cursor: pointer">Logout</span>
+        }
       </a>
-      <a *ngIf="isPrepaid" href="https://support.pexcard.com/s/article?name=000002012-PEX-Connector-for-Aplos" class="nav-link nav-icon" aria-label="help">
-        <cds-icon shape="help"></cds-icon>
-      </a>
-      <a *ngIf="isCredit" href="https://support.pexcard.com/s/article?name=000003270-PEX-Connector-for-Aplos-Credit" class="nav-link nav-icon" aria-label="help">
-        <cds-icon shape="help"></cds-icon>
-      </a>
+      @if (isPrepaid) {
+        <a href="https://support.pexcard.com/s/article?name=000002012-PEX-Connector-for-Aplos" class="nav-link nav-icon" aria-label="help">
+          <cds-icon shape="help"></cds-icon>
+        </a>
+      }
+      @if (isCredit) {
+        <a href="https://support.pexcard.com/s/article?name=000003270-PEX-Connector-for-Aplos-Credit" class="nav-link nav-icon" aria-label="help">
+          <cds-icon shape="help"></cds-icon>
+        </a>
+      }
     </div>
   </clr-header>
   <div class="content-container">

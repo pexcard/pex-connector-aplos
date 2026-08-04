@@ -1,15 +1,18 @@
 <div class="page-container">
-<clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false" *ngIf="settings && showRebatesInfoBox">
-  <clr-alert-item>
-    <span class="alert-text">Earn 1% rebates on all eligible Vendor card payments.</span>
-    <div class="alert-actions">
-      <button class="btn btn-sm alert-action" [routerLink]="['../vendors-select']">GET STARTED</button>
-    </div>
-  </clr-alert-item>
-</clr-alert>
-      <div>
-        <h2 class="page-heading connect-heading"><img src="/assets/logos/aplos-color.svg" alt="Aplos" class="connect-aplos-logo"> Connect</h2>
-      <div *ngIf="settings" class="section auto-sync-section">
+  @if (settings && showRebatesInfoBox) {
+    <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false">
+      <clr-alert-item>
+        <span class="alert-text">Earn 1% rebates on all eligible Vendor card payments.</span>
+        <div class="alert-actions">
+          <button class="btn btn-sm alert-action" [routerLink]="['../vendors-select']">GET STARTED</button>
+        </div>
+      </clr-alert-item>
+    </clr-alert>
+  }
+  <div>
+    <h2 class="page-heading connect-heading"><img src="/assets/logos/aplos-color.svg" alt="Aplos" class="connect-aplos-logo"> Connect</h2>
+    @if (settings) {
+      <div class="section auto-sync-section">
         <clr-toggle-wrapper class="auto-sync-toggle">
           <input type="checkbox" clrToggle [(ngModel)]="settings.automaticSync" [disabled]="!settings.automaticSync && (!connection?.pexConnection || !connection?.aplosConnection)" (ngModelChange)="onAutomaticSyncToggled()" />
           <label>
@@ -18,93 +21,135 @@
           </label>
         </clr-toggle-wrapper>
       </div>
-      <div *ngIf="connection" class="section valid-section">
-             <strong>
-            <span *ngIf="connection.pexConnection && connection.aplosConnection">
-              <cds-icon *ngIf="connection.pexConnection" shape="check" size="md" role="img" status="success"></cds-icon>
+    }
+    @if (connection) {
+      <div class="section valid-section">
+        <strong>
+          @if (connection.pexConnection && connection.aplosConnection) {
+            <span>
+              @if (connection.pexConnection) {
+                <cds-icon shape="check" size="md" role="img" status="success"></cds-icon>
+              }
               Valid connections
             </span>
-            <span *ngIf="!connection.pexConnection">
+          }
+          @if (!connection.pexConnection) {
+            <span>
               <cds-icon shape="times-circle" size="md" role="img" status="danger"></cds-icon>
               Invalid PEX connection
             </span>
-            <span *ngIf="!connection.aplosConnection">
+          }
+          @if (!connection.aplosConnection) {
+            <span>
               <cds-icon shape="times-circle" size="md" role="img" status="danger"></cds-icon>
               Invalid Aplos connection
             </span>
-             </strong>
-          <ul *ngIf="connection.pexConnection && connection.aplosConnection">
+          }
+        </strong>
+        @if (connection.pexConnection && connection.aplosConnection) {
+          <ul>
             <li><strong>Name:</strong> {{connection.name ? connection.name : "Unknown"}}</li>
             <li><strong>Email:</strong> {{connection.email ? connection.email : "Unknown"}}</li>
           </ul>
+        }
       </div>
-      <div *ngIf="connection" class="section latest-section">
-             <strong>Latest Sync: </strong>
-          <span *ngIf="connection.lastSync">{{ connection.lastSync | date:"d MMM y, hh:mm a" }}</span>
-          <span *ngIf="!connection.lastSync">Never</span>
+    }
+    @if (connection) {
+      <div class="section latest-section">
+        <strong>Latest Sync: </strong>
+        @if (connection.lastSync) {
+          <span>{{ connection.lastSync | date:"d MMM y, hh:mm a" }}</span>
+        }
+        @if (!connection.lastSync) {
+          <span>Never</span>
+        }
       </div>
-         <div class="section actions-section">
-          <button
-            type="button"
-            [routerLink]="['../sync-connect']"
-            class="btn btn-icon btn-outline"
-            aria-label="edit">
-            <cds-icon shape="cog"></cds-icon> EDIT
-          </button>
-           <button
-            type="button"
-            class="btn btn-icon btn-outline"
-            [clrLoading]="refreshingPexAccount"
-            aria-label="Refresh"
-            (click)="refreshPexAccount()">
-            <cds-icon shape="refresh"></cds-icon> REFRESH
-           </button>
-           <button type="button" class="btn btn-icon btn-danger-outline" aria-label="Disconnect" (click)="disconnectModal=true">
-            <cds-icon shape="disconnect"></cds-icon> DISCONNECT
-          </button>       
-         </div>
-       </div>
+    }
+    <div class="section actions-section">
+      <button
+        type="button"
+        [routerLink]="['../sync-connect']"
+        class="btn btn-icon btn-outline"
+        aria-label="edit">
+        <cds-icon shape="cog"></cds-icon> EDIT
+      </button>
+      <button
+        type="button"
+        class="btn btn-icon btn-outline"
+        [clrLoading]="refreshingPexAccount"
+        aria-label="Refresh"
+        (click)="refreshPexAccount()">
+        <cds-icon shape="refresh"></cds-icon> REFRESH
+      </button>
+      <button type="button" class="btn btn-icon btn-danger-outline" aria-label="Disconnect" (click)="disconnectModal=true">
+        <cds-icon shape="disconnect"></cds-icon> DISCONNECT
+      </button>
+    </div>
+  </div>
 
-  <div *ngIf="settings">
+  @if (settings) {
+    <div>
       <h2 class="page-heading">Settings</h2>
       <table class="table table-vertical">
         <tbody>
-          <tr *ngIf="isPrepaid">
-            <th>Sync transactions</th>
-            <td>
-              <app-status-icon [value]="settings.syncTransactions"></app-status-icon>&nbsp;
-              <span *ngIf="settings.syncTransactions && settings.syncApprovedOnly">Approved</span>
-              <span *ngIf="settings.syncTransactions && !settings.syncApprovedOnly">All</span>
-            </td>
-          </tr>
-          <tr *ngIf="isPrepaid">
-            <th>Sync rebates</th>
-            <td><app-status-icon [value]="settings.syncRebates"></app-status-icon></td>
-          </tr>
-          <tr *ngIf="isPrepaid">
-            <th>Sync transfers</th>
-            <td><app-status-icon [value]="settings.syncTransfers"></app-status-icon></td>
-          </tr>
-          <tr *ngIf="isPrepaid">
-            <th>Sync fees</th>
-            <td><app-status-icon [value]="settings.syncPexFees"></app-status-icon></td>
-          </tr>
-          <tr *ngIf="isCredit">
-            <th>Sync purchases</th>
-            <td>
-              <app-status-icon [value]="settings.syncTransactions"></app-status-icon>&nbsp;
-              <span *ngIf="settings.syncTransactions && settings.syncApprovedOnly">Approved</span>
-              <span *ngIf="settings.syncTransactions && !settings.syncApprovedOnly">All</span>
-            </td>
-          </tr>
-          <tr *ngIf="isCredit">
-            <th>Sync fees</th>
-            <td><app-status-icon [value]="settings.syncPexFees"></app-status-icon></td>
-          </tr>
-          <tr *ngIf="isCredit">
-            <th>Sync bill payments/rebates</th>
-            <td><app-status-icon [value]="settings.syncInvoices"></app-status-icon></td>
-          </tr>
+          @if (isPrepaid) {
+            <tr>
+              <th>Sync transactions</th>
+              <td>
+                <app-status-icon [value]="settings.syncTransactions"></app-status-icon>&nbsp;
+                @if (settings.syncTransactions && settings.syncApprovedOnly) {
+                  <span>Approved</span>
+                }
+                @if (settings.syncTransactions && !settings.syncApprovedOnly) {
+                  <span>All</span>
+                }
+              </td>
+            </tr>
+          }
+          @if (isPrepaid) {
+            <tr>
+              <th>Sync rebates</th>
+              <td><app-status-icon [value]="settings.syncRebates"></app-status-icon></td>
+            </tr>
+          }
+          @if (isPrepaid) {
+            <tr>
+              <th>Sync transfers</th>
+              <td><app-status-icon [value]="settings.syncTransfers"></app-status-icon></td>
+            </tr>
+          }
+          @if (isPrepaid) {
+            <tr>
+              <th>Sync fees</th>
+              <td><app-status-icon [value]="settings.syncPexFees"></app-status-icon></td>
+            </tr>
+          }
+          @if (isCredit) {
+            <tr>
+              <th>Sync purchases</th>
+              <td>
+                <app-status-icon [value]="settings.syncTransactions"></app-status-icon>&nbsp;
+                @if (settings.syncTransactions && settings.syncApprovedOnly) {
+                  <span>Approved</span>
+                }
+                @if (settings.syncTransactions && !settings.syncApprovedOnly) {
+                  <span>All</span>
+                }
+              </td>
+            </tr>
+          }
+          @if (isCredit) {
+            <tr>
+              <th>Sync fees</th>
+              <td><app-status-icon [value]="settings.syncPexFees"></app-status-icon></td>
+            </tr>
+          }
+          @if (isCredit) {
+            <tr>
+              <th>Sync bill payments/rebates</th>
+              <td><app-status-icon [value]="settings.syncInvoices"></app-status-icon></td>
+            </tr>
+          }
           <tr>
             <th>Sync reimbursements <span class="badge-new">New</span></th>
             <td><app-status-icon [value]="settings.syncReimbursements"></app-status-icon></td>
@@ -112,36 +157,40 @@
           <tr>
             <th>Sync 990 tag</th>
             <td><app-status-icon [value]="settings.syncTaxTagToPex"></app-status-icon></td>
-          </tr>                
+          </tr>
           <tr>
             <th>Connected on</th>
-            <td>{{settings.connectedOn | date:"yyyy-MM-dd hh:mm a" }}</td> 
+            <td>{{settings.connectedOn | date:"yyyy-MM-dd hh:mm a" }}</td>
           </tr>
           <tr>
             <th>Earliest transaction date</th>
             <td>{{settings.earliestTransactionDateToSync | date:"yyyy-MM-dd" }}</td>
           </tr>
           <tr>
-           <th>Last sync</th>
+            <th>Last sync</th>
             <td>
-              <span *ngIf="!settings.lastSync">Never</span>
-              <span *ngIf="settings.lastSync">
-                {{settings.lastSync | date:"yyyy-MM-dd hh:mm a" }}
-              </span>
+              @if (!settings.lastSync) {
+                <span>Never</span>
+              }
+              @if (settings.lastSync) {
+                <span>
+                  {{settings.lastSync | date:"yyyy-MM-dd hh:mm a" }}
+                </span>
+              }
             </td>
-        </tr>
+          </tr>
         </tbody>
       </table>
-  
-        <h2 class="page-heading">Tag Mapping</h2>
-  
-        <clr-alert [clrAlertType]="'warning'" [clrAlertClosable]="false" *ngIf="!hasTagsAvailable">
+      <h2 class="page-heading">Tag Mapping</h2>
+      @if (!hasTagsAvailable) {
+        <clr-alert [clrAlertType]="'warning'" [clrAlertClosable]="false">
           <clr-alert-item>
             <span class="alert-text">Your PEX account does not support Tags. To have this feature enabled and better integrate with Aplos, please contact adminsupport&#64;pexcard.com.</span>
           </clr-alert-item>
         </clr-alert>
-       
-        <table class="table table-tag-mapping" *ngIf="hasTagsAvailable">
+      }
+      @if (hasTagsAvailable) {
+        <table class="table table-tag-mapping">
           <thead>
             <tr>
               <th class="left">Aplos field</th>
@@ -149,29 +198,33 @@
               <th>Sync Tag options from Aplos</th>
             </tr>
           </thead>
-          
           <tbody>
             <tr>
               <td class="left">Fund</td>
               <td class="left">
-                  {{tagNameFund}}
+                {{tagNameFund}}
               </td>
               <td><app-status-icon [value]="settings.syncFundsToPex"></app-status-icon></td>
             </tr>
-            <tr *ngFor="let accountMapping of tagNameAccount">
-              <td class="left">Account</td>
-              <td class="left">{{accountMapping.expenseAccountsPexTagId}}</td>
-              <td><app-status-icon [value]="accountMapping.syncExpenseAccounts"></app-status-icon></td>
-            </tr>
-            <tr *ngFor="let tagMapping of tagMappings">
-              <td class="left">{{tagMapping.aplosTagId}}</td>
-              <td class="left">{{tagMapping.pexTagId}}</td>
-              <td><app-status-icon [value]="tagMapping.syncToPex"></app-status-icon></td>
-            </tr>
+            @for (accountMapping of tagNameAccount; track accountMapping) {
+              <tr>
+                <td class="left">Account</td>
+                <td class="left">{{accountMapping.expenseAccountsPexTagId}}</td>
+                <td><app-status-icon [value]="accountMapping.syncExpenseAccounts"></app-status-icon></td>
+              </tr>
+            }
+            @for (tagMapping of tagMappings; track tagMapping) {
+              <tr>
+                <td class="left">{{tagMapping.aplosTagId}}</td>
+                <td class="left">{{tagMapping.pexTagId}}</td>
+                <td><app-status-icon [value]="tagMapping.syncToPex"></app-status-icon></td>
+              </tr>
+            }
           </tbody>
         </table>
-  
-        <table class="table table-vertical" *ngIf="!hasTagsAvailable && settings.syncTransactions">
+      }
+      @if (!hasTagsAvailable && settings.syncTransactions) {
+        <table class="table table-vertical">
           <tr class="left">
             <th>Default Fund for purchases</th>
             <td>{{defaultFundName}}</td>
@@ -181,79 +234,123 @@
             <td>{{defaultTransactionAccountName}}</td>
           </tr>
         </table>
-  
-        <table class="table table-vertical" *ngIf="settings.syncTransfers || settings.syncInvoices || settings.syncPexFees || settings.syncRebates || settings.syncReimbursements">
+      }
+      @if (settings.syncTransfers || settings.syncInvoices || settings.syncPexFees || settings.syncRebates || settings.syncReimbursements) {
+        <table class="table table-vertical">
           <tbody>
-            <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferContact">
-              <th *ngIf="isPrepaid">Contact for transfers</th>
-              <th *ngIf="isCredit">Payee for bill payments</th>
-              <td>{{transferContact.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncTransfers && transferFund">
-              <th *ngIf="isPrepaid">Fund for transfers</th>
-              <th *ngIf="isCredit">Fund for bill payments</th>
-              <td>{{transferFund.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="(settings.syncTransfers || settings.syncInvoices) && transferAccount">
-              <th *ngIf="isPrepaid">Transaction account for transfers</th>
-              <th *ngIf="isCredit">Transaction account for bill payments</th>
-              <td>{{transferAccount | aplosAccount}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncPexFees && feesContact">
-              <th>Contact for fees</th>
-              <td>{{feesContact.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncPexFees && feesFund">
-              <th>Fund for fees</th>
-              <td>{{feesFund.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncPexFees && feesAccount">
-              <th>Transaction account for fees</th>
-              <td>{{feesAccount | aplosAccount}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncTaxTagToPex && settings.pexFeesAplosTaxTag">
-              <th>990 tag for fees</th>
-              <td>{{pexFeesAplosTaxTagName}}</td>
-            </tr>
-            <tr class="left" *ngIf="isPrepaid && ((settings.syncTransactions && settings.syncRebates) || settings.syncInvoices) && rebatesContact">
-              <th>Contact for rebates</th>
-              <td>{{rebatesContact.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="(isPrepaid && (settings.syncTransactions && settings.syncRebates) || (isCredit && invoiceMethodRequiresRebateFund)) && rebatesFund">
-              <th>Fund for rebates</th>
-              <td>{{rebatesFund.name}}</td>
-            </tr>
-            <tr class="left" *ngIf="(settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && rebatesAccount">
-              <th>Transaction account for rebates</th>
-              <td>{{rebatesAccount | aplosAccount}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncTaxTagToPex && settings.pexRebatesAplosTaxTag">
-              <th>990 tag for rebates</th>
-              <td>{{pexRebatesAplosTaxTagName}}</td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncReimbursements && (reimbursementsContact || settings.syncReimbursementsCreateContact)">
-              <th>Contact for reimbursements</th>
-              <td>
-                <span *ngIf="settings.syncReimbursementsCreateContact">Auto-created from employee name</span>
-                <span *ngIf="!settings.syncReimbursementsCreateContact && reimbursementsContact">{{reimbursementsContact.name}}</span>
-              </td>
-            </tr>
-            <tr class="left" *ngIf="settings.syncReimbursements && reimbursementsBankAccount">
-              <th>Bank account for reimbursements</th>
-              <td>{{reimbursementsBankAccount | aplosAccount}}</td>
-            </tr>
+            @if ((settings.syncTransfers || settings.syncInvoices) && transferContact) {
+              <tr class="left">
+                @if (isPrepaid) {
+                  <th>Contact for transfers</th>
+                }
+                @if (isCredit) {
+                  <th>Payee for bill payments</th>
+                }
+                <td>{{transferContact.name}}</td>
+              </tr>
+            }
+            @if (settings.syncTransfers && transferFund) {
+              <tr class="left">
+                @if (isPrepaid) {
+                  <th>Fund for transfers</th>
+                }
+                @if (isCredit) {
+                  <th>Fund for bill payments</th>
+                }
+                <td>{{transferFund.name}}</td>
+              </tr>
+            }
+            @if ((settings.syncTransfers || settings.syncInvoices) && transferAccount) {
+              <tr class="left">
+                @if (isPrepaid) {
+                  <th>Transaction account for transfers</th>
+                }
+                @if (isCredit) {
+                  <th>Transaction account for bill payments</th>
+                }
+                <td>{{transferAccount | aplosAccount}}</td>
+              </tr>
+            }
+            @if (settings.syncPexFees && feesContact) {
+              <tr class="left">
+                <th>Contact for fees</th>
+                <td>{{feesContact.name}}</td>
+              </tr>
+            }
+            @if (settings.syncPexFees && feesFund) {
+              <tr class="left">
+                <th>Fund for fees</th>
+                <td>{{feesFund.name}}</td>
+              </tr>
+            }
+            @if (settings.syncPexFees && feesAccount) {
+              <tr class="left">
+                <th>Transaction account for fees</th>
+                <td>{{feesAccount | aplosAccount}}</td>
+              </tr>
+            }
+            @if (settings.syncTaxTagToPex && settings.pexFeesAplosTaxTag) {
+              <tr class="left">
+                <th>990 tag for fees</th>
+                <td>{{pexFeesAplosTaxTagName}}</td>
+              </tr>
+            }
+            @if (isPrepaid && ((settings.syncTransactions && settings.syncRebates) || settings.syncInvoices) && rebatesContact) {
+              <tr class="left">
+                <th>Contact for rebates</th>
+                <td>{{rebatesContact.name}}</td>
+              </tr>
+            }
+            @if ((isPrepaid && (settings.syncTransactions && settings.syncRebates) || (isCredit && invoiceMethodRequiresRebateFund)) && rebatesFund) {
+              <tr class="left">
+                <th>Fund for rebates</th>
+                <td>{{rebatesFund.name}}</td>
+              </tr>
+            }
+            @if ((settings.syncTransactions && settings.syncRebates || settings.syncInvoices) && rebatesAccount) {
+              <tr class="left">
+                <th>Transaction account for rebates</th>
+                <td>{{rebatesAccount | aplosAccount}}</td>
+              </tr>
+            }
+            @if (settings.syncTaxTagToPex && settings.pexRebatesAplosTaxTag) {
+              <tr class="left">
+                <th>990 tag for rebates</th>
+                <td>{{pexRebatesAplosTaxTagName}}</td>
+              </tr>
+            }
+            @if (settings.syncReimbursements && (reimbursementsContact || settings.syncReimbursementsCreateContact)) {
+              <tr class="left">
+                <th>Contact for reimbursements</th>
+                <td>
+                  @if (settings.syncReimbursementsCreateContact) {
+                    <span>Auto-created from employee name</span>
+                  }
+                  @if (!settings.syncReimbursementsCreateContact && reimbursementsContact) {
+                    <span>{{reimbursementsContact.name}}</span>
+                  }
+                </td>
+              </tr>
+            }
+            @if (settings.syncReimbursements && reimbursementsBankAccount) {
+              <tr class="left">
+                <th>Bank account for reimbursements</th>
+                <td>{{reimbursementsBankAccount | aplosAccount}}</td>
+              </tr>
+            }
           </tbody>
         </table>
-  
+      }
       <clr-modal [(clrModalOpen)]="disconnectModal">
         <h3 class="modal-title">Are you sure?</h3>
         <div class="modal-body">
-            <p>Your data will no longer be synced.</p>
+          <p>Your data will no longer be synced.</p>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-outline" (click)="disconnectModal = false">No, Stay connected</button>
-            <button type="button" class="btn btn-primary" (click)="onDisconnect()">Yes, Disconnect</button>
+          <button type="button" class="btn btn-outline" (click)="disconnectModal = false">No, Stay connected</button>
+          <button type="button" class="btn btn-primary" (click)="onDisconnect()">Yes, Disconnect</button>
         </div>
-    </clr-modal>
-</div>
+      </clr-modal>
+    </div>
+  }
 </div>

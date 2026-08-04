@@ -2,7 +2,6 @@
   "compileOnSave": false,
   "compilerOptions": {
     "baseUrl": "./",
-    "downlevelIteration": true,
     "outDir": "./dist/out-tsc",
     "sourceMap": true,
     "declaration": false,
@@ -14,10 +13,6 @@
     "useDefineForClassFields": false,
     "typeRoots": [
       "node_modules/@types"
-    ],
-    "lib": [
-      "es2022",
-      "dom"
     ],
     "skipLibCheck": true,
     "esModuleInterop": true,
