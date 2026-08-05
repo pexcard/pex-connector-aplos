@@ -1,46 +1,53 @@
 <div class="page-container">
-<h2 class="page-heading">Sync history</h2>
-<p class="history-lede">
-  Data is automatically synchronized between Aplos and PEX daily.
-</p>
+  <h2 class="page-heading">Sync history</h2>
+  <p class="history-lede">
+    Data is automatically synchronized between Aplos and PEX daily.
+  </p>
 
-<button type="button" class="btn btn-icon btn-outline history-sync-btn"
-        aria-label="sync"
-        (click)="sync()"
-        [clrLoading]="syncing"
-        [disabled]="syncing || loadingHistory">
-  <cds-icon shape="sync"></cds-icon> SYNC NOW
-</button>
+  <button type="button" class="btn btn-icon btn-outline history-sync-btn"
+    aria-label="sync"
+    (click)="sync()"
+    [clrLoading]="syncing"
+    [disabled]="syncing || loadingHistory">
+    <cds-icon shape="sync"></cds-icon> SYNC NOW
+  </button>
 
-<div>
-  <span *ngIf="loadingHistory" class="spinner spinner-inline">
-    Loading...
-  </span>
+  <div>
+    @if (loadingHistory) {
+      <span class="spinner spinner-inline">
+        Loading...
+      </span>
+    }
 
-  <table class="table">
-    <thead>
-      <th>Sync Time</th>
-      <th>Data</th>
-      <th>Status</th>
-      <th>Records</th>
-    </thead>
-    <tbody>
-      <tr *ngFor="let item of syncResults">
-        <td>{{ item.createdUtc | date:"yyyy-MM-dd hh:mm a" }}</td>
-        <td>{{item.syncType}} <span *ngIf="item.syncType === 'Reimbursements'" class="badge-new">New</span></td>
-        <td><span
-                [ngClass]="{'label': true, 'label-success': item.syncStatus==='Success', 'label-warning': item.syncStatus==='Partial', 'label-danger': item.syncStatus==='Failed'}">{{item.syncStatus}}</span>
-        </td>
-        <td>
-          {{ item.syncedRecords }}
-          <clr-signpost *ngIf="item.syncNotes?.length > 0">
-            <clr-signpost-content *clrIfOpen [clrPosition]="'top-left'">
-              <span>{{item.syncNotes}}</span>
-            </clr-signpost-content>
-          </clr-signpost>
-
-        </td>
-      </tr>
+    <table class="table">
+      <thead>
+        <th>Sync Time</th>
+        <th>Data</th>
+        <th>Status</th>
+        <th>Records</th>
+      </thead>
+      <tbody>
+        @for (item of syncResults; track item) {
+          <tr>
+            <td>{{ item.createdUtc | date:"yyyy-MM-dd hh:mm a" }}</td>
+            <td>{{item.syncType}} @if (item.syncType === 'Reimbursements') {
+              <span class="badge-new">New</span>
+            }</td>
+            <td><span
+            [ngClass]="{'label': true, 'label-success': item.syncStatus==='Success', 'label-warning': item.syncStatus==='Partial', 'label-danger': item.syncStatus==='Failed'}">{{item.syncStatus}}</span>
+          </td>
+          <td>
+            {{ item.syncedRecords }}
+            @if (item.syncNotes?.length > 0) {
+              <clr-signpost>
+                <clr-signpost-content *clrIfOpen [clrPosition]="'top-left'">
+                  <span>{{item.syncNotes}}</span>
+                </clr-signpost-content>
+              </clr-signpost>
+            }
+          </td>
+        </tr>
+      }
     </tbody>
   </table>
 </div>

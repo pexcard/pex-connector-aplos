@@ -1,47 +1,55 @@
 <div class="page-container">
-<h1>Connect to Aplos</h1>
-<div *ngIf="!isReady" class="page-status">
-  <clr-spinner [clrMedium]="true"></clr-spinner>
-  <span>Loading...</span>
-</div>
-<ng-container *ngIf="isReady">
-  <p>
-    Please select all use cases you would like to integrate PEX and Aplos.
-  </p>
-  <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
-    <clr-alert-item>
-      <span class="alert-text">For the optimal expense and reconciliation experience, we advise auto creating vendor cards from your Aplos vendor list and configuring nightly transaction syncing from PEX to Aplos.</span>
-    </clr-alert-item>
-  </clr-alert>
-  <div *ngIf="isReady" class="clr-row">
-    <div class="clr-col-6 left-col">
-      <div class="card clickable selector" [routerLink]="[vendorCardsRoute]">
-        <div class="card-block">
-          <div class="card-img selector-img">
-            <cds-icon shape="credit-card" size="96" class="pex-color"></cds-icon>
-          </div>
-          <div class="card-text">
-            Auto create vendor cards from my Aplos vendor list
-          </div>
-          <div class="rebate-line rebate-line-background">Earn 1% rebates on all eligible Vendor card payments</div>
-        </div>
-        <cds-icon *ngIf="connectionDetails?.aplosConnection && connectionDetails?.vendorsSetup" shape="success-standard" size="32" solid status="success" class="selector-badge"></cds-icon>
-      </div>
+  <h1>Connect to Aplos</h1>
+  @if (!isReady) {
+    <div class="page-status">
+      <clr-spinner [clrMedium]="true"></clr-spinner>
+      <span>Loading...</span>
     </div>
-    <div class="clr-col-6 right-col">
-      <div class="card clickable selector" [routerLink]="[syncingRoute]">
-        <div class="card-block">
-          <div class="card-img selector-img">
-            <cds-icon shape="sync" size="96" class="pex-color"></cds-icon>
+  }
+  @if (isReady) {
+    <p>
+      Please select all use cases you would like to integrate PEX and Aplos.
+    </p>
+    <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
+      <clr-alert-item>
+        <span class="alert-text">For the optimal expense and reconciliation experience, we advise auto creating vendor cards from your Aplos vendor list and configuring nightly transaction syncing from PEX to Aplos.</span>
+      </clr-alert-item>
+    </clr-alert>
+    @if (isReady) {
+      <div class="clr-row">
+        <div class="clr-col-6 left-col">
+          <div class="card clickable selector" [routerLink]="[vendorCardsRoute]">
+            <div class="card-block">
+              <div class="card-img selector-img">
+                <cds-icon shape="credit-card" size="96" class="pex-color"></cds-icon>
+              </div>
+              <div class="card-text">
+                Auto create vendor cards from my Aplos vendor list
+              </div>
+              <div class="rebate-line rebate-line-background">Earn 1% rebates on all eligible Vendor card payments</div>
+            </div>
+            @if (connectionDetails?.aplosConnection && connectionDetails?.vendorsSetup) {
+              <cds-icon shape="success-standard" size="32" solid status="success" class="selector-badge"></cds-icon>
+            }
           </div>
-          <div class="card-text">
-            Sync transactions from PEX to Aplos nightly
-          </div>
-          <div class="rebate-line"></div>
         </div>
-        <cds-icon *ngIf="connectionDetails?.aplosConnection && connectionDetails?.syncingSetup" shape="success-standard" size="32" solid status="success" class="selector-badge"></cds-icon>
+        <div class="clr-col-6 right-col">
+          <div class="card clickable selector" [routerLink]="[syncingRoute]">
+            <div class="card-block">
+              <div class="card-img selector-img">
+                <cds-icon shape="sync" size="96" class="pex-color"></cds-icon>
+              </div>
+              <div class="card-text">
+                Sync transactions from PEX to Aplos nightly
+              </div>
+              <div class="rebate-line"></div>
+            </div>
+            @if (connectionDetails?.aplosConnection && connectionDetails?.syncingSetup) {
+              <cds-icon shape="success-standard" size="32" solid status="success" class="selector-badge"></cds-icon>
+            }
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</ng-container>
+    }
+  }
 </div>

@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 
 import { FinishAplosLoginComponent } from './finish-aplos-login.component';
 import { ActivatedRoute } from '@angular/router';
@@ -19,7 +19,7 @@ xdescribe('FinishAplosLoginComponent', () => {
   let component: FinishAplosLoginComponent;
   let fixture: ComponentFixture<FinishAplosLoginComponent>;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [ FinishAplosLoginComponent ],
       imports:[RouterTestingModule, HttpClientTestingModule],

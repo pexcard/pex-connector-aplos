@@ -1,61 +1,69 @@
 <h1>Connector Health</h1>
 
-<clr-progress-bar *ngIf="loadingHealthData" clrLoop></clr-progress-bar>
+@if (loadingHealthData) {
+  <clr-progress-bar clrLoop></clr-progress-bar>
+}
 
-<div *ngIf="!loadingHealthData" class="clr-row"><div class="clr-col">
-
-<clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false" *ngIf="pingSucceeded">
-  <clr-alert-item>
-    <span class="alert-text">Ping succeeded. Current time is: {{currentServerTime}}</span>
-  </clr-alert-item>
-</clr-alert>
-
-<clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false" *ngIf="!pingSucceeded">
-  <clr-alert-item>
-    <span class="alert-text">Ping failed.</span>
-  </clr-alert-item>
-</clr-alert>
-
-<hr>
-
-<clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false" *ngIf="healthResult && healthResult.AplosApiAvailable">
-  <clr-alert-item>
-    <span class="alert-text">Aplos API is connected. Base URL: {{healthResult.aplosBaseUri}}.</span>
-  </clr-alert-item>
-</clr-alert>
-
-<clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false" *ngIf="healthResult && !healthResult.AplosApiAvailable">
-  <clr-alert-item>
-    <span class="alert-text">Aplos API is not available.</span>
-  </clr-alert-item>
-</clr-alert>
-
-<hr>
-
-<clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false" *ngIf="healthResult.pexApiAvailable">
-  <clr-alert-item>
-    <span class="alert-text">PEX API is connected. Base URL: {{healthResult.pexBaseUri}}</span>
-  </clr-alert-item>
-</clr-alert>
-
-<clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false" *ngIf="!healthResult.pexApiAvailable">
-  <clr-alert-item>
-    <span class="alert-text">PEX API is not available.</span>
-  </clr-alert-item>
-</clr-alert>
-
-<hr>
-
-<clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false" *ngIf="healthResult.storageAvailable">
-  <clr-alert-item>
-    <span class="alert-text">Storage is healthy.</span>
-  </clr-alert-item>
-</clr-alert>
-
-<clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false" *ngIf="!healthResult.storageAvailable">
-  <clr-alert-item>
-    <span class="alert-text">Storage is not available.</span>
-  </clr-alert-item>
-</clr-alert>
-
-</div></div>
+@if (!loadingHealthData) {
+  <div class="clr-row"><div class="clr-col">
+    @if (pingSucceeded) {
+      <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false">
+        <clr-alert-item>
+          <span class="alert-text">Ping succeeded. Current time is: {{currentServerTime}}</span>
+        </clr-alert-item>
+      </clr-alert>
+    }
+    @if (!pingSucceeded) {
+      <clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false">
+        <clr-alert-item>
+          <span class="alert-text">Ping failed.</span>
+        </clr-alert-item>
+      </clr-alert>
+    }
+    <hr>
+      @if (healthResult && healthResult.AplosApiAvailable) {
+        <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false">
+          <clr-alert-item>
+            <span class="alert-text">Aplos API is connected. Base URL: {{healthResult.aplosBaseUri}}.</span>
+          </clr-alert-item>
+        </clr-alert>
+      }
+      @if (healthResult && !healthResult.AplosApiAvailable) {
+        <clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false">
+          <clr-alert-item>
+            <span class="alert-text">Aplos API is not available.</span>
+          </clr-alert-item>
+        </clr-alert>
+      }
+      <hr>
+        @if (healthResult.pexApiAvailable) {
+          <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false">
+            <clr-alert-item>
+              <span class="alert-text">PEX API is connected. Base URL: {{healthResult.pexBaseUri}}</span>
+            </clr-alert-item>
+          </clr-alert>
+        }
+        @if (!healthResult.pexApiAvailable) {
+          <clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false">
+            <clr-alert-item>
+              <span class="alert-text">PEX API is not available.</span>
+            </clr-alert-item>
+          </clr-alert>
+        }
+        <hr>
+          @if (healthResult.storageAvailable) {
+            <clr-alert [clrAlertType]="'success'" [clrAlertClosable]="false">
+              <clr-alert-item>
+                <span class="alert-text">Storage is healthy.</span>
+              </clr-alert-item>
+            </clr-alert>
+          }
+          @if (!healthResult.storageAvailable) {
+            <clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false">
+              <clr-alert-item>
+                <span class="alert-text">Storage is not available.</span>
+              </clr-alert-item>
+            </clr-alert>
+          }
+        </div></div>
+      }

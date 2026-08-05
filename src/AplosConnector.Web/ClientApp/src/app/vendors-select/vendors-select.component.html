@@ -1,278 +1,329 @@
-<div *ngIf="!isReady" class="page-status">
-  <clr-spinner [clrMedium]="true"></clr-spinner>
-  <span>Loading...</span>
-</div>
-<ng-container *ngIf="isReady">
+@if (!isReady) {
+  <div class="page-status">
+    <clr-spinner [clrMedium]="true"></clr-spinner>
+    <span>Loading...</span>
+  </div>
+}
+@if (isReady) {
   <clr-wizard #wizard
-              [clrWizardOpen]="true"
-              [clrWizardClosable]="!isCreatingVendorCards"
-              [clrWizardPreventNavigation]="isLoadingSettings || isConfiguringSettings || isCreatingVendorCards"
-              (clrWizardOnFinish)="onFinish()"
-              (clrWizardOnCancel)="onCancel()">
-
+    [clrWizardOpen]="true"
+    [clrWizardClosable]="!isCreatingVendorCards"
+    [clrWizardPreventNavigation]="isLoadingSettings || isConfiguringSettings || isCreatingVendorCards"
+    (clrWizardOnFinish)="onFinish()"
+    (clrWizardOnCancel)="onCancel()">
     <clr-wizard-title>Create Vendor Cards</clr-wizard-title>
     <clr-wizard-button [type]="'cancel'">CANCEL</clr-wizard-button>
     <clr-wizard-button [type]="'previous'" [hidden]="!connectionDetails?.pexConnection || !connectionDetails?.aplosConnection">BACK</clr-wizard-button>
     <clr-wizard-button [type]="'next'" [hidden]="!connectionDetails?.pexConnection || !connectionDetails?.aplosConnection">NEXT</clr-wizard-button>
     <clr-wizard-button [type]="'finish'" [hidden]="!connectionDetails?.pexConnection || !connectionDetails?.aplosConnection">FINISH</clr-wizard-button>
-
-    <clr-wizard-page *ngIf="connectionDetails && !connectionDetails?.pexConnection"
-                     [clrWizardPagePreventDefault]="true">
-      <ng-template clrPageNavTitle>Connect to PEX</ng-template>
-      <ng-template clrPageTitle>Connect to PEX</ng-template>
-      <clr-spinner *ngIf="verifyingPexAuth"></clr-spinner>
-      <ng-container *ngIf="verifyingPexAuth"></ng-container>
-      <p>
-        The PEX credentials used for this application are currently broken.
-      </p>
-      <p *ngIf="connectionDetails?.email">
-        The connector is using expired credentials of '{{connectionDetails?.email}}'.
-      </p>
-      <p>
-        Click the button below to switch to <strong>your</strong> current PEX credentials.
-      </p>
-      <button class="btn btn-primary" (click)="onUseCurrentPexAccount()" [disabled]="verifyingPexAuth">
-        USE MY PEX CREDENTIALS
-      </button>
-    </clr-wizard-page>
-
-    <clr-wizard-page *ngIf="isAuthenticated && !isPexAccountLinked && !isFirstInstalation"
-                     clrWizardPagePreventDefault="true"
-                     [clrWizardPagePreventDefault]="true"
-                     [clrWizardPageNextDisabled]="true"
-                     (clrWizardPageOnCancel)="preventCancel()">
-
-      <ng-template clrPageTitle>Connect to PEX</ng-template>
-      <p>{{businessName}} is currently logged in as {{pexAdminEmailAccount}}. Click the button below to switch to your PEX credentials.</p>
-      <p></p>
-      <app-loading-placeholder [loadingState]="verifyingPexAuthentication" [errorState]="false"></app-loading-placeholder>
-      <button class="btn btn-primary" (click)="onUseCurrentPexAccount()" *ngIf="!verifyingPexAuthentication">USE MY PEX CREDENTIALS</button>
-    </clr-wizard-page>
-
-    <clr-wizard-page
-                     clrWizardPagePreventDefault="true"
-                     (clrWizardPageOnCommit)="onAplosCredentialsCommit()"
-                     *ngIf="isAuthenticated && (settingsModel.aplosAuthenticationMode === 0 || (aplosAuthenticationStatus && !aplosAuthenticationStatus.isAuthenticated))"
-                     [clrWizardPagePreventDefault]="true"
-                     (clrWizardPageOnCancel)="onCloseWizard()"
-                     [clrWizardPageNextDisabled]="!aplosServiceAccountForm.valid || (aplosAuthenticationStatus && !aplosAuthenticationStatus.isAuthenticated)">
-      <ng-template clrPageTitle>Connect to Aplos</ng-template>
-
-      <app-loading-placeholder
-                               [loadingState]="savingAplosCredentials"
-                               [errorState]="errorSavingAplosCredentials"
-                               errorText="We were unable to connect to Aplos with the information you provided."
-                               [allowRetry]="false"></app-loading-placeholder>
-
-      <form
-            clrForm
-            #aplosServiceAccountForm="ngForm"
-            [class.hide]="!savingAplosCredentials">
-        <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.aplosAuthenticationMode === 0">
+    @if (connectionDetails && !connectionDetails?.pexConnection) {
+      <clr-wizard-page
+        [clrWizardPagePreventDefault]="true">
+        <ng-template clrPageNavTitle>Connect to PEX</ng-template>
+        <ng-template clrPageTitle>Connect to PEX</ng-template>
+        @if (verifyingPexAuth) {
+          <clr-spinner></clr-spinner>
+        }
+        @if (verifyingPexAuth) {
+        }
+        <p>
+          The PEX credentials used for this application are currently broken.
+        </p>
+        @if (connectionDetails?.email) {
           <p>
-            To obtain a client id, you must have an Aplos account and a user with administrative permissions.
-
-            Assuming you have these, you can generate a client id and key pair from the <a href="https://www.aplos.com/aws/sm">settings</a> page.
+            The connector is using expired credentials of '{{connectionDetails?.email}}'.
           </p>
-          <clr-input-container>
-            <label>Client ID</label>
-            <input
-                   clrInput
-                   required
-                   placeholder=""
-                   name="aplosClientId"
-                   [(ngModel)]="settingsModel.aplosClientId"
-                   style="width: 500px" />
-            <clr-control-error>You must enter a Client ID</clr-control-error>
-          </clr-input-container>
-
-          <clr-input-container>
-            <label>Private Key</label>
-            <input
-                   clrInput
-                   required
-                   placeholder=""
-                   name="aplosPrivateKey"
-                   style="width: 500px"
-                   [(ngModel)]="settingsModel.aplosPrivateKey" />
-            <clr-control-error>You must enter a Private Key</clr-control-error>
-          </clr-input-container>
-        </div>
-
-        <clr-alert [clrAlertType]="'warning'" [clrAlertClosable]="false" *ngIf="aplosAuthenticationStatus && !aplosAuthenticationStatus.hasAplosAccountId">
-          <clr-alert-item>
-            <span class="alert-text">
-              Sorry, we don't seem to have your Aplos customer ID on file so can't connect your PEX account to Aplos.
-              <br /><br />
-              Please contact <a href="https://www.aplos.com/support/">Aplos Support</a> and ask that your customer ID be sent to PEX. Once we have it, we'll contact you so that you know when you're able to complete the account linking process.
-            </span>
-          </clr-alert-item>
-        </clr-alert>
-
-        <div *ngIf="aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl">
-          <p>
-            Click the button below to connect PEX with your Aplos account.
-          </p>
-
-          <p></p>
-
-          <app-loading-placeholder
-                                   [loadingState]="verifyingAplosAuthentication"
-                                   [errorState]="false"></app-loading-placeholder>
-
-          <clr-spinner *ngIf="redirectingToAplosAuth">
-            Saving...
-          </clr-spinner>
-
-          <div class="clr-row clr-justify-content-around" *ngIf="!verifyingAplosAuthentication && !redirectingToAplosAuth">
-            <div class="clr-col-6">
-              <button type="button" class="btn btn-primary " aria-label="add" (click)="onAplosPartnerVerification()">
-                <cds-icon shape="link" size="36"></cds-icon>
-                <span>Connect to Aplos</span>
-              </button>
+        }
+        <p>
+          Click the button below to switch to <strong>your</strong> current PEX credentials.
+        </p>
+        <button class="btn btn-primary" (click)="onUseCurrentPexAccount()" [disabled]="verifyingPexAuth">
+          USE MY PEX CREDENTIALS
+        </button>
+      </clr-wizard-page>
+    }
+    @if (isAuthenticated && !isPexAccountLinked && !isFirstInstalation) {
+      <clr-wizard-page
+        clrWizardPagePreventDefault="true"
+        [clrWizardPagePreventDefault]="true"
+        [clrWizardPageNextDisabled]="true"
+        (clrWizardPageOnCancel)="preventCancel()">
+        <ng-template clrPageTitle>Connect to PEX</ng-template>
+        <p>{{businessName}} is currently logged in as {{pexAdminEmailAccount}}. Click the button below to switch to your PEX credentials.</p>
+        <p></p>
+        <app-loading-placeholder [loadingState]="verifyingPexAuthentication" [errorState]="false"></app-loading-placeholder>
+        @if (!verifyingPexAuthentication) {
+          <button class="btn btn-primary" (click)="onUseCurrentPexAccount()">USE MY PEX CREDENTIALS</button>
+        }
+      </clr-wizard-page>
+    }
+    @if (isAuthenticated && (settingsModel.aplosAuthenticationMode === 0 || (aplosAuthenticationStatus && !aplosAuthenticationStatus.isAuthenticated))) {
+      <clr-wizard-page
+        clrWizardPagePreventDefault="true"
+        (clrWizardPageOnCommit)="onAplosCredentialsCommit()"
+        [clrWizardPagePreventDefault]="true"
+        (clrWizardPageOnCancel)="onCloseWizard()"
+        [clrWizardPageNextDisabled]="!aplosServiceAccountForm.valid || (aplosAuthenticationStatus && !aplosAuthenticationStatus.isAuthenticated)">
+        <ng-template clrPageTitle>Connect to Aplos</ng-template>
+        <app-loading-placeholder
+          [loadingState]="savingAplosCredentials"
+          [errorState]="errorSavingAplosCredentials"
+          errorText="We were unable to connect to Aplos with the information you provided."
+        [allowRetry]="false"></app-loading-placeholder>
+        <form
+          clrForm
+          #aplosServiceAccountForm="ngForm"
+          [class.hide]="!savingAplosCredentials">
+          @if (aplosAuthenticationStatus && aplosAuthenticationStatus.aplosAuthenticationMode === 0) {
+            <div>
+              <p>
+                To obtain a client id, you must have an Aplos account and a user with administrative permissions.
+                Assuming you have these, you can generate a client id and key pair from the <a href="https://www.aplos.com/aws/sm">settings</a> page.
+              </p>
+              <clr-input-container>
+                <label>Client ID</label>
+                <input
+                  clrInput
+                  required
+                  placeholder=""
+                  name="aplosClientId"
+                  [(ngModel)]="settingsModel.aplosClientId"
+                  style="width: 500px" />
+                <clr-control-error>You must enter a Client ID</clr-control-error>
+              </clr-input-container>
+              <clr-input-container>
+                <label>Private Key</label>
+                <input
+                  clrInput
+                  required
+                  placeholder=""
+                  name="aplosPrivateKey"
+                  style="width: 500px"
+                  [(ngModel)]="settingsModel.aplosPrivateKey" />
+                <clr-control-error>You must enter a Private Key</clr-control-error>
+              </clr-input-container>
             </div>
-          </div>
-        </div>
-      </form>
-    </clr-wizard-page>
-
-    <clr-wizard-page *ngIf="connectionDetails?.pexConnection && connectionDetails?.aplosConnection"
-                     (clrWizardPageOnLoad)="onSelectVendorsWizardPageLoad()"
-                     [clrWizardPageNextDisabled]="!selectedVendors || selectedVendors.length < 1">
-      <ng-template clrPageNavTitle>Select Vendors</ng-template>
-      <ng-template clrPageTitle>Select vendors you would like to auto create vendor cards for.</ng-template>
-      <clr-spinner *ngIf="isLoadingVendors" [clrMedium]="true"></clr-spinner>
-      <div class="text-weight-500">You can create {{maxVendorCards | number}} vendor cards at a time. You have {{(connectionDetails.vendorCardsAvailable - selectedVendors.length) | number}} cards available for creation.</div>
-      <div class="p7 text-margin">Hold cmnd+click (mac) or ctrl/shift+click (win) for multi selection.</div>
-      <ng-container *ngIf="!isLoadingVendors">
-        <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
-          <clr-alert-item>
-            <span class="alert-text">You can save 1% of all vendor spend with a PEX Vendor Card.</span>
-          </clr-alert-item>
-        </clr-alert>
-        <clr-dropdown [clrCloseMenuOnItemClick]="true">
-          <button class="btn btn-link" clrDropdownTrigger>SORT BY
-            <cds-icon shape="angle down"></cds-icon>
-          </button>
-          <clr-dropdown-menu clrPosition="bottom" *clrIfOpen>
-            <div clrDropdownItem (click)="onSortAtoZ()">A to Z</div>
-            <div clrDropdownItem (click)="onSortZtoA()">Z to A</div>
-            <div clrDropdownItem (click)="onSortTotalSpend()">Total Spend</div>
-          </clr-dropdown-menu>
-        </clr-dropdown>
-        <app-select-list [allItems]="vendors"
-                         [(selectedItems)]="selectedVendors"
-                         [maxSelectedItems]="maxVendorCardsSelect"
-                         [displayFn]="vendorDisplay"
-                         [filterFn]="vendorFilter"
-                         [sortFn]="vendorSort"
-                         [allItemsTitle]="'All (' + (vendors.length - selectedVendors.length) + '/' + vendors.length+ ')'"
-                         [selectedItemsTitle]="'Selected (' + selectedVendors.length + '/' + maxVendorCardsSelect + ')'">
-        </app-select-list>
-        <div class="p7">
-          No results found? <a target="_blank" href="https://www.aplos.com/support/articles/creating-contacts-individuals-or-companies/">Click here</a> to add a vendor to your Aplos account first to be able to find them. Be sure to create a vendor as a contact of a company type (not individual).
-        </div>
-      </ng-container>
-    </clr-wizard-page>
-
-    <clr-wizard-page *ngIf="connectionDetails?.pexConnection && connectionDetails?.aplosConnection"
-                     (clrWizardPageOnLoad)="onConfigureVendorCardsWizardPageLoad()"
-                     [clrWizardPageNextDisabled]="connectionDetails.isPrepaid && (availableBalance < 0) || isConfiguringVendorCards">
-      <ng-template clrPageNavTitle>Configure Options</ng-template>
-      <ng-template clrPageTitle>Configure how your vendors cards are setup and used.</ng-template>
-      <clr-spinner *ngIf="isLoadingSettings" [clrMedium]="true"></clr-spinner>
-      <ng-container *ngIf="!isLoadingSettings">
-        <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
-          <clr-alert-item>
-            <span *ngIf="connectionDetails.isPrepaid" class="alert-text">Add optional initial funding<span *ngIf="connectionDetails.useBusinessBalanceEnabled">, or use auto funding,</span> for your vendor cards. <span *ngIf="availableBalance >= 0">You have {{availableBalance | currency}} available for funding.</span></span>
-            <span *ngIf="connectionDetails.isCredit" class="alert-text">Add a required card limit for each vendor card.</span>
-          </clr-alert-item>
-        </clr-alert>
-        <div class="map-vendors same-line">
-          <clr-toggle-container>
-            <clr-toggle-wrapper>
-              <input type="checkbox" clrToggle [disabled]="isConfiguringSettings" [(ngModel)]="mapVendorCardsToVendors" (ngModelChange)="onMapCardsToVendors()" />
-              <label>Automatically map expenses from vendors cards to contacts in Aplos.</label>
-            </clr-toggle-wrapper>
-          </clr-toggle-container>
-        </div>
-        <div class="vendor-cards">
-          <table class="table table-compact">
-            <thead>
-              <tr>
-                <th class="left">Vendor Name</th>
-                <th *ngIf="connectionDetails.isPrepaid && connectionDetails.useBusinessBalanceEnabled" class="left">Auto Funding</th>
-                <th *ngIf="connectionDetails.isPrepaid" class="left">Initial Funding</th>
-                <th *ngIf="connectionDetails.isCredit" class="left">Card Limit</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let v of selectedVendors">
-                <td class="left">{{v.name | truncate : 25}}</td>
-                <td *ngIf="connectionDetails.isPrepaid && connectionDetails.useBusinessBalanceEnabled" class="left">
-                  <input type="checkbox" clrCheckbox [disabled]="isConfiguringSettings" [(ngModel)]="v.autoFunding" (ngModelChange)="v.autoFundingChanged()" />
-                </td>
-                <td *ngIf="connectionDetails.isPrepaid" class="left">
-                  <div *ngIf="!v.autoFunding">
-                    <span>$</span>
-                    <input type="text" class="clr-input" placeholder="0.00" [disabled]="v.autoFunding || isConfiguringSettings" [allowNegativeNumbers]="false" thousandSeparator="," mask="separator.2" [(ngModel)]="v.initialFunding" (ngModelChange)="v.initialFundingChanged()" />
+          }
+          @if (aplosAuthenticationStatus && !aplosAuthenticationStatus.hasAplosAccountId) {
+            <clr-alert [clrAlertType]="'warning'" [clrAlertClosable]="false">
+              <clr-alert-item>
+                <span class="alert-text">
+                  Sorry, we don't seem to have your Aplos customer ID on file so can't connect your PEX account to Aplos.
+                  <br /><br />
+                  Please contact <a href="https://www.aplos.com/support/">Aplos Support</a> and ask that your customer ID be sent to PEX. Once we have it, we'll contact you so that you know when you're able to complete the account linking process.
+                </span>
+              </clr-alert-item>
+            </clr-alert>
+          }
+          @if (aplosAuthenticationStatus && aplosAuthenticationStatus.partnerVerificationUrl) {
+            <div>
+              <p>
+                Click the button below to connect PEX with your Aplos account.
+              </p>
+              <p></p>
+              <app-loading-placeholder
+                [loadingState]="verifyingAplosAuthentication"
+              [errorState]="false"></app-loading-placeholder>
+              @if (redirectingToAplosAuth) {
+                <clr-spinner>
+                  Saving...
+                </clr-spinner>
+              }
+              @if (!verifyingAplosAuthentication && !redirectingToAplosAuth) {
+                <div class="clr-row clr-justify-content-around">
+                  <div class="clr-col-6">
+                    <button type="button" class="btn btn-primary " aria-label="add" (click)="onAplosPartnerVerification()">
+                      <cds-icon shape="link" size="36"></cds-icon>
+                      <span>Connect to Aplos</span>
+                    </button>
                   </div>
-                </td>
-                <td *ngIf="connectionDetails.isCredit" class="left">
-                  <span>$</span>
-                  <input type="text" class="clr-input" placeholder="0.00" [disabled]="isConfiguringSettings" [allowNegativeNumbers]="false" thousandSeparator="," mask="separator.2" [(ngModel)]="v.initialFunding" (ngModelChange)="v.initialFundingChanged()" />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false" *ngIf="connectionDetails.isPrepaid && availableBalance < 0">
-          <clr-alert-item>
-            <span class="alert-text">You don't have enough available balance to continue! <a target="_blank" href="https://dashboard.pexcard.com/transactions/transfers/make-transfer">Click here</a> to fund your account.</span>
-          </clr-alert-item>
-        </clr-alert>
-      </ng-container>
-    </clr-wizard-page>
-
-    <clr-wizard-page *ngIf="connectionDetails?.pexConnection && connectionDetails?.aplosConnection" class="height-percent-100">
-      <ng-template clrPageNavTitle>Confirm Order</ng-template>
-      <ng-template clrPageTitle>Confirm creating vendor cards.</ng-template>
-      <div class="confirm-page-content height-percent-100">
-        <div>
-          <div>
-            <span>Are you sure you want to create <code>{{selectedVendors.length}}</code> vendor cards?</span>
-          </div>
-          <ng-container *ngIf="connectionDetails.isPrepaid">
-            <p *ngIf="countCardsInitialFunding > 0">
-              <span><code>{{countCardsInitialFunding}}</code> card<span *ngIf="countCardsInitialFunding > 1">s</span> will be funded <code>{{fundingBalance | currency}}</code> out of your account balance of <code>{{connectionDetails.accountBalance | currency}}</code>, leaving <code>{{availableBalance | currency}}</code>.</span>
-            </p>
-            <p *ngIf="countCardsAutoFunding > 0">
-              <span><code>{{countCardsAutoFunding}}</code> card<span *ngIf="countCardsAutoFunding > 1">s</span> will be auto funded out of your remaining account balance of <code>{{availableBalance | currency}}</code>.</span>
-            </p>
-          </ng-container>
-
+                </div>
+              }
+            </div>
+          }
+        </form>
+      </clr-wizard-page>
+    }
+    @if (connectionDetails?.pexConnection && connectionDetails?.aplosConnection) {
+      <clr-wizard-page
+        (clrWizardPageOnLoad)="onSelectVendorsWizardPageLoad()"
+        [clrWizardPageNextDisabled]="!selectedVendors || selectedVendors.length < 1">
+        <ng-template clrPageNavTitle>Select Vendors</ng-template>
+        <ng-template clrPageTitle>Select vendors you would like to auto create vendor cards for.</ng-template>
+        @if (isLoadingVendors) {
+          <clr-spinner [clrMedium]="true"></clr-spinner>
+        }
+        <div class="text-weight-500">You can create {{maxVendorCards | number}} vendor cards at a time. You have {{(connectionDetails.vendorCardsAvailable - selectedVendors.length) | number}} cards available for creation.</div>
+        <div class="p7 text-margin">Hold cmnd+click (mac) or ctrl/shift+click (win) for multi selection.</div>
+        @if (!isLoadingVendors) {
           <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
             <clr-alert-item>
-              <span class="alert-text">You can save {{selectedSaveAmount | currency}} of your vendor spend with a PEX vendor card(s) <span class="red-star">*</span></span>
+              <span class="alert-text">You can save 1% of all vendor spend with a PEX Vendor Card.</span>
             </clr-alert-item>
           </clr-alert>
+          <clr-dropdown [clrCloseMenuOnItemClick]="true">
+            <button class="btn btn-link" clrDropdownTrigger>SORT BY
+              <cds-icon shape="angle down"></cds-icon>
+            </button>
+            <clr-dropdown-menu clrPosition="bottom" *clrIfOpen>
+              <div clrDropdownItem (click)="onSortAtoZ()">A to Z</div>
+              <div clrDropdownItem (click)="onSortZtoA()">Z to A</div>
+              <div clrDropdownItem (click)="onSortTotalSpend()">Total Spend</div>
+            </clr-dropdown-menu>
+          </clr-dropdown>
+          <app-select-list [allItems]="vendors"
+            [(selectedItems)]="selectedVendors"
+            [maxSelectedItems]="maxVendorCardsSelect"
+            [displayFn]="vendorDisplay"
+            [filterFn]="vendorFilter"
+            [sortFn]="vendorSort"
+            [allItemsTitle]="'All (' + (vendors.length - selectedVendors.length) + '/' + vendors.length+ ')'"
+            [selectedItemsTitle]="'Selected (' + selectedVendors.length + '/' + maxVendorCardsSelect + ')'">
+          </app-select-list>
+          <div class="p7">
+            No results found? <a target="_blank" href="https://www.aplos.com/support/articles/creating-contacts-individuals-or-companies/">Click here</a> to add a vendor to your Aplos account first to be able to find them. Be sure to create a vendor as a contact of a company type (not individual).
+          </div>
+        }
+      </clr-wizard-page>
+    }
+    @if (connectionDetails?.pexConnection && connectionDetails?.aplosConnection) {
+      <clr-wizard-page
+        (clrWizardPageOnLoad)="onConfigureVendorCardsWizardPageLoad()"
+        [clrWizardPageNextDisabled]="connectionDetails.isPrepaid && (availableBalance < 0) || isConfiguringVendorCards">
+        <ng-template clrPageNavTitle>Configure Options</ng-template>
+        <ng-template clrPageTitle>Configure how your vendors cards are setup and used.</ng-template>
+        @if (isLoadingSettings) {
+          <clr-spinner [clrMedium]="true"></clr-spinner>
+        }
+        @if (!isLoadingSettings) {
+          <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
+            <clr-alert-item>
+              @if (connectionDetails.isPrepaid) {
+                <span class="alert-text">Add optional initial funding@if (connectionDetails.useBusinessBalanceEnabled) {
+                  <span>, or use auto funding,</span>
+                  } for your vendor cards. @if (availableBalance >= 0) {
+                  <span>You have {{availableBalance | currency}} available for funding.</span>
+                }</span>
+              }
+              @if (connectionDetails.isCredit) {
+                <span class="alert-text">Add a required card limit for each vendor card.</span>
+              }
+            </clr-alert-item>
+          </clr-alert>
+          <div class="map-vendors same-line">
+            <clr-toggle-container>
+              <clr-toggle-wrapper>
+                <input type="checkbox" clrToggle [disabled]="isConfiguringSettings" [(ngModel)]="mapVendorCardsToVendors" (ngModelChange)="onMapCardsToVendors()" />
+                <label>Automatically map expenses from vendors cards to contacts in Aplos.</label>
+              </clr-toggle-wrapper>
+            </clr-toggle-container>
+          </div>
+          <div class="vendor-cards">
+            <table class="table table-compact">
+              <thead>
+                <tr>
+                  <th class="left">Vendor Name</th>
+                  @if (connectionDetails.isPrepaid && connectionDetails.useBusinessBalanceEnabled) {
+                    <th class="left">Auto Funding</th>
+                  }
+                  @if (connectionDetails.isPrepaid) {
+                    <th class="left">Initial Funding</th>
+                  }
+                  @if (connectionDetails.isCredit) {
+                    <th class="left">Card Limit</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (v of selectedVendors; track v) {
+                  <tr>
+                    <td class="left">{{v.name | truncate : 25}}</td>
+                    @if (connectionDetails.isPrepaid && connectionDetails.useBusinessBalanceEnabled) {
+                      <td class="left">
+                        <input type="checkbox" clrCheckbox [disabled]="isConfiguringSettings" [(ngModel)]="v.autoFunding" (ngModelChange)="v.autoFundingChanged()" />
+                      </td>
+                    }
+                    @if (connectionDetails.isPrepaid) {
+                      <td class="left">
+                        @if (!v.autoFunding) {
+                          <div>
+                            <span>$</span>
+                            <input type="text" class="clr-input" placeholder="0.00" [disabled]="v.autoFunding || isConfiguringSettings" [allowNegativeNumbers]="false" thousandSeparator="," mask="separator.2" [(ngModel)]="v.initialFunding" (ngModelChange)="v.initialFundingChanged()" />
+                          </div>
+                        }
+                      </td>
+                    }
+                    @if (connectionDetails.isCredit) {
+                      <td class="left">
+                        <span>$</span>
+                        <input type="text" class="clr-input" placeholder="0.00" [disabled]="isConfiguringSettings" [allowNegativeNumbers]="false" thousandSeparator="," mask="separator.2" [(ngModel)]="v.initialFunding" (ngModelChange)="v.initialFundingChanged()" />
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if (connectionDetails.isPrepaid && availableBalance < 0) {
+            <clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false">
+              <clr-alert-item>
+                <span class="alert-text">You don't have enough available balance to continue! <a target="_blank" href="https://dashboard.pexcard.com/transactions/transfers/make-transfer">Click here</a> to fund your account.</span>
+              </clr-alert-item>
+            </clr-alert>
+          }
+        }
+      </clr-wizard-page>
+    }
+    @if (connectionDetails?.pexConnection && connectionDetails?.aplosConnection) {
+      <clr-wizard-page class="height-percent-100">
+        <ng-template clrPageNavTitle>Confirm Order</ng-template>
+        <ng-template clrPageTitle>Confirm creating vendor cards.</ng-template>
+        <div class="confirm-page-content height-percent-100">
+          <div>
+            <div>
+              <span>Are you sure you want to create <code>{{selectedVendors.length}}</code> vendor cards?</span>
+            </div>
+            @if (connectionDetails.isPrepaid) {
+              @if (countCardsInitialFunding > 0) {
+                <p>
+                  <span><code>{{countCardsInitialFunding}}</code> card@if (countCardsInitialFunding > 1) {
+                  <span>s</span>
+                  } will be funded <code>{{fundingBalance | currency}}</code> out of your account balance of <code>{{connectionDetails.accountBalance | currency}}</code>, leaving <code>{{availableBalance | currency}}</code>.</span>
+                </p>
+              }
+              @if (countCardsAutoFunding > 0) {
+                <p>
+                  <span><code>{{countCardsAutoFunding}}</code> card@if (countCardsAutoFunding > 1) {
+                  <span>s</span>
+                  } will be auto funded out of your remaining account balance of <code>{{availableBalance | currency}}</code>.</span>
+                </p>
+              }
+            }
+            <clr-alert [clrAlertType]="'info'" [clrAlertClosable]="false">
+              <clr-alert-item>
+                <span class="alert-text">You can save {{selectedSaveAmount | currency}} of your vendor spend with a PEX vendor card(s) <span class="red-star">*</span></span>
+              </clr-alert-item>
+            </clr-alert>
+          </div>
+          <div class="p7">
+            <span class="red-star">*</span> Disclaimer: Estimated savings are based on all your Aplos vendors spend per last 180 days. <a target="_blank" href="https://www.pexcard.com/lp/vendor-card-rebate-all-vintages/">Terms and Conditions</a> apply.
+          </div>
         </div>
-        <div class="p7">
-          <span class="red-star">*</span> Disclaimer: Estimated savings are based on all your Aplos vendors spend per last 180 days. <a target="_blank" href="https://www.pexcard.com/lp/vendor-card-rebate-all-vintages/">Terms and Conditions</a> apply.
-        </div>
-      </div>
-    </clr-wizard-page>
-
+      </clr-wizard-page>
+    }
   </clr-wizard>
+}
 
-</ng-container>
-
-<div *ngIf="isCreatingVendorCards" class="page-status">
-  <clr-spinner [clrMedium]="true"></clr-spinner>
-  <span>Creating Vendor Cards...</span>
-</div>
-<clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false" *ngIf="createVendorCardsFailed">
-  <clr-alert-item>
-    <span class="alert-text">Creating vendor cards failed. Please contact <code>appsupport&#64;pexcard.com</code>.</span>
-  </clr-alert-item>
-</clr-alert>
+@if (isCreatingVendorCards) {
+  <div class="page-status">
+    <clr-spinner [clrMedium]="true"></clr-spinner>
+    <span>Creating Vendor Cards...</span>
+  </div>
+}
+@if (createVendorCardsFailed) {
+  <clr-alert [clrAlertType]="'danger'" [clrAlertClosable]="false">
+    <clr-alert-item>
+      <span class="alert-text">Creating vendor cards failed. Please contact <code>appsupport&#64;pexcard.com</code>.</span>
+    </clr-alert-item>
+  </clr-alert>
+}

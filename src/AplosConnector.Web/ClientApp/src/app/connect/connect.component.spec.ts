@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+﻿import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 
 import { ConnectComponent } from './connect.component';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
