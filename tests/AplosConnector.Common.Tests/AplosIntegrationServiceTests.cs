@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using PexCard.Api.Client.Core;
+using PexCard.Api.Client.Core.Enums;
 using PexCard.Api.Client.Core.Models;
 using System;
 using System.Collections.Generic;
@@ -700,6 +701,37 @@ namespace AplosConnector.Common.Tests
 
             //Assert
             Assert.True(wasSynced);
+        }
+
+        [Fact]
+        public void GetCollectedInvoicePayments_ExcludesPaymentsRejectedByBank()
+        {
+            //Arrange - a repayment rejected by the bank is reversed on the credit line
+            //("Charge Business Line Repayment Reversal") and is not collected against the invoice.
+            var payments = new List<InvoicePaymentModel>
+            {
+                new InvoicePaymentModel { PaymentId = 1, Type = PaymentType.PEXTransfer, Amount = 49.40m },
+                new InvoicePaymentModel { PaymentId = 2, Type = PaymentType.RebateCredit, Amount = 0.50m },
+                new InvoicePaymentModel { PaymentId = 3, Type = PaymentType.PEXTransfer, Amount = 79.20m, RejectedByBank = true },
+                new InvoicePaymentModel { PaymentId = 4, Type = PaymentType.PEXTransfer, Amount = 79.20m, RejectedByBank = true },
+            };
+
+            //Act
+            var collectedPayments = AplosIntegrationService.GetCollectedInvoicePayments(payments);
+
+            //Assert
+            Assert.Equal(new[] { 1, 2 }, collectedPayments.Select(payment => payment.PaymentId));
+            Assert.Equal(49.90m, collectedPayments.Sum(payment => payment.Amount));
+        }
+
+        [Fact]
+        public void GetCollectedInvoicePayments_ReturnsEmpty_WhenPaymentsAreNull()
+        {
+            //Act
+            var collectedPayments = AplosIntegrationService.GetCollectedInvoicePayments(null);
+
+            //Assert
+            Assert.Empty(collectedPayments);
         }
 
         [Fact]
