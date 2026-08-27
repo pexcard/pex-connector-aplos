@@ -30,4 +30,8 @@
     <ProjectReference Include="..\Aplos.Api.Client\Aplos.Api.Client.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="AplosConnector.Common.Tests" />
+  </ItemGroup>
+
 </Project>
