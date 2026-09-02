@@ -1564,7 +1564,15 @@ namespace AplosConnector.Common.Services
                     {
                         var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
 
-                        var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
+                        var collectedPayments = GetCollectedInvoicePayments(invoicePayments);
+                        var rejectedPaymentCount = invoicePayments.Count - collectedPayments.Count;
+
+                        if (rejectedPaymentCount > 0)
+                        {
+                            _logger.LogInformation($"Excluded {rejectedPaymentCount} bank-rejected payment(s) from the payment totals of invoice {invoiceModel.InvoiceId}.");
+                        }
+
+                        var totalPaymentsAmount = collectedPayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
 
                         if (!IsInvoiceFullyPaid(invoiceModel.InvoiceAmount, totalPaymentsAmount))
                         {
@@ -1581,14 +1589,14 @@ namespace AplosConnector.Common.Services
                             switch (mapping.SyncInvoicesMethod)
                             {
                                 case "simple":
-                                    transactionSyncResult = await SyncInvoiceSimple(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                    transactionSyncResult = await SyncInvoiceSimple(mapping, invoiceModel, invoiceAllocations, collectedPayments, aplosFunds, _logger, cancellationToken);
                                     break;
                                 case "rebate-deposit":
-                                    transactionSyncResult = await SyncInvoiceRebateDeposit(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                    transactionSyncResult = await SyncInvoiceRebateDeposit(mapping, invoiceModel, invoiceAllocations, collectedPayments, aplosFunds, _logger, cancellationToken);
                                     break;
                                 default:
                                 case "rebate-distribute":
-                                    transactionSyncResult = await SyncInvoiceRebateDistribute(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                    transactionSyncResult = await SyncInvoiceRebateDistribute(mapping, invoiceModel, invoiceAllocations, collectedPayments, aplosFunds, _logger, cancellationToken);
                                     break;
                             }
                         }
@@ -1923,6 +1931,10 @@ namespace AplosConnector.Common.Services
 
             return TransactionSyncResult.Success;
         }
+
+        internal static IReadOnlyList<InvoicePaymentModel> GetCollectedInvoicePayments(
+            IReadOnlyList<InvoicePaymentModel> invoicePayments) =>
+            invoicePayments.Where(payment => !payment.RejectedByBank).ToList();
 
         internal static bool IsInvoiceFullyPaid(decimal invoiceAmount, decimal totalPaymentsAmount) =>
             totalPaymentsAmount >= invoiceAmount;
