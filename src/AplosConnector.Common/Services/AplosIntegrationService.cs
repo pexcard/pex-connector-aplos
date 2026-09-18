@@ -1531,7 +1531,7 @@ namespace AplosConnector.Common.Services
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
-        private async Task SyncInvoices(
+        internal async Task SyncInvoices(
             ILogger _logger,
             Pex2AplosMappingModel mapping,
             List<AplosApiTransactionDetail> aplosTransactions,
@@ -1976,9 +1976,8 @@ namespace AplosConnector.Common.Services
             int settleBusinessDays,
             out DateTime settledOn)
         {
-            var latestPaidDate = collectedPayments.Count == 0
-                ? utcNow.Date
-                : collectedPayments.Max(payment => payment.DatePaid).Date;
+            // DatePaid is US Eastern while utcNow is UTC; the day-level comparison can be off by one day, which the guard's slack absorbs.
+            var latestPaidDate = collectedPayments.Max(payment => payment.DatePaid).Date;
 
             settledOn = AddBusinessDays(latestPaidDate, settleBusinessDays);
 

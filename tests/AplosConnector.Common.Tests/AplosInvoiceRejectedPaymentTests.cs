@@ -8,6 +8,7 @@ using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services;
 using AplosConnector.Common.Services.Abstractions;
+using AplosConnector.Common.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -224,6 +225,91 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(InvoiceSyncEligibility.Eligible, eligibility);
         }
 
+        [Fact]
+        public async Task SyncInvoices_PostsOnlyTheCollectedAmount_WhenTwoRepaymentsWereRejectedByBank()
+        {
+            var invoice = NewInvoice(49.90m);
+            var service = GetAplosIntegrationServiceForSyncInvoices(
+                invoice, PaymentsWithTwoRejectedRepayments(), TwoFundAllocations(29.90m, 20.00m), out var syncResults);
+
+            await service.SyncInvoices(NullLogger.Instance, NewMapping(), [], new DateTime(2026, 8, 1), default);
+
+            Assert.NotNull(_createdTransaction);
+            Assert.Equal(49.90m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 29.90m), (GeneralFundId, 20.00m) });
+            var syncResult = Assert.Single(syncResults);
+            Assert.Equal(SyncStatus.Success.ToString(), syncResult.SyncStatus);
+            Assert.Equal(1, syncResult.SyncedRecords);
+        }
+
+        [Fact]
+        public async Task SyncInvoices_SoftSkipsTheInvoice_WhenItsOnlyPaymentWasRejectedByBank()
+        {
+            var invoice = NewInvoice(100.00m);
+            var payments = new[] { NewPayment(1, PaymentType.PEXTransfer, 100.00m, rejectedByBank: true) };
+            var service = GetAplosIntegrationServiceForSyncInvoices(
+                invoice, payments, TwoFundAllocations(60.00m, 40.00m), out var syncResults);
+
+            await service.SyncInvoices(NullLogger.Instance, NewMapping(), [], new DateTime(2026, 8, 1), default);
+
+            Assert.Null(_createdTransaction);
+            var syncResult = Assert.Single(syncResults);
+            Assert.Equal(SyncStatus.Success.ToString(), syncResult.SyncStatus);
+            Assert.Equal(0, syncResult.SyncedRecords);
+            Assert.Equal(string.Empty, syncResult.SyncNotes);
+        }
+
+        [Fact]
+        public async Task SyncInvoices_FailsTheInvoice_WhenItIsUnderpaidWithoutAnyRejectedPayment()
+        {
+            var invoice = NewInvoice(100.00m);
+            var payments = new[] { NewPayment(1, PaymentType.PEXTransfer, 60.00m) };
+            var service = GetAplosIntegrationServiceForSyncInvoices(
+                invoice, payments, TwoFundAllocations(60.00m, 40.00m), out var syncResults);
+
+            await service.SyncInvoices(NullLogger.Instance, NewMapping(), [], new DateTime(2026, 8, 1), default);
+
+            Assert.Null(_createdTransaction);
+            var syncResult = Assert.Single(syncResults);
+            Assert.Equal(SyncStatus.Failed.ToString(), syncResult.SyncStatus);
+            Assert.Equal(0, syncResult.SyncedRecords);
+        }
+
+        private AplosIntegrationService GetAplosIntegrationServiceForSyncInvoices(
+            InvoiceModel invoice,
+            InvoicePaymentModel[] payments,
+            InvoiceAllocationModel[] allocations,
+            out List<SyncResultModel> syncResults)
+        {
+            _mockPexApiClient
+                .Setup(client => client.GetInvoices(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<InvoiceModel> { invoice });
+            _mockPexApiClient
+                .Setup(client => client.GetInvoicePayments(It.IsAny<string>(), invoice.InvoiceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(payments.ToList());
+            _mockPexApiClient
+                .Setup(client => client.GetInvoiceAllocations(It.IsAny<string>(), invoice.InvoiceId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(allocations.ToList());
+
+            var aplosFunds = new List<AplosApiFundDetail>();
+            _mockAplosApiClient
+                .Setup(client => client.GetFunds(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(aplosFunds);
+            _mockAplosIntegrationMappingService
+                .Setup(mappingService => mappingService.Map(aplosFunds))
+                .Returns(AplosFunds());
+
+            var results = new List<SyncResultModel>();
+            var mockHistoryStorage = new Mock<SyncHistoryStorage>(null);
+            mockHistoryStorage
+                .Setup(storage => storage.CreateAsync(It.IsAny<SyncResultModel>(), It.IsAny<CancellationToken>()))
+                .Callback<SyncResultModel, CancellationToken>((result, _) => results.Add(result))
+                .Returns(Task.CompletedTask);
+            syncResults = results;
+
+            return GetAplosIntegrationService(mockHistoryStorage.Object);
+        }
+
         private void AssertRegisterDebits((string fundId, decimal amount)[] expected) =>
             AssertLines(RegisterAccount, expected.Select(e => (e.fundId, e.amount)).ToArray());
 
@@ -311,7 +397,7 @@ namespace AplosConnector.Common.Tests
             PexRebatesAplosTaxTagId = "tax-1",
         };
 
-        private AplosIntegrationService GetAplosIntegrationService()
+        private AplosIntegrationService GetAplosIntegrationService(SyncHistoryStorage historyStorage = null)
         {
             _mockOptions.Setup(options => options.Value).Returns(new AppSettingsModel());
 
@@ -336,7 +422,7 @@ namespace AplosConnector.Common.Tests
                 _mockAplosApiClientFactory.Object,
                 _mockAplosIntegrationMappingService.Object,
                 _mockPexApiClient.Object,
-                null,
+                historyStorage,
                 null,
                 new SyncSettingsModel(),
                 null);

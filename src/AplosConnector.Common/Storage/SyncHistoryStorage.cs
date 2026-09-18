@@ -15,7 +15,7 @@ namespace AplosConnector.Common.Storage
 
         public SyncHistoryStorage(TableClient tableClient) : base(tableClient) { }
 
-        public async Task CreateAsync(SyncResultModel model, CancellationToken cancellationToken)
+        public virtual async Task CreateAsync(SyncResultModel model, CancellationToken cancellationToken)
         {
             var entity = new SyncHistoryEntity(model)
             {
