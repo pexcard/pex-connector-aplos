@@ -6,6 +6,7 @@ using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
 using AplosConnector.Common.Const;
 using AplosConnector.Common.Enums;
+using AplosConnector.Common.Helpers;
 using AplosConnector.Common.Extensions;
 using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Aplos;
@@ -1586,7 +1587,7 @@ namespace AplosConnector.Common.Services
                                 _logger.LogInformation($"totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}) after excluding {rejectedPaymentCount} bank-rejected payment(s); the shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}) is re-billed on the next invoice. Skipping invoice {invoiceModel.InvoiceId}.");
                                 continue;
                             case InvoiceSyncEligibility.NotSettled:
-                                _logger.LogInformation($"Invoice {invoiceModel.InvoiceId} is not settled yet: {settleBusinessDays} business day(s) must elapse after its latest payment. Eligible on {settledOn:yyyy-MM-dd}. Skipping.");
+                                _logger.LogInformation($"Invoice {invoiceModel.InvoiceId} is not settled yet: {settleBusinessDays} US banking day(s) must elapse after its latest payment. Eligible on {settledOn:yyyy-MM-dd}. Skipping.");
                                 continue;
                         }
 
@@ -1992,7 +1993,7 @@ namespace AplosConnector.Common.Services
             while (remaining > 0)
             {
                 result = result.AddDays(1);
-                if (result.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday))
+                if (UsBankHolidays.IsBusinessDay(result))
                 {
                     remaining--;
                 }

@@ -290,7 +290,7 @@ The core configuration entity that links a PEX business account to an Aplos orga
 | `AzureServiceBusUrl` | Service Bus connection |
 | `AzureServiceBusTopicName` | Token expiration topic name |
 | `SyncTransactionsIntervalDays` | Default sync lookback window (60 days) |
-| `InvoiceSettleBusinessDays` | Business days after an invoice's latest collected payment before it is synced (default 3) |
+| `InvoiceSettleBusinessDays` | US banking days (weekdays excluding Federal Reserve holidays) after an invoice's latest collected payment before it is synced (default 3) |
 
 ### Connection Strings
 

@@ -3,6 +3,7 @@ using Aplos.Api.Client.Models;
 using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
 using AplosConnector.Common.Enums;
+using AplosConnector.Common.Helpers;
 using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
@@ -187,6 +188,10 @@ namespace AplosConnector.Common.Tests
         [InlineData("2026-08-06", "2026-08-10", false)] // Thu paid, Mon = 2 business days (weekend skipped)
         [InlineData("2026-08-06", "2026-08-11", true)]  // Thu paid, Tue = 3 business days
         [InlineData("2026-08-08", "2026-08-12", true)]  // Sat paid, Wed = 3 business days
+        [InlineData("2026-09-04", "2026-09-09", false)] // Fri paid, Wed = 2 banking days (Labor Day 09-07 skipped)
+        [InlineData("2026-09-04", "2026-09-10", true)]  // Fri paid, Thu = 3 banking days (Labor Day 09-07 skipped)
+        [InlineData("2026-11-25", "2026-11-30", false)] // Wed paid, Mon = 2 banking days (Thanksgiving 11-26 skipped)
+        [InlineData("2026-11-25", "2026-12-01", true)]  // Wed paid, Tue = 3 banking days (Thanksgiving 11-26 skipped)
         public void Eligibility_HonoursTheSettleGuard(string datePaid, string today, bool expectedEligible)
         {
             var payments = new[] { NewPayment(1, PaymentType.PEXTransfer, 100.00m, datePaid: DateTime.Parse(datePaid)) };
