@@ -1564,13 +1564,30 @@ namespace AplosConnector.Common.Services
                     {
                         var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
 
-                        var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
+                        var collectedPayments = GetCollectedInvoicePayments(invoicePayments);
+                        var rejectedPaymentCount = invoicePayments.Count - collectedPayments.Count;
 
-                        if (!IsInvoiceFullyPaid(invoiceModel.InvoiceAmount, totalPaymentsAmount))
+                        if (rejectedPaymentCount > 0)
                         {
-                            _logger.LogWarning($"totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}), shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}). Skipping invoice {invoiceModel.InvoiceId}.");
-                            failureCount++;
-                            continue;
+                            _logger.LogInformation($"Excluded {rejectedPaymentCount} bank-rejected payment(s) from the payment totals of invoice {invoiceModel.InvoiceId}.");
+                        }
+
+                        var totalPaymentsAmount = GetTotalPaymentsAmount(collectedPayments);
+                        var settleBusinessDays = _appSettings.InvoiceSettleBusinessDays;
+                        var eligibility = GetInvoiceSyncEligibility(invoiceModel, collectedPayments, rejectedPaymentCount, DateTime.UtcNow, settleBusinessDays, out var settledOn);
+
+                        switch (eligibility)
+                        {
+                            case InvoiceSyncEligibility.Underpaid:
+                                _logger.LogWarning($"totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}), shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}). Skipping invoice {invoiceModel.InvoiceId}.");
+                                failureCount++;
+                                continue;
+                            case InvoiceSyncEligibility.UnderpaidAfterBankRejection:
+                                _logger.LogInformation($"totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}) after excluding {rejectedPaymentCount} bank-rejected payment(s); the shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}) is re-billed on the next invoice. Skipping invoice {invoiceModel.InvoiceId}.");
+                                continue;
+                            case InvoiceSyncEligibility.NotSettled:
+                                _logger.LogInformation($"Invoice {invoiceModel.InvoiceId} is not settled yet: {settleBusinessDays} business day(s) must elapse after its latest payment. Eligible on {settledOn:yyyy-MM-dd}. Skipping.");
+                                continue;
                         }
 
                         var invoiceAllocations = await _pexApiClient.GetInvoiceAllocations(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
@@ -1581,14 +1598,14 @@ namespace AplosConnector.Common.Services
                             switch (mapping.SyncInvoicesMethod)
                             {
                                 case "simple":
-                                    transactionSyncResult = await SyncInvoiceSimple(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                    transactionSyncResult = await SyncInvoiceSimple(mapping, invoiceModel, invoiceAllocations, collectedPayments, aplosFunds, _logger, cancellationToken);
                                     break;
                                 case "rebate-deposit":
-                                    transactionSyncResult = await SyncInvoiceRebateDeposit(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                    transactionSyncResult = await SyncInvoiceRebateDeposit(mapping, invoiceModel, invoiceAllocations, collectedPayments, aplosFunds, _logger, cancellationToken);
                                     break;
                                 default:
                                 case "rebate-distribute":
-                                    transactionSyncResult = await SyncInvoiceRebateDistribute(mapping, invoiceModel, invoiceAllocations, invoicePayments, aplosFunds, _logger, cancellationToken);
+                                    transactionSyncResult = await SyncInvoiceRebateDistribute(mapping, invoiceModel, invoiceAllocations, collectedPayments, aplosFunds, _logger, cancellationToken);
                                     break;
                             }
                         }
@@ -1922,6 +1939,67 @@ namespace AplosConnector.Common.Services
             await aplosApiClient.CreateTransaction(aplosTransaction, cancellationToken);
 
             return TransactionSyncResult.Success;
+        }
+
+        internal static IReadOnlyList<InvoicePaymentModel> GetCollectedInvoicePayments(
+            IReadOnlyList<InvoicePaymentModel> invoicePayments) =>
+            invoicePayments.Where(payment => !payment.RejectedByBank).ToList();
+
+        internal static decimal GetTotalPaymentsAmount(IReadOnlyList<InvoicePaymentModel> payments) =>
+            payments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
+
+        internal static InvoiceSyncEligibility GetInvoiceSyncEligibility(
+            InvoiceModel invoice,
+            IReadOnlyList<InvoicePaymentModel> collectedPayments,
+            int rejectedPaymentCount,
+            DateTime utcNow,
+            int settleBusinessDays,
+            out DateTime settledOn)
+        {
+            settledOn = default;
+
+            if (!IsInvoiceFullyPaid(invoice.InvoiceAmount, GetTotalPaymentsAmount(collectedPayments)))
+            {
+                return rejectedPaymentCount > 0
+                    ? InvoiceSyncEligibility.UnderpaidAfterBankRejection
+                    : InvoiceSyncEligibility.Underpaid;
+            }
+
+            return IsInvoiceSettled(collectedPayments, utcNow, settleBusinessDays, out settledOn)
+                ? InvoiceSyncEligibility.Eligible
+                : InvoiceSyncEligibility.NotSettled;
+        }
+
+        internal static bool IsInvoiceSettled(
+            IReadOnlyList<InvoicePaymentModel> collectedPayments,
+            DateTime utcNow,
+            int settleBusinessDays,
+            out DateTime settledOn)
+        {
+            var latestPaidDate = collectedPayments.Count == 0
+                ? utcNow.Date
+                : collectedPayments.Max(payment => payment.DatePaid).Date;
+
+            settledOn = AddBusinessDays(latestPaidDate, settleBusinessDays);
+
+            return utcNow.Date >= settledOn;
+        }
+
+        internal static DateTime AddBusinessDays(DateTime date, int businessDays)
+        {
+            var result = date;
+            var remaining = Math.Max(0, businessDays);
+
+            while (remaining > 0)
+            {
+                result = result.AddDays(1);
+                if (result.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday))
+                {
+                    remaining--;
+                }
+            }
+
+            return result;
         }
 
         internal static bool IsInvoiceFullyPaid(decimal invoiceAmount, decimal totalPaymentsAmount) =>

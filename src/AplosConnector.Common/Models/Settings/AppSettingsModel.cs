@@ -31,5 +31,6 @@ namespace AplosConnector.Common.Models.Settings
         public int EmailPeriodicityDays { get; set; }
 
         public int SyncTransactionsIntervalDays { get; set; }
+        public int InvoiceSettleBusinessDays { get; set; } = 3;
     }
 }
