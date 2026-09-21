@@ -639,11 +639,52 @@ namespace Aplos.Api.Client.Tests
                 }
             }
         }
+
+        [Theory]
+        [InlineData("2026-01-16T04:59:59Z", "2026-01-15")] //Standard time, one second before EST midnight
+        [InlineData("2026-01-16T05:00:00Z", "2026-01-16")] //Standard time, EST midnight
+        [InlineData("2026-07-16T03:59:59Z", "2026-07-15")] //Daylight time, one second before EDT midnight
+        [InlineData("2026-03-09T03:59:59Z", "2026-03-08")] //Day after spring forward, offset is now -4
+        [InlineData("2026-11-02T04:59:59Z", "2026-11-01")] //Day after fall back, offset is back to -5
+        public async Task GetPayables_AnchorsRangeStartToEstCalendarDay(string startDateS, string expectedRangeStart)
+        {
+            //Arrange
+            var messageHandler = new MockHttpMessageHandler(
+                ($"/auth/clientid", HttpMethod.Get, HttpStatusCode.OK, File.ReadAllText("Samples/Response/GET_auth.json")),
+                ($"/payables/",     HttpMethod.Get, HttpStatusCode.OK, File.ReadAllText("Samples/Response/GET_payables.json")));
+
+            var httpClient = new HttpClient(messageHandler);
+
+            _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
+
+            var aplosApiClient = new AplosApiClient(
+                "acctid",
+                "clientid",
+                "pk",
+                new Uri("https://www.pexcard.com/"),
+                _mockHttpClientFactory.Object,
+                _mockAccessTokenDecryptor.Object,
+                _mockLogger.Object,
+                null,
+                null);
+
+            //Act
+            var apiResponse = await aplosApiClient.GetPayables(EstCalendarDateTests.ParseUtc(startDateS));
+
+            //Assert
+            Assert.NotNull(apiResponse);
+            Assert.Single(apiResponse.Data.Payables);
+
+            var payablesUri = messageHandler.RequestUris.Single(uri => uri.AbsolutePath == "/payables/");
+            Assert.Equal($"?f_rangestart={expectedRangeStart}", payablesUri.Query);
+        }
     }
 
     public class MockHttpMessageHandler : HttpMessageHandler
     {
         private readonly List<(string endpoint, HttpMethod httpMethod, HttpStatusCode responseCode, string responseBody)> _config;
+
+        public List<Uri> RequestUris { get; } = new List<Uri>();
 
         public MockHttpMessageHandler(params (string endpoint, HttpMethod httpMethod, HttpStatusCode responseCode, string responseBody)[] config)
         {
@@ -652,6 +693,8 @@ namespace Aplos.Api.Client.Tests
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            RequestUris.Add(request.RequestUri);
+
             //Find a response to return based on the method and URI.
             var matchingConfig = _config.FirstOrDefault(config => config.httpMethod == request.Method && config.endpoint == request.RequestUri.AbsolutePath);
 

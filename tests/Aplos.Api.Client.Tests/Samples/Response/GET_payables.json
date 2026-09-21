@@ -1,0 +1,25 @@
+{
+  "version": "v2_0_1",
+  "status": 200,
+  "meta": {
+    "resource_count": 1
+  },
+  "links": {
+    "self": "/api/v1/payables?page_size=50&page_num=1"
+  },
+  "data": {
+    "payables": [
+      {
+        "id": "9001",
+        "bill_date": "2026-01-15",
+        "due_date": "2026-02-15",
+        "reference_num": "INV-9001",
+        "note": "Boundary day bill",
+        "amount": 125.50,
+        "paid": 0,
+        "created": "2026-01-15 09:00:00",
+        "modified": "2026-01-15 09:00:00"
+      }
+    ]
+  }
+}
