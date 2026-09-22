@@ -146,7 +146,7 @@
           }
           @if (isCredit) {
             <tr>
-              <th>Sync bill payments/rebates</th>
+              <th>Sync PEX statement payments/rebates</th>
               <td><app-status-icon [value]="settings.syncInvoices"></app-status-icon></td>
             </tr>
           }
@@ -244,7 +244,7 @@
                   <th>Contact for transfers</th>
                 }
                 @if (isCredit) {
-                  <th>Payee for bill payments</th>
+                  <th>Payee for PEX statement payments</th>
                 }
                 <td>{{transferContact.name}}</td>
               </tr>
@@ -255,7 +255,7 @@
                   <th>Fund for transfers</th>
                 }
                 @if (isCredit) {
-                  <th>Fund for bill payments</th>
+                  <th>Fund for PEX statement payments</th>
                 }
                 <td>{{transferFund.name}}</td>
               </tr>
@@ -266,7 +266,7 @@
                   <th>Transaction account for transfers</th>
                 }
                 @if (isCredit) {
-                  <th>Transaction account for bill payments</th>
+                  <th>Transaction account for PEX statement payments</th>
                 }
                 <td>{{transferAccount | aplosAccount}}</td>
               </tr>

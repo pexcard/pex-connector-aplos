@@ -894,7 +894,7 @@ namespace AplosConnector.Common.Services
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = mapping.PEXBusinessAcctId,
-                SyncType = "Tag Values (Funds)",
+                SyncType = SyncTypes.TagValuesFunds,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
                 SyncNotes = syncNotes
@@ -971,7 +971,7 @@ namespace AplosConnector.Common.Services
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = model.PEXBusinessAcctId,
-                SyncType = "Tag Values (Accounts)",
+                SyncType = SyncTypes.TagValuesAccounts,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
                 SyncNotes = syncNotes
@@ -1328,7 +1328,7 @@ namespace AplosConnector.Common.Services
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = mapping.PEXBusinessAcctId,
-                SyncType = "Transactions",
+                SyncType = SyncTypes.Transactions,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
@@ -1523,7 +1523,7 @@ namespace AplosConnector.Common.Services
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = mapping.PEXBusinessAcctId,
-                SyncType = "Rebates",
+                SyncType = SyncTypes.Rebates,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
@@ -1531,7 +1531,7 @@ namespace AplosConnector.Common.Services
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
-        private async Task SyncInvoices(
+        internal async Task SyncInvoices(
             ILogger _logger,
             Pex2AplosMappingModel mapping,
             List<AplosApiTransactionDetail> aplosTransactions,
@@ -1634,7 +1634,7 @@ namespace AplosConnector.Common.Services
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = mapping.PEXBusinessAcctId,
-                SyncType = "Bill payments",
+                SyncType = SyncTypes.PexStatementPayments,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
@@ -2257,7 +2257,7 @@ namespace AplosConnector.Common.Services
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = model.PEXBusinessAcctId,
-                SyncType = "Transfers",
+                SyncType = SyncTypes.Transfers,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
@@ -2377,7 +2377,7 @@ namespace AplosConnector.Common.Services
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = model.PEXBusinessAcctId,
-                SyncType = "PEX Account Fees",
+                SyncType = SyncTypes.PexAccountFees,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote
@@ -3121,7 +3121,7 @@ namespace AplosConnector.Common.Services
             var result = new SyncResultModel
             {
                 PEXBusinessAcctId = mapping.PEXBusinessAcctId,
-                SyncType = "Reimbursements",
+                SyncType = SyncTypes.Reimbursements,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
                 SyncNotes = syncNote

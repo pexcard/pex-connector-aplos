@@ -30,7 +30,7 @@ namespace AplosConnector.Common.Storage
             }
         }
 
-        public async Task<PexOAuthSessionModel> GetBySessionGuidAsync(Guid sessionGuid, CancellationToken cancellationToken)
+        public virtual async Task<PexOAuthSessionModel> GetBySessionGuidAsync(Guid sessionGuid, CancellationToken cancellationToken)
         {
             var entity = await GetEntityBySessionGuidAsync(sessionGuid, cancellationToken);
 

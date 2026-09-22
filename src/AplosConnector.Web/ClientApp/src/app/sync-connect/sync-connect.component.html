@@ -255,7 +255,7 @@
               name="syncInvoices"
               [(ngModel)]="settingsModel.syncInvoices"
               [disabled]="!settingsModel.syncTransactions"/>
-            <label>Automatically import bill payments and rebates into Aplos.</label>
+            <label>Automatically import PEX statement payments and rebates into Aplos.</label>
           </clr-toggle-wrapper>
         }
         @if (settingsModel.useReimbursementsEnabled) {
@@ -733,14 +733,14 @@
           <span>Configure options for transfers, fees, rebates and reimbursements</span>
         }
         @if (isCredit) {
-          <span>Configure options for bill payments, fees, rebates and reimbursements</span>
+          <span>Configure options for PEX statement payments, fees, rebates and reimbursements</span>
         }
       </ng-template>
       @if (isPrepaid) {
         <h5>Please choose the following items when importing Transfers, Fees, Rebates and Reimbursements into Aplos</h5>
       }
       @if (isCredit) {
-        <h5>Please choose the following items when importing Bill Payments, Fees, Rebates and Reimbursements into Aplos</h5>
+        <h5>Please choose the following items when importing PEX Statement Payments, Fees, Rebates and Reimbursements into Aplos</h5>
       }
       <app-loading-placeholder
         [loadingState]="loadingExpenseCategories"
@@ -802,7 +802,7 @@
             </tbody>
           </table>
         }
-        <!-- Transfers / Bill payments -->
+        <!-- Transfers / PEX statement payments -->
         @if (settingsModel.syncTransfers || settingsModel.syncInvoices) {
           <div>
             <table class="table table-2col">
@@ -811,7 +811,7 @@
                   <h4>Transfers</h4>
                 }
                 @if (isCredit) {
-                  <h4>Bill Payments</h4>
+                  <h4>PEX Statement Payments</h4>
                 }
               </caption>
               <thead>
@@ -893,7 +893,7 @@
                     <span>Transfer tags default values</span>
                   }
                   @if (isCredit) {
-                    <span>Bill payment tags default values</span>
+                    <span>PEX statement payment tags default values</span>
                   }
                 </caption>
                 <tbody formArrayName="transferTagMappings">
