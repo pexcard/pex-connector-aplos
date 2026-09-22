@@ -565,12 +565,8 @@ namespace Aplos.Api.Client
             return _auth?.AplosAccessToken;
         }
 
-        public async Task<AplosApiPayablesListResponse> GetPayables(DateTime startDate, CancellationToken cancellationToken = default)
+        public async Task<AplosApiPayablesListResponse> GetPayables(DateOnly rangeStart, CancellationToken cancellationToken = default)
         {
-            // Date-only and read as a local calendar day, so a UTC-day start drops bills in the gap.
-            // GetTransactions has the same gap, left alone deliberately.
-            var rangeStart = startDate.ToEstCalendarDate();
-
             return await InvokeAplosApiWithAccessToken<AplosApiPayablesListResponse>(
                 HttpMethod.Get,
                 $"{APLOS_ENDPOINT_PAYABLES}?f_rangestart={rangeStart:yyyy-MM-dd}",

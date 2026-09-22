@@ -1,4 +1,4 @@
-﻿namespace System
+namespace System
 {
     public static class TimeZones
     {
@@ -11,9 +11,9 @@
         public static DateTime IsEST(this DateTime dateTime) => NewDateTime(EST, dateTime);
         public static DateTime CoalesceFromEST(this DateTime dateTime) => Coalesce(EST, dateTime);
         // Expects a UTC instant. Unspecified is read as UTC, so DateTimeOffset.DateTime or a date-only value shifts a day.
-        public static DateTime ToEstCalendarDate(this DateTime dateTime) =>
-            DateTime.SpecifyKind(dateTime, dateTime.Kind == DateTimeKind.Unspecified ? DateTimeKind.Utc : dateTime.Kind)
-                .ToEST().Date;
+        public static DateOnly ToEstCalendarDate(this DateTime dateTime) =>
+            DateOnly.FromDateTime(DateTime.SpecifyKind(dateTime, dateTime.Kind == DateTimeKind.Unspecified ? DateTimeKind.Utc : dateTime.Kind)
+                .ToEST());
 
         public static readonly TimeZoneInfo CST = GetTimeZoneCrossPlatform("Central Standard Time", "US/Indiana-Starke");
         public static DateTime ToCST(this DateTime dateTime) => dateTime.ToTimeZone(CST);

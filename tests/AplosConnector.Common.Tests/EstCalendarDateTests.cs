@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using Xunit;
 
-namespace Aplos.Api.Client.Tests
+namespace AplosConnector.Common.Tests
 {
     public class EstCalendarDateTests
     {
@@ -23,7 +23,7 @@ namespace Aplos.Api.Client.Tests
         {
             //Arrange
             var inputUtc = ParseUtc(inputUtcS);
-            var expectedDate = DateTime.ParseExact(expectedDateS, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var expectedDate = DateOnly.ParseExact(expectedDateS, "yyyy-MM-dd", CultureInfo.InvariantCulture);
 
             //Act
             var actualDate = inputUtc.ToEstCalendarDate();
@@ -49,7 +49,7 @@ namespace Aplos.Api.Client.Tests
             Assert.Equal(utc.ToEstCalendarDate(), unspecified.ToEstCalendarDate());
         }
 
-        internal static DateTime ParseUtc(string value)
+        private static DateTime ParseUtc(string value)
         {
             return DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
         }

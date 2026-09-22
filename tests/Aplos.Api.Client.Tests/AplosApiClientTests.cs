@@ -640,13 +640,8 @@ namespace Aplos.Api.Client.Tests
             }
         }
 
-        [Theory]
-        [InlineData("2026-01-16T04:59:59Z", "2026-01-15")] //Standard time, one second before EST midnight
-        [InlineData("2026-01-16T05:00:00Z", "2026-01-16")] //Standard time, EST midnight
-        [InlineData("2026-07-16T03:59:59Z", "2026-07-15")] //Daylight time, one second before EDT midnight
-        [InlineData("2026-03-09T03:59:59Z", "2026-03-08")] //Day after spring forward, offset is now -4
-        [InlineData("2026-11-02T04:59:59Z", "2026-11-01")] //Day after fall back, offset is back to -5
-        public async Task GetPayables_AnchorsRangeStartToEstCalendarDay(string startDateS, string expectedRangeStart)
+        [Fact]
+        public async Task GetPayables_SendsTheCalendarDateAsRangeStart()
         {
             //Arrange
             var messageHandler = new MockHttpMessageHandler(
@@ -669,14 +664,14 @@ namespace Aplos.Api.Client.Tests
                 null);
 
             //Act
-            var apiResponse = await aplosApiClient.GetPayables(EstCalendarDateTests.ParseUtc(startDateS));
+            var apiResponse = await aplosApiClient.GetPayables(new DateOnly(2026, 1, 15));
 
             //Assert
             Assert.NotNull(apiResponse);
             Assert.Single(apiResponse.Data.Payables);
 
             var payablesUri = messageHandler.RequestUris.Single(uri => uri.AbsolutePath == "/payables/");
-            Assert.Equal($"?f_rangestart={expectedRangeStart}", payablesUri.Query);
+            Assert.Equal("?f_rangestart=2026-01-15", payablesUri.Query);
         }
     }
 
