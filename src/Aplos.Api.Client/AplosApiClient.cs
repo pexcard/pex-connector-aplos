@@ -565,11 +565,11 @@ namespace Aplos.Api.Client
             return _auth?.AplosAccessToken;
         }
 
-        public async Task<AplosApiPayablesListResponse> GetPayables(DateTime startDate, CancellationToken cancellationToken = default)
+        public async Task<AplosApiPayablesListResponse> GetPayables(DateOnly rangeStart, CancellationToken cancellationToken = default)
         {
             return await InvokeAplosApiWithAccessToken<AplosApiPayablesListResponse>(
                 HttpMethod.Get,
-                $"{APLOS_ENDPOINT_PAYABLES}?f_rangestart={startDate:yyyy-MM-dd}",
+                $"{APLOS_ENDPOINT_PAYABLES}?f_rangestart={rangeStart:yyyy-MM-dd}",
                 cancellationToken: cancellationToken);
         }
     }
