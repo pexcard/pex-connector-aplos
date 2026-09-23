@@ -589,6 +589,15 @@ namespace AplosConnector.Common.Services
                     {
                         _logger.LogWarning(ex, $"Exception during {nameof(SyncReimbursements)} for business: {mapping.PEXBusinessAcctId}.");
                     }
+
+                    try
+                    {
+                        await SyncOutstandingBills(_logger, mapping, utcNow, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Exception during {nameof(SyncOutstandingBills)} for business: {mapping.PEXBusinessAcctId}.");
+                    }
                 }
 
                 _logger.LogInformation("C# Queue trigger function completed.");
@@ -773,10 +782,17 @@ namespace AplosConnector.Common.Services
             }
 
             mapping.UseReimbursementsEnabled = businessSettings.UseReimbursements;
+            mapping.UseBillPayEnabled = businessSettings.UseBillPay;
 
             if (mapping.SyncReimbursements && !businessSettings.UseReimbursements)
             {
                 mapping.SyncReimbursements = false;
+                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+            }
+
+            if (mapping.SyncOutstandingBills && !businessSettings.UseBillPay)
+            {
+                mapping.SyncOutstandingBills = false;
                 await _mappingStorage.UpdateAsync(mapping, cancellationToken);
             }
 
@@ -2476,12 +2492,10 @@ namespace AplosConnector.Common.Services
             return _aplosIntegrationMappingService.Map(aplosApiResponse);
         }
 
-        public async Task<AplosApiPayablesListResponse> GetAplosPayables(Pex2AplosMappingModel mapping, DateOnly rangeStart, CancellationToken cancellationToken)
+        public async Task<List<AplosApiPayableDetail>> GetAplosPayables(Pex2AplosMappingModel mapping, DateOnly rangeStart, CancellationToken cancellationToken)
         {
             var aplosApiClient = MakeAplosApiClient(mapping);
-            var response = await aplosApiClient.GetPayables(rangeStart, cancellationToken);
-
-            return response;
+            return await aplosApiClient.GetPayables(rangeStart, cancellationToken);
         }
 
         private static IDictionary<string, object> GetLoggingScopeForSync(Pex2AplosMappingModel mapping)

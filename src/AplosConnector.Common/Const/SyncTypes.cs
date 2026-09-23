@@ -16,5 +16,8 @@ namespace AplosConnector.Common.Const
 
         // What SyncInvoices wrote before the rename. Describes data already written - never change it.
         public const string LegacyBillPaymentsLabel = "Bill payments";
+
+        // The inbound half of bill pay: unpaid Aplos payables imported into the PEX bill inbox.
+        public const string OutstandingBills = "Outstanding Bills";
     }
 }
