@@ -63,7 +63,7 @@ namespace AplosConnector.Common.Storage
             await TableClient.UpdateEntityAsync(entity, ETag.All, TableUpdateMode.Merge, cancellationToken);
         }
 
-        public async Task<Pex2AplosMappingModel> GetByBusinessAcctIdAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
+        public virtual async Task<Pex2AplosMappingModel> GetByBusinessAcctIdAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
         {
             var entity = await GetEntityByBusinessAcctId(pexBusinessAcctId, cancellationToken);
             return _storageMappingService.Map(entity);

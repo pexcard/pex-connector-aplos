@@ -719,7 +719,7 @@ export class SyncConnectComponent implements OnInit {
     this.applyRequired('defaultAplosFundId', purchasesVisible);
     this.applyRequired('defaultAplosTransactionAccountNumber', purchasesVisible);
 
-    // Transfers / Bill payments
+    // Transfers / PEX statement payments
     this.applyRequired('transfersAplosContactId', transfersOrInvoices);
     this.applyRequired('transfersAplosFundId', transfersOrInvoices && this.isPrepaid);
     this.applyRequired('transfersAplosTransactionAccountNumber', transfersOrInvoices);

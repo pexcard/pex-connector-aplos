@@ -11,6 +11,7 @@ using AplosConnector.Web.Models;
 using PexCard.Api.Client.Core.Models;
 using System.Threading;
 using AplosConnector.Common.Storage;
+using AplosConnector.Common.Services;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -158,6 +159,14 @@ namespace AplosConnector.Web.Controllers
             if (mapping == null) return NotFound();
 
             var result = await _syncHistoryStorage.GetByBusiness(mapping.PEXBusinessAcctId, cancellationToken);
+
+            // Retirable in 2030 if sync history retention is still 3 years (TokenRefresher.cs:191) - by then
+            // no pre-rename row can survive. Check that window before deleting.
+            foreach (var row in result)
+            {
+                row.SyncType = SyncHistoryLabelMigration.DisplayLabel(row.SyncType);
+            }
+
             return result;
         }
 

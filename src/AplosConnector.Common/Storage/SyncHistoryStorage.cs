@@ -15,7 +15,7 @@ namespace AplosConnector.Common.Storage
 
         public SyncHistoryStorage(TableClient tableClient) : base(tableClient) { }
 
-        public async Task CreateAsync(SyncResultModel model, CancellationToken cancellationToken)
+        public virtual async Task CreateAsync(SyncResultModel model, CancellationToken cancellationToken)
         {
             var entity = new SyncHistoryEntity(model)
             {
@@ -25,7 +25,7 @@ namespace AplosConnector.Common.Storage
             await TableClient.AddEntityAsync(entity, cancellationToken);
         }
 
-        public async Task<List<SyncResultModel>> GetByBusiness(int businessAcctId, CancellationToken cancellationToken)
+        public virtual async Task<List<SyncResultModel>> GetByBusiness(int businessAcctId, CancellationToken cancellationToken)
         {
             var tableEntities = TableClient
                 .QueryAsync<SyncHistoryEntity>(f => f.PartitionKey == businessAcctId.ToString(), 1000, null, cancellationToken);
