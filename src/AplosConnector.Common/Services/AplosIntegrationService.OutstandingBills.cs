@@ -18,9 +18,9 @@ namespace AplosConnector.Common.Services
     {
         internal const string AplosVendorCustomIdPrefix = "APLOS";
 
-        public async Task<List<AplosOutstandingBillModel>> GetAplosOutstandingBills(Pex2AplosMappingModel mapping, DateTime startDate, CancellationToken cancellationToken)
+        public async Task<List<AplosOutstandingBillModel>> GetAplosOutstandingBills(Pex2AplosMappingModel mapping, DateOnly startDate, CancellationToken cancellationToken)
         {
-            var payables = await GetAplosPayables(mapping, startDate.ToEstCalendarDate(), cancellationToken);
+            var payables = await GetAplosPayables(mapping, startDate, cancellationToken);
             return AplosPayableFilter.SelectUnpaid(payables)
                 .Select(AplosPayableFilter.ToOutstandingBill)
                 .ToList();
@@ -346,6 +346,12 @@ namespace AplosConnector.Common.Services
             newlyCreatedVendorIds.Add(pexVendor.VendorId);
         }
 
+        // PEX vendor card names are capped at 15 characters, the same limit VendorCardService applies.
+        private const int MaxVendorCardName = 15;
+
+        private static string ToVendorCardName(string vendorName)
+            => vendorName.Length <= MaxVendorCardName ? vendorName : vendorName.Substring(0, MaxVendorCardName);
+
         private async Task BatchCreateAndLinkVendorCards(
             ILogger logger,
             Pex2AplosMappingModel mapping,
@@ -357,7 +363,7 @@ namespace AplosConnector.Common.Services
         {
             var vendorsNeedingCards = vendorsByName.Values
                 .Where(v => newlyCreatedVendorIds.Contains(v.VendorId))
-                .Where(v => !vendorCardAcctIdByName.TryGetValue(v.VendorName, out var acctId) || acctId <= 0)
+                .Where(v => !vendorCardAcctIdByName.TryGetValue(ToVendorCardName(v.VendorName), out var acctId) || acctId <= 0)
                 .ToList();
 
             if (vendorsNeedingCards.Count == 0) return;
@@ -367,7 +373,7 @@ namespace AplosConnector.Common.Services
             {
                 VendorCards = vendorsNeedingCards.Select(v => new VendorCardOrderItemRequest
                 {
-                    VendorName = v.VendorName,
+                    VendorName = ToVendorCardName(v.VendorName),
                     AutoActivation = true,
                     Email = adminProfile?.Admin?.Email,
                     Phone = adminProfile?.Admin?.Phone
@@ -391,7 +397,7 @@ namespace AplosConnector.Common.Services
 
             foreach (var vendor in vendorsNeedingCards)
             {
-                if (!cardAcctIdByVendorName.TryGetValue(vendor.VendorName, out var cardAcctId))
+                if (!cardAcctIdByVendorName.TryGetValue(ToVendorCardName(vendor.VendorName), out var cardAcctId))
                 {
                     logger.LogWarning($"No vendor card created for PEX vendor {vendor.VendorId} for business {mapping.PEXBusinessAcctId}.");
                     continue;
@@ -410,7 +416,7 @@ namespace AplosConnector.Common.Services
                             vendorsByCustomId[vendor.CustomId] = updatedVendor;
                         }
                     }
-                    vendorCardAcctIdByName[vendor.VendorName] = cardAcctId;
+                    vendorCardAcctIdByName[ToVendorCardName(vendor.VendorName)] = cardAcctId;
                 }
                 catch (Exception ex)
                 {

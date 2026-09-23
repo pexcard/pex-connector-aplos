@@ -214,7 +214,7 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<List<AplosOutstandingBillModel>>> GetOutstandingBills(string sessionId, DateTime? startDate, CancellationToken cancellationToken)
+        public async Task<ActionResult<List<AplosOutstandingBillModel>>> GetOutstandingBills(string sessionId, DateOnly? startDate, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
@@ -226,7 +226,7 @@ namespace AplosConnector.Web.Controllers
 
             var bills = await _aplosIntegrationService.GetAplosOutstandingBills(
                 mapping,
-                startDate ?? DateTime.UtcNow.AddDays(-180),
+                startDate ?? DateTime.UtcNow.AddDays(-180).ToEstCalendarDate(),
                 cancellationToken);
 
             return Ok(bills);

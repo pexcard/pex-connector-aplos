@@ -33,6 +33,6 @@ namespace AplosConnector.Common.Services.Abstractions
         Task<IEnumerable<AplosApiTaxTagCategoryDetail>> GetAplosApiTaxTagExpenseCategoryDetails(Pex2AplosMappingModel mapping, CancellationToken cancellationToken);
         Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, CancellationToken cancellationToken);
         Task<List<AplosApiPayableDetail>> GetAplosPayables(Pex2AplosMappingModel mapping, DateOnly rangeStart, CancellationToken cancellationToken);
-        Task<List<AplosOutstandingBillModel>> GetAplosOutstandingBills(Pex2AplosMappingModel mapping, DateTime startDate, CancellationToken cancellationToken);
+        Task<List<AplosOutstandingBillModel>> GetAplosOutstandingBills(Pex2AplosMappingModel mapping, DateOnly startDate, CancellationToken cancellationToken);
     }
 }

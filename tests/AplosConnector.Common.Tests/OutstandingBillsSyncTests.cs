@@ -356,6 +356,25 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public async Task ALongVendorNameIsCutToTheCardLimitAndItsCardIsStillLinked()
+        {
+            const string longName = "Acme Office Supplies Inc";
+            SetupContact(NewContact(AplosContactId, longName, street1: "1 Main St", city: "Austin", state: "TX", postalCode: "73301", email: "ap@acme.example"));
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m, contactName: longName));
+            _mockPexApiClient
+                .Setup(client => client.ApproveVendor(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VendorModel { VendorId = 11, VendorName = longName, CustomId = $"APLOS{AplosContactId}" });
+            _mockPexApiClient
+                .Setup(client => client.GetVendorCardOrder(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VendorCardOrderResponseModel { CardOrderId = 99, Cards = [new VendorCardOrderItemResponse { AcctId = 321, VendorName = "Acme Office Sup" }] });
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Equal("Acme Office Sup", Assert.Single(Assert.Single(_cardOrders).VendorCards).VendorName);
+            _mockPexApiClient.Verify(client => client.AddVendorCard(It.IsAny<string>(), 11, It.Is<AddVendorCardRequestModel>(r => r.CardholderAcctId == 321), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public void SyncOutstandingBillsSurvivesTheEntityAndSettingsRoundTrips()
         {
             var service = new StorageMappingService(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
