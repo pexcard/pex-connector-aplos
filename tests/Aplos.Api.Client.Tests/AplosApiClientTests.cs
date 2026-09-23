@@ -639,11 +639,47 @@ namespace Aplos.Api.Client.Tests
                 }
             }
         }
+
+        [Fact]
+        public async Task GetPayables_SendsTheCalendarDateAsRangeStart()
+        {
+            //Arrange
+            var messageHandler = new MockHttpMessageHandler(
+                ($"/auth/clientid", HttpMethod.Get, HttpStatusCode.OK, File.ReadAllText("Samples/Response/GET_auth.json")),
+                ($"/payables/",     HttpMethod.Get, HttpStatusCode.OK, File.ReadAllText("Samples/Response/GET_payables.json")));
+
+            var httpClient = new HttpClient(messageHandler);
+
+            _mockHttpClientFactory.Setup(mockFactory => mockFactory.CreateClient("")).Returns(httpClient);
+
+            var aplosApiClient = new AplosApiClient(
+                "acctid",
+                "clientid",
+                "pk",
+                new Uri("https://www.pexcard.com/"),
+                _mockHttpClientFactory.Object,
+                _mockAccessTokenDecryptor.Object,
+                _mockLogger.Object,
+                null,
+                null);
+
+            //Act
+            var apiResponse = await aplosApiClient.GetPayables(new DateOnly(2026, 1, 15));
+
+            //Assert
+            Assert.NotNull(apiResponse);
+            Assert.Single(apiResponse.Data.Payables);
+
+            var payablesUri = messageHandler.RequestUris.Single(uri => uri.AbsolutePath == "/payables/");
+            Assert.Equal("?f_rangestart=2026-01-15", payablesUri.Query);
+        }
     }
 
     public class MockHttpMessageHandler : HttpMessageHandler
     {
         private readonly List<(string endpoint, HttpMethod httpMethod, HttpStatusCode responseCode, string responseBody)> _config;
+
+        public List<Uri> RequestUris { get; } = new List<Uri>();
 
         public MockHttpMessageHandler(params (string endpoint, HttpMethod httpMethod, HttpStatusCode responseCode, string responseBody)[] config)
         {
@@ -652,6 +688,8 @@ namespace Aplos.Api.Client.Tests
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            RequestUris.Add(request.RequestUri);
+
             //Find a response to return based on the method and URI.
             var matchingConfig = _config.FirstOrDefault(config => config.httpMethod == request.Method && config.endpoint == request.RequestUri.AbsolutePath);
 

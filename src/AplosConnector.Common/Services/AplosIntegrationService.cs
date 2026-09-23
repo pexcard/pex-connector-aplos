@@ -2476,10 +2476,10 @@ namespace AplosConnector.Common.Services
             return _aplosIntegrationMappingService.Map(aplosApiResponse);
         }
 
-        public async Task<AplosApiPayablesListResponse> GetAplosPayables(Pex2AplosMappingModel mapping, DateTime startDate, CancellationToken cancellationToken)
+        public async Task<AplosApiPayablesListResponse> GetAplosPayables(Pex2AplosMappingModel mapping, DateOnly rangeStart, CancellationToken cancellationToken)
         {
             var aplosApiClient = MakeAplosApiClient(mapping);
-            var response = await aplosApiClient.GetPayables(startDate, cancellationToken);
+            var response = await aplosApiClient.GetPayables(rangeStart, cancellationToken);
 
             return response;
         }
