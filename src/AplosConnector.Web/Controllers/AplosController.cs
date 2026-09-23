@@ -209,6 +209,29 @@ namespace AplosConnector.Web.Controllers
             return Ok(taxTags);
         }
 
+        [HttpGet, Route("OutstandingBills")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<List<AplosOutstandingBillModel>>> GetOutstandingBills(string sessionId, DateTime? startDate, CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
+
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
+            if (session == null) return Unauthorized();
+
+            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
+            if (mapping == null) return NotFound();
+
+            var bills = await _aplosIntegrationService.GetAplosOutstandingBills(
+                mapping,
+                startDate ?? DateTime.UtcNow.AddDays(-180),
+                cancellationToken);
+
+            return Ok(bills);
+        }
+
         [HttpGet, Route("Vendors/ForCards")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

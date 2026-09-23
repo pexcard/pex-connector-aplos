@@ -668,7 +668,7 @@ namespace Aplos.Api.Client.Tests
 
             //Assert
             Assert.NotNull(apiResponse);
-            Assert.Single(apiResponse.Data.Payables);
+            Assert.Single(apiResponse);
 
             var payablesUri = messageHandler.RequestUris.Single(uri => uri.AbsolutePath == "/payables/");
             Assert.Equal("?f_rangestart=2026-01-15", payablesUri.Query);
