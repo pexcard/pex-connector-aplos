@@ -352,6 +352,28 @@ namespace AplosConnector.Common.Services
         private static string ToVendorCardName(string vendorName)
             => vendorName.Length <= MaxVendorCardName ? vendorName : vendorName.Substring(0, MaxVendorCardName);
 
+        // Cards are matched back to vendors by name, so a cut name shared with another new vendor or an existing
+        // vendor cardholder gets the vendor id as a suffix instead of being left to link the wrong card.
+        internal static Dictionary<int, string> AssignVendorCardNames(IReadOnlyCollection<VendorModel> vendors, IEnumerable<string> existingCardNames)
+        {
+            var taken = new HashSet<string>(existingCardNames, StringComparer.OrdinalIgnoreCase);
+            var sharedInBatch = vendors
+                .GroupBy(v => ToVendorCardName(v.VendorName), StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return vendors.ToDictionary(v => v.VendorId, v =>
+            {
+                var cardName = ToVendorCardName(v.VendorName);
+                if (!taken.Contains(cardName) && !sharedInBatch.Contains(cardName)) return cardName;
+
+                var suffix = $" {v.VendorId}";
+                var prefixLength = Math.Min(v.VendorName.Length, MaxVendorCardName - suffix.Length);
+                return $"{v.VendorName.Substring(0, prefixLength).TrimEnd()}{suffix}";
+            });
+        }
+
         private async Task BatchCreateAndLinkVendorCards(
             ILogger logger,
             Pex2AplosMappingModel mapping,
@@ -363,17 +385,18 @@ namespace AplosConnector.Common.Services
         {
             var vendorsNeedingCards = vendorsByName.Values
                 .Where(v => newlyCreatedVendorIds.Contains(v.VendorId))
-                .Where(v => !vendorCardAcctIdByName.TryGetValue(ToVendorCardName(v.VendorName), out var acctId) || acctId <= 0)
                 .ToList();
 
             if (vendorsNeedingCards.Count == 0) return;
+
+            var cardNameByVendorId = AssignVendorCardNames(vendorsNeedingCards, vendorCardAcctIdByName.Keys);
 
             var adminProfile = await _pexApiClient.GetMyAdminProfile(mapping.PEXExternalAPIToken, cancellationToken);
             var cardOrderRequest = new VendorCardCreateOrderRequestModel
             {
                 VendorCards = vendorsNeedingCards.Select(v => new VendorCardOrderItemRequest
                 {
-                    VendorName = ToVendorCardName(v.VendorName),
+                    VendorName = cardNameByVendorId[v.VendorId],
                     AutoActivation = true,
                     Email = adminProfile?.Admin?.Email,
                     Phone = adminProfile?.Admin?.Phone
@@ -390,19 +413,26 @@ namespace AplosConnector.Common.Services
                 return;
             }
 
-            var cardAcctIdByVendorName = cardOrder.Cards
+            var cardAcctIdsByVendorName = cardOrder.Cards
                 .Where(c => c.AcctId.HasValue && !string.IsNullOrEmpty(c.VendorName))
                 .GroupBy(c => c.VendorName, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First().AcctId.Value, StringComparer.OrdinalIgnoreCase);
+                .ToDictionary(g => g.Key, g => g.Select(c => c.AcctId.Value).ToList(), StringComparer.OrdinalIgnoreCase);
+            var submittedNameCounts = cardNameByVendorId.Values
+                .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
 
             foreach (var vendor in vendorsNeedingCards)
             {
-                if (!cardAcctIdByVendorName.TryGetValue(ToVendorCardName(vendor.VendorName), out var cardAcctId))
+                var cardName = cardNameByVendorId[vendor.VendorId];
+                if (submittedNameCounts[cardName] > 1
+                    || !cardAcctIdsByVendorName.TryGetValue(cardName, out var cardAcctIds)
+                    || cardAcctIds.Count != 1)
                 {
-                    logger.LogWarning($"No vendor card created for PEX vendor {vendor.VendorId} for business {mapping.PEXBusinessAcctId}.");
+                    logger.LogWarning($"No vendor card could be matched to PEX vendor {vendor.VendorId} by name '{cardName}' for business {mapping.PEXBusinessAcctId}.");
                     continue;
                 }
 
+                var cardAcctId = cardAcctIds[0];
                 try
                 {
                     await _pexApiClient.AddVendorCard(mapping.PEXExternalAPIToken, vendor.VendorId, new AddVendorCardRequestModel { CardholderAcctId = cardAcctId }, cancellationToken);
@@ -416,7 +446,7 @@ namespace AplosConnector.Common.Services
                             vendorsByCustomId[vendor.CustomId] = updatedVendor;
                         }
                     }
-                    vendorCardAcctIdByName[ToVendorCardName(vendor.VendorName)] = cardAcctId;
+                    vendorCardAcctIdByName[cardName] = cardAcctId;
                 }
                 catch (Exception ex)
                 {

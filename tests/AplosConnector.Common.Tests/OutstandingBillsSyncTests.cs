@@ -375,6 +375,49 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public async Task NewVendorsSharingACutCardNameEachGetAnIdSuffixedCard()
+        {
+            SetupNewVendors((AplosContactId, "Acme Office Supplies Inc"), (AplosContactId + 1, "Acme Office Supply Co"));
+            SetupCardOrderResponse(("Acme Office 11", 321), ("Acme Office 12", 322));
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Equal(new[] { "Acme Office 11", "Acme Office 12" }, Assert.Single(_cardOrders).VendorCards.Select(c => c.VendorName).OrderBy(n => n));
+            VerifyCardLinked(vendorId: 11, cardAcctId: 321);
+            VerifyCardLinked(vendorId: 12, cardAcctId: 322);
+        }
+
+        [Fact]
+        public async Task ANewVendorWhoseCutNameMatchesAnExistingCardholderGetsAnIdSuffixedCard()
+        {
+            SetupNewVendors((AplosContactId, "Acme Office Supplies Inc"));
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessDetails(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new BusinessDetailsModel
+                {
+                    CHAccountList = [new CardholderAccountModel { AccountId = 900, LastName = "Acme Office Sup", CardholderType = CardholderType.Vendor.ToString(), AccountStatus = "OPEN" }]
+                });
+            SetupCardOrderResponse(("Acme Office 11", 321));
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Equal("Acme Office 11", Assert.Single(Assert.Single(_cardOrders).VendorCards).VendorName);
+            VerifyCardLinked(vendorId: 11, cardAcctId: 321);
+            _mockPexApiClient.Verify(client => client.AddVendorCard(It.IsAny<string>(), It.IsAny<int>(), It.Is<AddVendorCardRequestModel>(r => r.CardholderAcctId == 900), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task AnAmbiguousCardOrderResponseLinksNoCard()
+        {
+            SetupNewVendors((AplosContactId, "Acme Office Supplies Inc"));
+            SetupCardOrderResponse(("Acme Office Sup", 321), ("Acme Office Sup", 322));
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            _mockPexApiClient.Verify(client => client.AddVendorCard(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<AddVendorCardRequestModel>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public void SyncOutstandingBillsSurvivesTheEntityAndSettingsRoundTrips()
         {
             var service = new StorageMappingService(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
@@ -453,6 +496,44 @@ namespace AplosConnector.Common.Tests
                 .Setup(client => client.GetPayables(It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(payables.ToList());
         }
+
+        private void SetupNewVendors(params (int ContactId, string Name)[] contacts)
+        {
+            var namesById = new Dictionary<int, string>();
+            var nextVendorId = 11;
+            foreach (var (contactId, name) in contacts)
+            {
+                SetupContact(NewContact(contactId, name, street1: "1 Main St", city: "Austin", state: "TX", postalCode: "73301", email: "ap@acme.example"));
+            }
+            SetupPayables(contacts.Select((c, i) => NewPayable($"{9001 + i}", amount: 10m, paid: 0m, contactId: c.ContactId, contactName: c.Name)).ToArray());
+
+            _mockPexApiClient
+                .Setup(client => client.CreateVendor(It.IsAny<string>(), It.IsAny<CreateVendorRequestModel>(), It.IsAny<CancellationToken>()))
+                .Callback<string, CreateVendorRequestModel, CancellationToken>((_, request, _) => _createdVendors.Add(request))
+                .ReturnsAsync((string _, CreateVendorRequestModel request, CancellationToken _) =>
+                {
+                    var id = nextVendorId++;
+                    namesById[id] = request.VendorName;
+                    return new VendorModel { VendorId = id, VendorName = request.VendorName, CustomId = request.CustomId };
+                });
+            _mockPexApiClient
+                .Setup(client => client.ApproveVendor(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string _, int id, CancellationToken _) => new VendorModel { VendorId = id, VendorName = namesById[id] });
+        }
+
+        private void SetupCardOrderResponse(params (string VendorName, int AcctId)[] cards)
+        {
+            _mockPexApiClient
+                .Setup(client => client.GetVendorCardOrder(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new VendorCardOrderResponseModel
+                {
+                    CardOrderId = 99,
+                    Cards = cards.Select(c => new VendorCardOrderItemResponse { AcctId = c.AcctId, VendorName = c.VendorName }).ToList()
+                });
+        }
+
+        private void VerifyCardLinked(int vendorId, int cardAcctId) =>
+            _mockPexApiClient.Verify(client => client.AddVendorCard(It.IsAny<string>(), vendorId, It.Is<AddVendorCardRequestModel>(r => r.CardholderAcctId == cardAcctId), It.IsAny<CancellationToken>()), Times.Once);
 
         private void SetupContact(AplosApiContactDetail contact)
         {
