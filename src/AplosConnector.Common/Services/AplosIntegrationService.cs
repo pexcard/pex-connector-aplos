@@ -268,6 +268,15 @@ namespace AplosConnector.Common.Services
             return DedupeAplosAccounts(mappedAccounts);
         }
 
+        /// <summary>
+        /// Payments rejected by the bank are reversed on the credit line as "Charge Business Line Repayment Reversal"
+        /// and are not collected against the invoice amount, so they must not be counted as payments.
+        /// </summary>
+        public static List<InvoicePaymentModel> GetCollectedInvoicePayments(IEnumerable<InvoicePaymentModel> invoicePayments)
+        {
+            return invoicePayments?.Where(payment => !payment.RejectedByBank).ToList() ?? new List<InvoicePaymentModel>();
+        }
+
         public static IEnumerable<PexAplosApiObject> DedupeAplosAccounts(IEnumerable<PexAplosApiObject> aplosAccounts)
         {
             if (aplosAccounts == null)
@@ -1562,7 +1571,8 @@ namespace AplosConnector.Common.Services
 
                     try
                     {
-                        var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+                        var invoicePayments = GetCollectedInvoicePayments(
+                            await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken));
 
                         var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
 
