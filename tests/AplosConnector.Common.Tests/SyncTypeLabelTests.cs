@@ -58,6 +58,7 @@ namespace AplosConnector.Common.Tests
                 InvoiceAmount = 110.00m,
                 Status = InvoiceStatus.Closed,
                 DueDate = new DateTime(2026, 8, 1),
+                IsPastReturnWindow = true,
             }]);
 
             _mockPexApiClient

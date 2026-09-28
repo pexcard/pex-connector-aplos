@@ -1561,6 +1561,7 @@ namespace AplosConnector.Common.Services
             var invoicesToSync = invoices
                 .Where(i =>
                     i.Status == InvoiceStatus.Closed
+                    && i.IsPastReturnWindow
                     && i.InvoiceAmount > 0
                     && !WasPexTransactionSyncedToAplos(aplosTransactions, i.InvoiceId.ToString()))
                 .ToList();
@@ -1578,12 +1579,19 @@ namespace AplosConnector.Common.Services
 
                     try
                     {
-                        var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+                        var allInvoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+                        var invoicePayments = allInvoicePayments.Where(p => !p.RejectedByBank).ToList();
 
                         var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
 
                         if (!IsInvoiceFullyPaid(invoiceModel.InvoiceAmount, totalPaymentsAmount))
                         {
+                            if (invoicePayments.Count != allInvoicePayments.Count)
+                            {
+                                _logger.LogInformation($"totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}) after excluding bank-rejected payments; the shortfall is re-billed on a later invoice. Skipping invoice {invoiceModel.InvoiceId}.");
+                                continue;
+                            }
+
                             _logger.LogWarning($"totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}), shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}). Skipping invoice {invoiceModel.InvoiceId}.");
                             failureCount++;
                             continue;
@@ -1691,6 +1699,11 @@ namespace AplosConnector.Common.Services
                      || aplosFunds.All(f => f.Id != allocation.TagValue))
                     && !isFeeAllocation)
                 {
+                    if (allocation.SourceInvoiceId != null)
+                    {
+                        logger.LogWarning($"Allocation re-billing invoice {allocation.SourceInvoiceId} has no Aplos fund (TagValue '{allocation.TagValue}', category {allocation.TransactionTypeCategory}), so invoice {invoice.InvoiceId} will not balance.");
+                    }
+
                     continue;
                 }
 
@@ -1831,6 +1844,11 @@ namespace AplosConnector.Common.Services
                      || aplosFunds.All(f => f.Id != allocation.TagValue))
                     && !isFeeAllocation)
                 {
+                    if (allocation.SourceInvoiceId != null)
+                    {
+                        logger.LogWarning($"Allocation re-billing invoice {allocation.SourceInvoiceId} has no Aplos fund (TagValue '{allocation.TagValue}', category {allocation.TransactionTypeCategory}), so invoice {invoice.InvoiceId} will not balance.");
+                    }
+
                     continue;
                 }
 
@@ -2037,6 +2055,11 @@ namespace AplosConnector.Common.Services
                      || aplosFunds.All(f => f.Id != allocation.TagValue))
                     && !isFeeAllocation)
                 {
+                    if (allocation.SourceInvoiceId != null)
+                    {
+                        logger.LogWarning($"Allocation re-billing invoice {allocation.SourceInvoiceId} has no Aplos fund (TagValue '{allocation.TagValue}', category {allocation.TransactionTypeCategory}), so invoice {invoice.InvoiceId} will not balance.");
+                    }
+
                     continue;
                 }
 
