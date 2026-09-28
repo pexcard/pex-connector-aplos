@@ -53,7 +53,7 @@ namespace AplosConnector.Common.Storage
             }
         }
 
-        public async Task UpdateAsync(Pex2AplosMappingModel model, CancellationToken cancellationToken)
+        public virtual async Task UpdateAsync(Pex2AplosMappingModel model, CancellationToken cancellationToken)
         {
             var entity = _storageMappingService.Map(model);
             entity.PartitionKey = PARTITION_KEY;

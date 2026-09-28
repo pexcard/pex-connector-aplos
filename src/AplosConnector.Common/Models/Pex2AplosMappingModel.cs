@@ -27,6 +27,7 @@ namespace AplosConnector.Common.Models
             SyncInvoices = mapping.SyncInvoices;
             SyncRebates = mapping.SyncRebates;
             SyncReimbursements = mapping.SyncReimbursements;
+            SyncOutstandingBills = mapping.SyncOutstandingBills;
             LastSyncUtc = mapping.LastSync;
             EarliestTransactionDateToSync = mapping.EarliestTransactionDateToSync.ToUniversalTime();
             if (mapping.EndDateUtc != null)
@@ -114,6 +115,7 @@ namespace AplosConnector.Common.Models
                 SyncPexFees = SyncPexFees,
                 SyncRebates = SyncRebates,
                 SyncReimbursements = SyncReimbursements,
+                SyncOutstandingBills = SyncOutstandingBills,
                 LastSync = LastSyncUtc,
                 EarliestTransactionDateToSync = EarliestTransactionDateToSync,
                 EndDateUtc = EndDateUtc,
@@ -178,7 +180,8 @@ namespace AplosConnector.Common.Models
                 SyncInvoicesMethod = SyncInvoicesMethod,
                 SyncInvoiceAggregated = SyncInvoiceAggregated,
 
-                UseReimbursementsEnabled = UseReimbursementsEnabled
+                UseReimbursementsEnabled = UseReimbursementsEnabled,
+                UseBillPayEnabled = UseBillPayEnabled
             };
         }
 
@@ -199,9 +202,11 @@ namespace AplosConnector.Common.Models
         public bool SyncInvoices { get; set; }
         public bool SyncRebates { get; set; }
         public bool SyncReimbursements { get; set; }
+        public bool SyncOutstandingBills { get; set; }
 
-        // Live PEX business-account flag, refreshed on each read via RefreshBusinessSettings — never persisted.
+        // Live PEX business-account flags, refreshed on each read via RefreshBusinessSettings — never persisted.
         public bool UseReimbursementsEnabled { get; set; }
+        public bool UseBillPayEnabled { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
         public DateTime? EndDateUtc { get; set; }

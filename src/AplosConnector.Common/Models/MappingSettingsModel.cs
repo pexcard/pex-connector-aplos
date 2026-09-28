@@ -62,6 +62,14 @@ namespace AplosConnector.Common.Models
         /// Whether the PEX business account has the Reimbursements feature enabled on CSP. Read-only; ignored if sent by the client.
         /// </summary>
         public bool UseReimbursementsEnabled { get; set; }
+        /// <summary>
+        /// Whether to import unpaid Aplos payables into the PEX bill inbox.
+        /// </summary>
+        public bool SyncOutstandingBills { get; set; }
+        /// <summary>
+        /// Whether the PEX business account has Bill Pay enabled. Read-only; ignored if sent by the client.
+        /// </summary>
+        public bool UseBillPayEnabled { get; set; }
 
         /// <summary>
         /// The AccountId for the register to use in Aplos. This is the account from which money will be taken from in the transaction created in Aplos.

@@ -32,6 +32,7 @@ namespace AplosConnector.Common.Tests
         [InlineData(SyncTypes.Transactions)]
         [InlineData(SyncTypes.Reimbursements)]
         [InlineData(SyncTypes.PexStatementPayments)]
+        [InlineData(SyncTypes.OutstandingBills)]
         public void NoOtherLabelIsEverRewritten(string syncType)
         {
             Assert.Equal(syncType, SyncHistoryLabelMigration.DisplayLabel(syncType));

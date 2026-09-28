@@ -7,7 +7,7 @@ This file provides guidance to AI coding agents (Claude Code, Copilot, etc.) whe
 **PEX Connector for Aplos** is a web application and Azure Functions worker that synchronizes PEX Card financial transactions, expenses, and account data with Aplos nonprofit accounting software. It provides a connector between the PEX Card expense management platform and Aplos fund accounting, enabling automatic or manual syncing of transactions, contacts, accounts, funds, and tags for nonprofit organizations and churches.
 
 The application consists of two main runtime components:
-1. **Web Application** - ASP.NET Core 8.0 API with Angular 19 SPA for connector configuration and management
+1. **Web Application** - ASP.NET Core (.NET 10) API with Angular 21 SPA for connector configuration and management
 2. **Sync Worker** - Azure Functions v4 for background sync processing, scheduled jobs, and token management
 
 ## Solution Structure
@@ -16,9 +16,9 @@ The application consists of two main runtime components:
 pex-connector-aplos/
 ├── src/
 │   ├── AplosConnector.sln                           # Main solution file
-│   ├── AplosConnector.Web/                          # ASP.NET Core 8.0 Web API + Angular SPA
+│   ├── AplosConnector.Web/                          # ASP.NET Core (.NET 10) Web API + Angular SPA
 │   │   ├── Controllers/                             # REST API controllers (5 controllers)
-│   │   ├── ClientApp/                               # Angular 19 frontend application
+│   │   ├── ClientApp/                               # Angular 21 frontend application
 │   │   ├── Startup.cs                               # DI container, middleware, service registration
 │   │   ├── Program.cs                               # Host builder configuration
 │   │   └── appsettings*.json                        # Environment configurations
@@ -123,7 +123,7 @@ func start
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    Web Application                    │
-│  Angular 19 SPA ←→ ASP.NET Core 8.0 Controllers     │
+│  Angular 21 SPA ←→ ASP.NET Core 10.0 Controllers    │
 │       ↓                    ↓                          │
 │  OAuth Flow          REST API Endpoints               │
 │       ↓                    ↓                          │
@@ -295,13 +295,13 @@ The core configuration entity that links a PEX business account to an Aplos orga
 
 - `StorageConnectionString` - Azure Storage account connection string (Tables, Queues, Blobs)
 
-## Frontend (Angular 19)
+## Frontend (Angular 21)
 
 ### Technology Stack
 
-- **Angular**: 19.2.x
-- **UI Framework**: Clarity Design System (@clr/angular 17.0.0, @clr/ui 17.0.0, @cds/core 6.16.x)
-- **TypeScript**: 5.8.x
+- **Angular**: 21.2.x
+- **UI Framework**: Clarity Design System (@clr/angular 18.2.x, @clr/ui 18.2.x, @cds/core 6.17.x)
+- **TypeScript**: 5.9.x
 - **Node.js**: 22+
 - **RxJS**: 7.8.x
 - **Testing**: Jasmine + Karma
@@ -348,7 +348,7 @@ The core configuration entity that links a PEX business account to an Aplos orga
 - **Steps**:
   1. Decrypt encryption certificate from Azure Key Vault
   2. NuGet authentication for private PexCard feed
-  3. `dotnet publish` (Release configuration, .NET 8.0)
+  3. `dotnet publish` (Release configuration, .NET 10.0)
   4. `dotnet test` (all test projects)
   5. Angular production build (`ng build --configuration production`)
   6. Mend CLI dependency/security scanning (SCA + SAST)
@@ -436,15 +436,15 @@ The core configuration entity that links a PEX business account to an Aplos orga
 
 ## Important Notes
 
-- **Runtime**: .NET 8.0 (LTS)
+- **Runtime**: .NET 10.0
 - **Data Store**: Azure Table Storage (not SQL Server) - this differs from most PEX microservices
 - **No Autofac**: Uses built-in ASP.NET Core DI (unlike most PEX services that use Autofac)
 - **No Dapper/EF**: No relational database - all persistence is Azure Storage
 - **Angular SPA**: Served via `UseSpaStaticFiles` middleware in production, Angular dev server proxy in development
-- **Azure Functions v4**: Isolated worker model with .NET 8.0
+- **Azure Functions v4**: Isolated worker model with .NET 10.0
 - **Clarity UI**: Frontend uses VMware Clarity Design System for components
 - **Dual Auth**: Application manages two separate OAuth flows (PEX + Aplos)
 - **Cron Schedule**: Daily sync runs at 3:16 AM UTC
-- **Source Control**: Azure DevOps Git
+- **Source Control**: GitHub (`github.com/pexcard/pex-connector-aplos`). The Azure DevOps repo `zzAplos-Connector` is an archived, disabled mirror and returns `TF401019`
 - **CI/CD**: Azure DevOps Pipelines
-- **Pull Requests**: Always target `master` branch. Use Azure DevOps CLI: `az repos pr create --title "PR Title" --target-branch master`
+- **Pull Requests**: Always target `master` branch. This repo lives on GitHub (`github.com/pexcard/pex-connector-aplos`), so use the GitHub CLI: `gh pr create --base master --title "AB#<work-item-id> PR Title"`. The `AB#<id>` prefix is what links the PR to its Azure Boards work item; a bare id or `#id` does not link.
