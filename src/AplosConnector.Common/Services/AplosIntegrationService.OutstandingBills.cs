@@ -88,11 +88,13 @@ namespace AplosConnector.Common.Services
                 var unpaid = SelectImportable(payables, firstBillDate, lastBillDate);
                 logger.LogInformation($"Retrieved {payables.Count} Aplos payables ({unpaid.Count} unpaid) for business {mapping.PEXBusinessAcctId} from {startDate:yyyy-MM-dd}.");
 
-                var withoutId = unpaid.RemoveAll(payable => string.IsNullOrEmpty(payable.Id));
-                if (withoutId > 0)
+                foreach (var payable in unpaid.Where(payable => string.IsNullOrEmpty(payable.Id)))
                 {
-                    logger.LogWarning($"Skipping {withoutId} Aplos payables with no id for business {mapping.PEXBusinessAcctId}.");
+                    failureCount++;
+                    failureNotes.Add($"Bill {payable.ReferenceNumber}: Aplos returned it without an id, so it cannot be imported; add it in PEX by hand.");
+                    logger.LogWarning($"Skipping Aplos payable {payable.ReferenceNumber} with no id for business {mapping.PEXBusinessAcctId}.");
                 }
+                unpaid.RemoveAll(payable => string.IsNullOrEmpty(payable.Id));
 
                 var storedMappings = await GetBillMappingsByPayableId(mapping, cancellationToken);
                 var candidates = unpaid.Where(payable => !storedMappings.ContainsKey(payable.Id)).ToList();

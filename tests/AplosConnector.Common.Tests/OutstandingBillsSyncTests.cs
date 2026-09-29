@@ -318,6 +318,20 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public async Task APayableWithNoIdIsReportedSoItCanBeAddedByHand()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable(null, amount: 125.50m, paid: 0m), NewPayable("9002", amount: 10m, paid: 0m));
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Equal("INV-9002", Assert.Single(_createdBillInbox).BillNumber);
+            var history = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Partial.ToString(), history.SyncStatus);
+            Assert.Contains("add it in PEX by hand", history.SyncNotes);
+        }
+
+        [Fact]
         public async Task TheRecoverySearchPagesInCreationOrder()
         {
             SetupExistingPexVendor();
