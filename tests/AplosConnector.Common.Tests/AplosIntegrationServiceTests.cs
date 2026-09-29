@@ -7,6 +7,7 @@ using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services;
+using AplosConnector.Common.Storage;
 using AplosConnector.Common.Services.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -1156,7 +1157,8 @@ namespace AplosConnector.Common.Tests
                 null,
                 null,
                 _mockSettings,
-                null);
+                null,
+                Mock.Of<IAplosBillMappingStorage>());
         }
 
         private Pex2AplosMappingModel GetMapping(
