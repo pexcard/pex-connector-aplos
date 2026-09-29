@@ -1558,12 +1558,18 @@ namespace AplosConnector.Common.Services
 
             var invoices = await _pexApiClient.GetInvoices(mapping.PEXExternalAPIToken, startDate, cancellationToken);
 
-            var invoicesToSync = invoices
-                .Where(i =>
-                    i.Status == InvoiceStatus.Closed
-                    && i.InvoiceAmount > 0
-                    && !WasPexTransactionSyncedToAplos(aplosTransactions, i.InvoiceId.ToString()))
-                .ToList();
+            var invoicesToSync = new List<InvoiceModel>();
+            foreach (var invoice in invoices)
+            {
+                var skipReason = GetInvoiceSkipReason(invoice, aplosTransactions);
+                if (skipReason != null)
+                {
+                    _logger.LogInformation($"Skipping invoice {invoice.InvoiceId}: {skipReason}.");
+                    continue;
+                }
+
+                invoicesToSync.Add(invoice);
+            }
 
             var syncCount = 0;
             var failureCount = 0;
@@ -1578,12 +1584,20 @@ namespace AplosConnector.Common.Services
 
                     try
                     {
-                        var invoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+                        var allInvoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
+                        var invoicePayments = allInvoicePayments.Where(p => !p.RejectedByBank).ToList();
 
                         var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
 
                         if (!IsInvoiceFullyPaid(invoiceModel.InvoiceAmount, totalPaymentsAmount))
                         {
+                            var rejectedPaymentsAmount = allInvoicePayments.Where(p => p.RejectedByBank).Sum(p => p.Amount);
+                            if (rejectedPaymentsAmount > 0 && IsInvoiceFullyPaid(invoiceModel.InvoiceAmount, totalPaymentsAmount + rejectedPaymentsAmount))
+                            {
+                                _logger.LogInformation($"totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}) after excluding bank-rejected payments; the shortfall is re-billed on a later invoice. Skipping invoice {invoiceModel.InvoiceId}.");
+                                continue;
+                            }
+
                             _logger.LogWarning($"totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}), shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}). Skipping invoice {invoiceModel.InvoiceId}.");
                             failureCount++;
                             continue;
@@ -1691,6 +1705,11 @@ namespace AplosConnector.Common.Services
                      || aplosFunds.All(f => f.Id != allocation.TagValue))
                     && !isFeeAllocation)
                 {
+                    if (allocation.SourceInvoiceId != null && allocation.TagValue == null)
+                    {
+                        logger.LogWarning($"Allocation re-billing invoice {allocation.SourceInvoiceId} has no tag (category {allocation.TransactionTypeCategory}), so invoice {invoice.InvoiceId} will not balance.");
+                    }
+
                     continue;
                 }
 
@@ -1831,6 +1850,11 @@ namespace AplosConnector.Common.Services
                      || aplosFunds.All(f => f.Id != allocation.TagValue))
                     && !isFeeAllocation)
                 {
+                    if (allocation.SourceInvoiceId != null && allocation.TagValue == null)
+                    {
+                        logger.LogWarning($"Allocation re-billing invoice {allocation.SourceInvoiceId} has no tag (category {allocation.TransactionTypeCategory}), so invoice {invoice.InvoiceId} will not balance.");
+                    }
+
                     continue;
                 }
 
@@ -1940,6 +1964,15 @@ namespace AplosConnector.Common.Services
             return TransactionSyncResult.Success;
         }
 
+        private string GetInvoiceSkipReason(InvoiceModel invoice, List<AplosApiTransactionDetail> aplosTransactions)
+        {
+            if (invoice.Status != InvoiceStatus.Closed) return $"status is {invoice.Status}, not Closed";
+            if (invoice.InvoiceAmount <= 0) return $"amount is {invoice.InvoiceAmount}";
+            if (!invoice.IsPastReturnWindow) return "still inside the ACH return window; it syncs on a later run";
+            if (WasPexTransactionSyncedToAplos(aplosTransactions, invoice.InvoiceId.ToString())) return "already synced to Aplos";
+            return null;
+        }
+
         internal static bool IsInvoiceFullyPaid(decimal invoiceAmount, decimal totalPaymentsAmount) =>
             totalPaymentsAmount >= invoiceAmount;
 
@@ -2037,6 +2070,11 @@ namespace AplosConnector.Common.Services
                      || aplosFunds.All(f => f.Id != allocation.TagValue))
                     && !isFeeAllocation)
                 {
+                    if (allocation.SourceInvoiceId != null && allocation.TagValue == null)
+                    {
+                        logger.LogWarning($"Allocation re-billing invoice {allocation.SourceInvoiceId} has no tag (category {allocation.TransactionTypeCategory}), so invoice {invoice.InvoiceId} will not balance.");
+                    }
+
                     continue;
                 }
 
