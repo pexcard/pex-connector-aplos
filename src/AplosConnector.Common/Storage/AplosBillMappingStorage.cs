@@ -45,13 +45,19 @@ namespace AplosConnector.Common.Storage
         }
 
         // Update, never upsert: marking paid must not create a row for a bill that was never imported.
+        // Merges only the paid column, so a stale model cannot overwrite the rest of the row.
         public async Task MarkPaidAsync(AplosBillMappingModel model, DateTime paidUtc, CancellationToken cancellationToken)
         {
             if (model == null) throw new ArgumentNullException(nameof(model));
 
             model.PaidSyncedUtc = paidUtc.ToUniversalTime();
 
-            await TableClient.UpdateEntityAsync(new AplosBillMappingEntity(model), ETag.All, TableUpdateMode.Replace, cancellationToken);
+            var paidColumn = new TableEntity(model.PEXBusinessAcctId.ToString(), model.AplosPayableId)
+            {
+                [nameof(AplosBillMappingEntity.PaidSyncedUtc)] = model.PaidSyncedUtc
+            };
+
+            await TableClient.UpdateEntityAsync(paidColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
         }
     }
 }
