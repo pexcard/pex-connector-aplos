@@ -73,6 +73,19 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public async Task SyncInvoices_Fails_WhenRejectedPaymentsDoNotExplainTheShortfall()
+        {
+            SetupInvoice(NewInvoice(98764, 100.00m, isPastReturnWindow: true));
+            SetupPayments(NewPayment(20.00m), NewPayment(5.00m, rejectedByBank: true));
+
+            await GetAplosIntegrationService().SyncInvoices(NullLogger.Instance, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            Assert.Empty(_createdTransactions);
+            var row = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Failed.ToString(), row.SyncStatus);
+        }
+
+        [Fact]
         public async Task SyncInvoices_SkipsInvoicesInsideTheReturnWindow()
         {
             SetupInvoice(NewInvoice(98763, 49.90m, isPastReturnWindow: false));
