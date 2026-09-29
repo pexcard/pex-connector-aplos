@@ -89,20 +89,38 @@ namespace AplosConnector.Common.Tests
         public async Task SyncInvoices_SkipsInvoicesInsideTheReturnWindow()
         {
             SetupInvoice(NewInvoice(98763, 49.90m, isPastReturnWindow: false));
+            var logger = new ListLogger();
 
-            await GetAplosIntegrationService().SyncInvoices(NullLogger.Instance, NewMapping(), [], new DateTime(2026, 7, 1), default);
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
 
             Assert.Empty(_createdTransactions);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Information && m.Text.Contains("Skipping invoice 98763: still inside the ACH return window"));
             _mockPexApiClient.Verify(client => client.GetInvoicePayments(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             var row = Assert.Single(_historyRows);
             Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
         }
 
-        private static InvoiceModel NewInvoice(int invoiceId, decimal amount, bool isPastReturnWindow) => new()
+        [Fact]
+        public async Task SyncInvoices_LogsWhyAnInvoiceIsSkipped()
+        {
+            _mockPexApiClient
+                .Setup(client => client.GetInvoices(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([NewInvoice(1, 10m, isPastReturnWindow: true, status: InvoiceStatus.Open), NewInvoice(2, 0m, isPastReturnWindow: true), NewInvoice(3, 10m, isPastReturnWindow: true)]);
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [new AplosApiTransactionDetail { Note = "3" }], new DateTime(2026, 7, 1), default);
+
+            Assert.Contains(logger.Messages, m => m.Text.Contains("Skipping invoice 1: status is Open, not Closed"));
+            Assert.Contains(logger.Messages, m => m.Text.Contains("Skipping invoice 2: amount is 0"));
+            Assert.Contains(logger.Messages, m => m.Text.Contains("Skipping invoice 3: already synced to Aplos"));
+            Assert.Equal(SyncStatus.Success.ToString(), Assert.Single(_historyRows).SyncStatus);
+        }
+
+        private static InvoiceModel NewInvoice(int invoiceId, decimal amount, bool isPastReturnWindow, InvoiceStatus status = InvoiceStatus.Closed) => new()
         {
             InvoiceId = invoiceId,
             InvoiceAmount = amount,
-            Status = InvoiceStatus.Closed,
+            Status = status,
             DueDate = new DateTime(2026, 7, 1),
             IsPastReturnWindow = isPastReturnWindow,
         };
@@ -149,6 +167,17 @@ namespace AplosConnector.Common.Tests
             TransfersAplosTransactionAccountNumber = 1000,
             TransfersAplosContactId = 777,
         };
+
+        private sealed class ListLogger : ILogger
+        {
+            public List<(LogLevel Level, string Text)> Messages { get; } = [];
+
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter) => Messages.Add((logLevel, formatter(state, exception)));
+        }
 
         private AplosIntegrationService GetAplosIntegrationService()
         {

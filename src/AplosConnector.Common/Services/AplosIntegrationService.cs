@@ -1558,13 +1558,18 @@ namespace AplosConnector.Common.Services
 
             var invoices = await _pexApiClient.GetInvoices(mapping.PEXExternalAPIToken, startDate, cancellationToken);
 
-            var invoicesToSync = invoices
-                .Where(i =>
-                    i.Status == InvoiceStatus.Closed
-                    && i.IsPastReturnWindow
-                    && i.InvoiceAmount > 0
-                    && !WasPexTransactionSyncedToAplos(aplosTransactions, i.InvoiceId.ToString()))
-                .ToList();
+            var invoicesToSync = new List<InvoiceModel>();
+            foreach (var invoice in invoices)
+            {
+                var skipReason = GetInvoiceSkipReason(invoice, aplosTransactions);
+                if (skipReason != null)
+                {
+                    _logger.LogInformation($"Skipping invoice {invoice.InvoiceId}: {skipReason}.");
+                    continue;
+                }
+
+                invoicesToSync.Add(invoice);
+            }
 
             var syncCount = 0;
             var failureCount = 0;
@@ -1957,6 +1962,15 @@ namespace AplosConnector.Common.Services
             await aplosApiClient.CreateTransaction(aplosTransaction, cancellationToken);
 
             return TransactionSyncResult.Success;
+        }
+
+        private string GetInvoiceSkipReason(InvoiceModel invoice, List<AplosApiTransactionDetail> aplosTransactions)
+        {
+            if (invoice.Status != InvoiceStatus.Closed) return $"status is {invoice.Status}, not Closed";
+            if (invoice.InvoiceAmount <= 0) return $"amount is {invoice.InvoiceAmount}";
+            if (!invoice.IsPastReturnWindow) return "still inside the ACH return window; it syncs on a later run";
+            if (WasPexTransactionSyncedToAplos(aplosTransactions, invoice.InvoiceId.ToString())) return "already synced to Aplos";
+            return null;
         }
 
         internal static bool IsInvoiceFullyPaid(decimal invoiceAmount, decimal totalPaymentsAmount) =>
