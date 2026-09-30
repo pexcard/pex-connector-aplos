@@ -116,6 +116,37 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(SyncStatus.Success.ToString(), Assert.Single(_historyRows).SyncStatus);
         }
 
+        [Fact]
+        public async Task SyncInvoices_SubtractsReversalsFromCash()
+        {
+            SetupInvoice(NewInvoice(98765, 100.00m, isPastReturnWindow: true));
+            SetupPayments(NewPayment(100.00m), NewPayment(40.00m, type: PaymentType.Reversal), NewPayment(40.00m));
+            SetupAllocations(new InvoiceAllocationModel { InvoiceId = 98765, TagValue = MissionsFundId, TotalAmount = 100.00m });
+
+            await GetAplosIntegrationService().SyncInvoices(NullLogger.Instance, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            var transaction = Assert.Single(_createdTransactions);
+            Assert.Equal(100.00m, transaction.Amount);
+            var row = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
+            Assert.Equal(1, row.SyncedRecords);
+        }
+
+        [Fact]
+        public async Task SyncInvoices_Fails_WhenAPaymentTypeIsUnknown()
+        {
+            SetupInvoice(NewInvoice(98766, 100.00m, isPastReturnWindow: true));
+            SetupPayments(NewPayment(100.00m, type: (PaymentType)99));
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            Assert.Empty(_createdTransactions);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("unknown payment type 99"));
+            _mockPexApiClient.Verify(client => client.GetInvoiceAllocations(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.Equal(SyncStatus.Failed.ToString(), Assert.Single(_historyRows).SyncStatus);
+        }
+
         private static InvoiceModel NewInvoice(int invoiceId, decimal amount, bool isPastReturnWindow, InvoiceStatus status = InvoiceStatus.Closed) => new()
         {
             InvoiceId = invoiceId,
@@ -125,9 +156,9 @@ namespace AplosConnector.Common.Tests
             IsPastReturnWindow = isPastReturnWindow,
         };
 
-        private static InvoicePaymentModel NewPayment(decimal amount, bool rejectedByBank = false) => new()
+        private static InvoicePaymentModel NewPayment(decimal amount, bool rejectedByBank = false, PaymentType type = PaymentType.PEXTransfer) => new()
         {
-            Type = PaymentType.PEXTransfer,
+            Type = type,
             Amount = amount,
             DatePaid = new DateTime(2026, 7, 1),
             RejectedByBank = rejectedByBank,

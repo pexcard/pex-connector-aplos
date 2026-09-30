@@ -1587,7 +1587,15 @@ namespace AplosConnector.Common.Services
                         var allInvoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
                         var invoicePayments = allInvoicePayments.Where(p => !p.RejectedByBank).ToList();
 
-                        var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
+                        var unknownPayment = invoicePayments.FirstOrDefault(p => ClassifyInvoicePayment(p) == null);
+                        if (unknownPayment != null)
+                        {
+                            _logger.LogWarning($"Payment {unknownPayment.PaymentId} on invoice {invoiceModel.InvoiceId} has unknown payment type {unknownPayment.Type}. Skipping invoice {invoiceModel.InvoiceId}.");
+                            failureCount++;
+                            continue;
+                        }
+
+                        var totalPaymentsAmount = SumInvoicePayments(invoicePayments).Coverage;
 
                         if (!IsInvoiceFullyPaid(invoiceModel.InvoiceAmount, totalPaymentsAmount))
                         {
@@ -1716,7 +1724,7 @@ namespace AplosConnector.Common.Services
                 totalAllocationsAmount += allocation.TotalAmount;
             }
 
-            var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
+            var (cashPaymentTotal, totalNonCash, totalPaymentsAmount) = SumInvoicePayments(invoicePayments);
 
             if (totalAllocationsAmount != totalPaymentsAmount)
             {
@@ -1727,10 +1735,6 @@ namespace AplosConnector.Common.Services
             var lines = new List<AplosApiTransactionLineDetail>();
 
             // --- B. Non-cash paired lines (rebate fund) ---
-            var totalNonCash = invoicePayments
-                .Where(p => p.Type is PaymentType.RebateCredit or PaymentType.RebateCreditReversal or PaymentType.CarryOverCredit)
-                .Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
-
             if (totalNonCash > 0)
             {
                 var pexRebatesAplosFundIdString = mapping.PexRebatesAplosFundId.ToString();
@@ -1768,10 +1772,6 @@ namespace AplosConnector.Common.Services
             }
 
             // --- C. Cash paired lines (transfer fund) ---
-            var cashPaymentTotal = invoicePayments
-                .Where(p => p.Type is not (PaymentType.RebateCredit or PaymentType.RebateCreditReversal or PaymentType.CarryOverCredit))
-                .Sum(p => p.Amount);
-
             if (cashPaymentTotal > 0)
             {
                 var cashDebitLine = new AplosApiTransactionLineDetail
@@ -1884,7 +1884,7 @@ namespace AplosConnector.Common.Services
                 totalAllocationsAmount += allocation.TotalAmount;
             }
 
-            var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
+            var (cashPaymentTotal, _, totalPaymentsAmount) = SumInvoicePayments(invoicePayments);
 
             if (totalAllocationsAmount != totalPaymentsAmount)
             {
@@ -1896,7 +1896,7 @@ namespace AplosConnector.Common.Services
             var pexRebatesAplosFundIdString = mapping.PexRebatesAplosFundId.ToString();
 
             var nonCashPayments = invoicePayments
-                .Where(p => p.Type is PaymentType.RebateCredit or PaymentType.RebateCreditReversal or PaymentType.CarryOverCredit)
+                .Where(p => ClassifyInvoicePayment(p)?.IsCredit == true)
                 .ToList();
 
             if (nonCashPayments.Count > 0)
@@ -1912,11 +1912,8 @@ namespace AplosConnector.Common.Services
 
                 foreach (var payment in nonCashPayments)
                 {
-                    // RebateCreditReversal: positive (debit) to reverse a prior credit
-                    // RebateCredit / CarryOverCredit: negative (credit)
-                    var amount = payment.Type == PaymentType.RebateCreditReversal
-                        ? payment.Amount
-                        : -payment.Amount;
+                    // Credit reversals: positive (debit) to reverse a prior credit; other credits: negative (credit)
+                    var amount = -ClassifyInvoicePayment(payment).Value.Amount;
 
                     // Credit: RebateIncome account, -amount (or +amount for reversal), rebate fund — no tags (register-side convention)
                     var rebateIncomeLine = new AplosApiTransactionLineDetail
@@ -1945,10 +1942,6 @@ namespace AplosConnector.Common.Services
             }
 
             // --- C. Build and submit the Aplos transaction ---
-            var cashPaymentTotal = invoicePayments
-                .Where(p => p.Type is not (PaymentType.RebateCredit or PaymentType.RebateCreditReversal or PaymentType.CarryOverCredit))
-                .Sum(p => p.Amount);
-
             var aplosTransaction = new AplosApiTransactionDetail
             {
                 Contact = new AplosApiContactDetail { Id = mapping.TransfersAplosContactId },
@@ -1971,6 +1964,25 @@ namespace AplosConnector.Common.Services
             if (!invoice.IsPastReturnWindow) return "still inside the ACH return window; it syncs on a later run";
             if (WasPexTransactionSyncedToAplos(aplosTransactions, invoice.InvoiceId.ToString())) return "already synced to Aplos";
             return null;
+        }
+
+        /// <summary>Signed amount of a payment and whether it counts as a credit or cash; null for an unknown payment type.</summary>
+        internal static (bool IsCredit, decimal Amount)? ClassifyInvoicePayment(InvoicePaymentModel payment) => payment.Type switch
+        {
+            PaymentType.PEXTransfer or PaymentType.SameDayACH => (false, payment.Amount),
+            PaymentType.Reversal => (false, -payment.Amount),
+            PaymentType.SalesCredit or PaymentType.WriteOff or PaymentType.RebateCredit or PaymentType.CarryOverCredit => (true, payment.Amount),
+            PaymentType.RebateCreditReversal or PaymentType.WriteOffReversal => (true, -payment.Amount),
+            _ => null,
+        };
+
+        internal static (decimal Cash, decimal Credits, decimal Coverage) SumInvoicePayments(IEnumerable<InvoicePaymentModel> payments)
+        {
+            var classified = payments.Select(ClassifyInvoicePayment).Where(c => c.HasValue).Select(c => c.Value).ToList();
+            var cash = classified.Where(c => !c.IsCredit).Sum(c => c.Amount);
+            var credits = classified.Where(c => c.IsCredit).Sum(c => c.Amount);
+
+            return (cash, credits, cash + credits);
         }
 
         internal static bool IsInvoiceFullyPaid(decimal invoiceAmount, decimal totalPaymentsAmount) =>
@@ -2083,7 +2095,7 @@ namespace AplosConnector.Common.Services
                 totalAllocationsAmount += allocation.TotalAmount;
             }
 
-            var totalPaymentsAmount = invoicePayments.Sum(p => p.Type == PaymentType.RebateCreditReversal ? -p.Amount : p.Amount);
+            var (cashPaymentTotal, _, totalPaymentsAmount) = SumInvoicePayments(invoicePayments);
 
             if (totalAllocationsAmount != invoice.InvoiceAmount)
             {
@@ -2098,10 +2110,6 @@ namespace AplosConnector.Common.Services
             }
 
             // --- B. Split the invoice amount into the bank portion and the rebate income the invoice needed ---
-            var cashPaymentTotal = invoicePayments
-                .Where(p => p.Type is not (PaymentType.RebateCredit or PaymentType.RebateCreditReversal or PaymentType.CarryOverCredit))
-                .Sum(p => p.Amount);
-
             if (!IsInvoiceSurplusBackedByCredits(totalAllocationsAmount, cashPaymentTotal))
             {
                 logger.LogWarning($"cashPaymentTotal ({cashPaymentTotal}) > totalAllocationsAmount ({totalAllocationsAmount}) on invoice {invoice.InvoiceId}, so the surplus is not backed by rebate or carryover credits. Skipping invoice {invoice.InvoiceId}.");
