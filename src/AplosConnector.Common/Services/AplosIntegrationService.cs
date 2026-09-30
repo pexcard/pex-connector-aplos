@@ -1732,6 +1732,12 @@ namespace AplosConnector.Common.Services
                 return TransactionSyncResult.Failed;
             }
 
+            if (cashPaymentTotal < 0 || totalNonCash < 0)
+            {
+                logger.LogWarning($"cashPaymentTotal ({cashPaymentTotal}) or totalNonCash ({totalNonCash}) is negative, which the simple method cannot post. Skipping invoice {invoice.InvoiceId}.");
+                return TransactionSyncResult.Failed;
+            }
+
             var lines = new List<AplosApiTransactionLineDetail>();
 
             // --- B. Non-cash paired lines (rebate fund) ---
@@ -1817,11 +1823,11 @@ namespace AplosConnector.Common.Services
         /// and "applies" the rebate separately as if it was a check deposited after paying off the full liability.
         ///
         /// Per allocation: debit Register & credit Checking, both under the allocation's fund.
-        ///   This credits Checking for the full invoice total (payment + rebates + carry-overs).
-        /// Rebates/carry-overs: credit RebateIncome & debit Checking, both under the dedicated rebate fund.
-        ///   This reverses the rebate portion out of Checking and records it as income instead.
+        ///   This credits Checking for the full invoice total (cash payments + credits).
+        /// Credits (rebates, carry-overs, write-offs, sales credits): credit RebateIncome & debit Checking, both under the dedicated rebate fund.
+        ///   This reverses the credit portion out of Checking and records it as income instead.
         ///
-        /// Because Checking is first credited in full then debited back for the rebate share, this
+        /// Because Checking is first credited in full then debited back for the credit share, this
         /// "grosses up" the Checking account. Rebate income is tracked under a single rebate fund
         /// rather than spread across the individual allocation funds.
         /// </summary>
@@ -2048,8 +2054,8 @@ namespace AplosConnector.Common.Services
         ///
         /// Per allocation:
         ///   1. debit Register (allocation's fund)  — reduces the liability by the full allocation amount.
-        ///   2. credit Checking (allocation's fund)  — only the net cash portion (allocation minus rebate/carry-over share).
-        ///   3. credit RebateIncome (allocation's fund) — the proportional rebate/carry-over share.
+        ///   2. credit Checking (allocation's fund)  — only the net cash portion (allocation minus credit share).
+        ///   3. credit RebateIncome (allocation's fund) — the proportional credit share.
         ///
         /// The rebate total is split across allocation funds in proportion to each fund's share of the
         /// invoice, so every fund shows exactly how much came from cash and how much from rebate income.
@@ -2112,7 +2118,7 @@ namespace AplosConnector.Common.Services
             // --- B. Split the invoice amount into the bank portion and the rebate income the invoice needed ---
             if (!IsInvoiceSurplusBackedByCredits(totalAllocationsAmount, cashPaymentTotal))
             {
-                logger.LogWarning($"cashPaymentTotal ({cashPaymentTotal}) > totalAllocationsAmount ({totalAllocationsAmount}) on invoice {invoice.InvoiceId}, so the surplus is not backed by rebate or carryover credits. Skipping invoice {invoice.InvoiceId}.");
+                logger.LogWarning($"cashPaymentTotal ({cashPaymentTotal}) > totalAllocationsAmount ({totalAllocationsAmount}) on invoice {invoice.InvoiceId}, so the surplus is not backed by credits. Skipping invoice {invoice.InvoiceId}.");
                 return TransactionSyncResult.Failed;
             }
 
