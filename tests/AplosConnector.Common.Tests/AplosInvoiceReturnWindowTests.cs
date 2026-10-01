@@ -147,6 +147,21 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(SyncStatus.Failed.ToString(), Assert.Single(_historyRows).SyncStatus);
         }
 
+        [Fact]
+        public async Task SyncInvoices_Fails_AndAsksForTheRebateAccount_WhenCreditsNeedOne()
+        {
+            SetupInvoice(NewInvoice(98767, 110.00m, isPastReturnWindow: true));
+            SetupPayments(NewPayment(100.00m), NewPayment(10.00m, type: PaymentType.RebateCredit));
+            SetupAllocations(new InvoiceAllocationModel { InvoiceId = 98767, TagValue = MissionsFundId, TotalAmount = 110.00m });
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            Assert.Empty(_createdTransactions);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Set the rebate account in Aplos connector settings"));
+            Assert.Equal(SyncStatus.Failed.ToString(), Assert.Single(_historyRows).SyncStatus);
+        }
+
         private static InvoiceModel NewInvoice(int invoiceId, decimal amount, bool isPastReturnWindow, InvoiceStatus status = InvoiceStatus.Closed) => new()
         {
             InvoiceId = invoiceId,

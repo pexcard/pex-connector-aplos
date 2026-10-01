@@ -1750,7 +1750,7 @@ namespace AplosConnector.Common.Services
                     || (mapping.SyncTaxTagToPex && string.IsNullOrEmpty(mapping.PexRebatesAplosTaxTagId))
                     || aplosFunds.All(f => f.Id != pexRebatesAplosFundIdString))
                 {
-                    logger.LogWarning($"Failed syncing invoice {invoice.InvoiceId}. Incorrect rebates configuration.");
+                    logger.LogWarning($"Failed syncing invoice {invoice.InvoiceId}. Set the rebate account and rebate fund in Aplos connector settings.");
                     return TransactionSyncResult.Failed;
                 }
 
@@ -1912,7 +1912,7 @@ namespace AplosConnector.Common.Services
                     || (mapping.SyncTaxTagToPex && string.IsNullOrEmpty(mapping.PexRebatesAplosTaxTagId))
                     || aplosFunds.All(f => f.Id != pexRebatesAplosFundIdString))
                 {
-                    logger.LogWarning($"Failed syncing invoice {invoice.InvoiceId}. Incorrect rebates configuration.");
+                    logger.LogWarning($"Failed syncing invoice {invoice.InvoiceId}. Set the rebate account and rebate fund in Aplos connector settings.");
                     return TransactionSyncResult.Failed;
                 }
 
@@ -2135,7 +2135,7 @@ namespace AplosConnector.Common.Services
                 if (mapping.PexRebatesAplosTransactionAccountNumber == decimal.Zero
                     || (mapping.SyncTaxTagToPex && string.IsNullOrEmpty(mapping.PexRebatesAplosTaxTagId)))
                 {
-                    logger.LogWarning($"Failed syncing invoice {invoice.InvoiceId}. Incorrect rebates configuration for distribute method.");
+                    logger.LogWarning($"Failed syncing invoice {invoice.InvoiceId}. Set the rebate account in Aplos connector settings.");
                     return TransactionSyncResult.Failed;
                 }
             }
