@@ -43,6 +43,7 @@ namespace AplosConnector.Common.Services
         private readonly Pex2AplosMappingStorage _mappingStorage;
         private readonly SyncSettingsModel _syncSettings;
         private readonly IVendorCardStorage _vendorCardStorage;
+        private readonly IAplosBillMappingStorage _billMappingStorage;
 
         public AplosIntegrationService(
             ILogger<AplosIntegrationService> logger,
@@ -53,7 +54,8 @@ namespace AplosConnector.Common.Services
             SyncHistoryStorage historyStorage,
             Pex2AplosMappingStorage mappingStorage,
             SyncSettingsModel syncSettings,
-            IVendorCardStorage vendorCardStorage)
+            IVendorCardStorage vendorCardStorage,
+            IAplosBillMappingStorage billMappingStorage)
         {
             _appSettings = appSettings?.Value;
             _logger = logger;
@@ -64,6 +66,7 @@ namespace AplosConnector.Common.Services
             _mappingStorage = mappingStorage;
             _syncSettings = syncSettings;
             _vendorCardStorage = vendorCardStorage;
+            _billMappingStorage = billMappingStorage;
         }
 
         public async Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session, CancellationToken cancellationToken)
