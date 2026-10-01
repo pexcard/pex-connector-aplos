@@ -147,10 +147,7 @@ namespace AplosConnector.Common.Tests
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
-            var payments = new[]
-            {
-                NewPayment(PaymentType.RebateCredit, 150.00m),
-            };
+            var payments = new[] { NewPayment(PaymentType.RebateCredit, 150.00m) };
 
             var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
 
@@ -198,15 +195,15 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task RebateDistribute_Fails_WhenTheInvoiceIsUnderpaid()
+        public async Task EveryMethod_SkipsWithoutFailing_WhenTheInvoiceIsUnderpaid()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
             var payments = new[] { NewPayment(PaymentType.PEXTransfer, 100.00m) };
 
-            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
-
-            Assert.Equal(TransactionSyncResult.Failed, result);
+            Assert.Equal(TransactionSyncResult.NotEligible, await SyncRebateDistribute(NewMapping(), invoice, allocations, payments));
+            Assert.Equal(TransactionSyncResult.NotEligible, await SyncSimple(invoice, allocations, payments));
+            Assert.Equal(TransactionSyncResult.NotEligible, await SyncRebateDeposit(invoice, allocations, payments));
             Assert.Null(_createdTransaction);
         }
 
@@ -215,10 +212,7 @@ namespace AplosConnector.Common.Tests
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
-            var payments = new[]
-            {
-                NewPayment(PaymentType.PEXTransfer, 120.00m),
-            };
+            var payments = new[] { NewPayment(PaymentType.PEXTransfer, 120.00m) };
 
             var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
 
@@ -281,9 +275,7 @@ namespace AplosConnector.Common.Tests
                 NewPayment(PaymentType.SameDayACH, 40.00m),
             };
 
-            var service = GetAplosIntegrationService();
-            var result = await service.SyncInvoiceRebateDeposit(
-                NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
+            var result = await SyncRebateDeposit(invoice, allocations, payments);
 
             Assert.Equal(TransactionSyncResult.Success, result);
             Assert.Equal(100.00m, _createdTransaction.Amount);
@@ -350,6 +342,7 @@ namespace AplosConnector.Common.Tests
             Assert.Empty(LinesFor(CheckingAccount));
             AssertRebateIncomeCredits(new[] { (MissionsFundId, 100.00m) });
         }
+
         [Theory]
         [InlineData(PaymentType.WriteOff)]
         [InlineData(PaymentType.SalesCredit)]
@@ -392,7 +385,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task RebateDistribute_Fails_WhenAWriteOffReversalLeavesAShortfall()
+        public async Task RebateDistribute_SkipsWithoutFailing_WhenAWriteOffReversalLeavesAShortfall()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
@@ -405,7 +398,7 @@ namespace AplosConnector.Common.Tests
 
             var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
 
-            Assert.Equal(TransactionSyncResult.Failed, result);
+            Assert.Equal(TransactionSyncResult.NotEligible, result);
             Assert.Null(_createdTransaction);
         }
 
@@ -765,6 +758,26 @@ namespace AplosConnector.Common.Tests
             AssertRebateIncomeCredits(new[] { ("60", 0.01m) });
         }
 
+        [Fact]
+        public async Task SimpleAndRebateDeposit_Fail_WhenACreditPostsAndTheRebateAccountIsMissing()
+        {
+            var mapping = NewMapping();
+            mapping.PexRebatesAplosTransactionAccountNumber = decimal.Zero;
+
+            var invoice = NewInvoice(110.00m);
+            var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 100.00m),
+                NewPayment(PaymentType.RebateCredit, 10.00m),
+            };
+
+            Assert.Equal(TransactionSyncResult.Failed, await SyncSimple(invoice, allocations, payments, mapping));
+            Assert.Null(_createdTransaction);
+            Assert.Equal(TransactionSyncResult.Failed, await SyncRebateDeposit(invoice, allocations, payments, mapping));
+            Assert.Null(_createdTransaction);
+        }
+
         private static InvoicePaymentModel[] CreditsFirstExamplePayments(int example) => example switch
         {
             1 => [NewPayment(PaymentType.PEXTransfer, 110.00m)],
@@ -790,24 +803,26 @@ namespace AplosConnector.Common.Tests
         private async Task<TransactionSyncResult> SyncRebateDeposit(
             InvoiceModel invoice,
             IReadOnlyList<InvoiceAllocationModel> allocations,
-            IReadOnlyList<InvoicePaymentModel> payments)
+            IReadOnlyList<InvoicePaymentModel> payments,
+            Pex2AplosMappingModel mapping = null)
         {
             var service = GetAplosIntegrationService();
 
             return await service.SyncInvoiceRebateDeposit(
-                NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
+                mapping ?? NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
         }
 
         private async Task<TransactionSyncResult> SyncSimple(
             InvoiceModel invoice,
             IReadOnlyList<InvoiceAllocationModel> allocations,
-            IReadOnlyList<InvoicePaymentModel> payments)
+            IReadOnlyList<InvoicePaymentModel> payments,
+            Pex2AplosMappingModel mapping = null)
         {
             var service = GetAplosIntegrationService();
 
 #pragma warning disable CS0618
             return await service.SyncInvoiceSimple(
-                NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
+                mapping ?? NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
 #pragma warning restore CS0618
         }
 

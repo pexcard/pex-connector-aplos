@@ -62,10 +62,13 @@ namespace AplosConnector.Common.Tests
         {
             SetupInvoice(NewInvoice(98762, 79.20m, isPastReturnWindow: true));
             SetupPayments(NewPayment(79.20m, rejectedByBank: true));
+            var logger = new ListLogger();
 
-            await GetAplosIntegrationService().SyncInvoices(NullLogger.Instance, NewMapping(), [], new DateTime(2026, 7, 1), default);
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
 
             Assert.Empty(_createdTransactions);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Information && m.Text.Contains("the shortfall is re-billed on a later invoice. Skipping invoice 98762"));
+            Assert.DoesNotContain(logger.Messages, m => m.Level >= LogLevel.Warning);
             _mockPexApiClient.Verify(client => client.GetInvoiceAllocations(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             var row = Assert.Single(_historyRows);
             Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
@@ -210,23 +213,6 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(1, row.SyncedRecords);
         }
 
-        private Pex2AplosMappingModel NewRebateMapping(FundingSource fundingSource, bool syncInvoices)
-        {
-            var mapping = NewMapping();
-            mapping.PEXFundingSource = fundingSource;
-            mapping.SyncTransactions = true;
-            mapping.SyncRebates = true;
-            mapping.SyncInvoices = syncInvoices;
-            mapping.PexRebatesAplosContactId = 778;
-            mapping.PexRebatesAplosFundId = int.Parse(MissionsFundId);
-            mapping.PexRebatesAplosTransactionAccountNumber = 4000;
-            mapping.PEXExternalAPIToken = "token";
-            return mapping;
-        }
-
-        private static BusinessAccountTransactions RebateCreditTransactions() =>
-            new([new TransactionModel { TransactionId = 555, Description = "Rebate Credit", TransactionAmount = 25.00m, TransactionTime = new DateTime(2026, 7, 1) }]);
-
         [Fact]
         public async Task SyncInvoices_PostsOnlyTheCredit_WhenNetCashIsNegative()
         {
@@ -249,6 +235,23 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
             Assert.Equal(1, row.SyncedRecords);
         }
+
+        private Pex2AplosMappingModel NewRebateMapping(FundingSource fundingSource, bool syncInvoices)
+        {
+            var mapping = NewMapping();
+            mapping.PEXFundingSource = fundingSource;
+            mapping.SyncTransactions = true;
+            mapping.SyncRebates = true;
+            mapping.SyncInvoices = syncInvoices;
+            mapping.PexRebatesAplosContactId = 778;
+            mapping.PexRebatesAplosFundId = int.Parse(MissionsFundId);
+            mapping.PexRebatesAplosTransactionAccountNumber = 4000;
+            mapping.PEXExternalAPIToken = "token";
+            return mapping;
+        }
+
+        private static BusinessAccountTransactions RebateCreditTransactions() =>
+            new([new TransactionModel { TransactionId = 555, Description = "Rebate Credit", TransactionAmount = 25.00m, TransactionTime = new DateTime(2026, 7, 1) }]);
 
         private static InvoiceModel NewInvoice(int invoiceId, decimal amount, bool isPastReturnWindow, InvoiceStatus status = InvoiceStatus.Closed) => new()
         {
