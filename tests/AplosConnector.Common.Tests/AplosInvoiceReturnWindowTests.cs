@@ -162,6 +162,49 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(SyncStatus.Failed.ToString(), Assert.Single(_historyRows).SyncStatus);
         }
 
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task SyncRebates_Skips_ForCreditBusinesses(bool syncInvoices)
+        {
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncRebates(logger, NewRebateMapping(FundingSource.Credit, syncInvoices), RebateCreditTransactions(), [], default);
+
+            Assert.Empty(_createdTransactions);
+            Assert.Empty(_historyRows);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Information && m.Text.Contains("Skipping rebates sync for credit business"));
+        }
+
+        [Fact]
+        public async Task SyncRebates_PostsRebates_ForPrepaidBusinesses()
+        {
+            await GetAplosIntegrationService().SyncRebates(NullLogger.Instance, NewRebateMapping(FundingSource.Prepaid, syncInvoices: false), RebateCreditTransactions(), [], default);
+
+            var transaction = Assert.Single(_createdTransactions);
+            Assert.Contains(transaction.Lines, line => line.Account.AccountNumber == 4000 && Math.Abs(line.Amount) == 25.00m);
+            var row = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
+            Assert.Equal(1, row.SyncedRecords);
+        }
+
+        private Pex2AplosMappingModel NewRebateMapping(FundingSource fundingSource, bool syncInvoices)
+        {
+            var mapping = NewMapping();
+            mapping.PEXFundingSource = fundingSource;
+            mapping.SyncTransactions = true;
+            mapping.SyncRebates = true;
+            mapping.SyncInvoices = syncInvoices;
+            mapping.PexRebatesAplosContactId = 778;
+            mapping.PexRebatesAplosFundId = int.Parse(MissionsFundId);
+            mapping.PexRebatesAplosTransactionAccountNumber = 4000;
+            mapping.PEXExternalAPIToken = "token";
+            return mapping;
+        }
+
+        private static BusinessAccountTransactions RebateCreditTransactions() =>
+            new([new TransactionModel { TransactionId = 555, Description = "Rebate Credit", TransactionAmount = 25.00m, TransactionTime = new DateTime(2026, 7, 1) }]);
+
         private static InvoiceModel NewInvoice(int invoiceId, decimal amount, bool isPastReturnWindow, InvoiceStatus status = InvoiceStatus.Closed) => new()
         {
             InvoiceId = invoiceId,

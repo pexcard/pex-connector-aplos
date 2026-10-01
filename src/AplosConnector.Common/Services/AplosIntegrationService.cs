@@ -1418,7 +1418,7 @@ namespace AplosConnector.Common.Services
             await SyncInvoices(_logger, mapping, aplosTransactions, startDate, cancellationToken);
         }
 
-        private async Task SyncRebates(
+        internal async Task SyncRebates(
             ILogger _logger,
             Pex2AplosMappingModel mapping,
             BusinessAccountTransactions allBusinessAccountTransactions,
@@ -1427,7 +1427,7 @@ namespace AplosConnector.Common.Services
         {
             if (mapping.PEXFundingSource == FundingSource.Credit)
             {
-                _logger.LogWarning($"Skipping SyncRebates for business {mapping.PEXBusinessAcctId}. Rebates sync is only supported for prepaid accounts.");
+                _logger.LogInformation($"Skipping rebates sync for credit business {mapping.PEXBusinessAcctId}. Credit rebates sync with PEX statement payments.");
                 return;
             }
 
