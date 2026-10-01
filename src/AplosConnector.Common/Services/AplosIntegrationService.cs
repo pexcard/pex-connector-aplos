@@ -1428,9 +1428,9 @@ namespace AplosConnector.Common.Services
             List<AplosApiTransactionDetail> aplosTransactions,
             CancellationToken cancellationToken)
         {
-            if (mapping.PEXFundingSource == FundingSource.Credit)
+            if (mapping.PEXFundingSource == FundingSource.Credit && mapping.SyncInvoices)
             {
-                _logger.LogInformation($"Skipping rebates sync for credit business {mapping.PEXBusinessAcctId}. Credit rebates sync with PEX statement payments.");
+                _logger.LogInformation($"Skipping rebates sync for credit business {mapping.PEXBusinessAcctId}. Rebates sync with PEX statement payments while that sync is on.");
                 return;
             }
 
@@ -1609,8 +1609,7 @@ namespace AplosConnector.Common.Services
                                 continue;
                             }
 
-                            _logger.LogWarning($"totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}), shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}). Skipping invoice {invoiceModel.InvoiceId}.");
-                            failureCount++;
+                            _logger.LogWarning($"Invoice {invoiceModel.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}), shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}). Skipping invoice {invoiceModel.InvoiceId}; it is retried on the next run.");
                             continue;
                         }
 
@@ -1727,19 +1726,21 @@ namespace AplosConnector.Common.Services
                 totalAllocationsAmount += allocation.TotalAmount;
             }
 
-            var (cashPaymentTotal, totalNonCash, totalPaymentsAmount) = SumInvoicePayments(invoicePayments);
+            var totalPaymentsAmount = SumInvoicePayments(invoicePayments).Coverage;
 
-            if (totalAllocationsAmount != totalPaymentsAmount)
+            if (totalAllocationsAmount != invoice.InvoiceAmount)
             {
-                logger.LogWarning($"totalAllocationsAmount ({totalAllocationsAmount}) != totalPaymentsAmount ({totalPaymentsAmount}). Skipping invoice {invoice.InvoiceId}.");
+                logger.LogWarning($"totalAllocationsAmount ({totalAllocationsAmount}) != invoice.InvoiceAmount ({invoice.InvoiceAmount}). Skipping invoice {invoice.InvoiceId}.");
                 return TransactionSyncResult.Failed;
             }
 
-            if (cashPaymentTotal < 0 || totalNonCash < 0)
+            if (!IsInvoiceFullyPaid(totalAllocationsAmount, totalPaymentsAmount))
             {
-                logger.LogWarning($"cashPaymentTotal ({cashPaymentTotal}) or totalNonCash ({totalNonCash}) is negative, which the simple method cannot post. Skipping invoice {invoice.InvoiceId}.");
+                logger.LogWarning($"totalPaymentsAmount ({totalPaymentsAmount}) < totalAllocationsAmount ({totalAllocationsAmount}), shortfall ({totalAllocationsAmount - totalPaymentsAmount}). Skipping invoice {invoice.InvoiceId}.");
                 return TransactionSyncResult.Failed;
             }
+
+            var (bankAmount, totalNonCash) = SplitInvoicePaymentTotals(totalAllocationsAmount, invoicePayments);
 
             var lines = new List<AplosApiTransactionLineDetail>();
 
@@ -1781,12 +1782,12 @@ namespace AplosConnector.Common.Services
             }
 
             // --- C. Cash paired lines (transfer fund) ---
-            if (cashPaymentTotal > 0)
+            if (bankAmount > 0)
             {
                 var cashDebitLine = new AplosApiTransactionLineDetail
                 {
                     Account = new AplosApiAccountDetail { AccountNumber = mapping.AplosRegisterAccountNumber },
-                    Amount = cashPaymentTotal,
+                    Amount = bankAmount,
                     Fund = new AplosApiFundDetail { Id = mapping.TransfersAplosFundId },
                 };
                 lines.AddLine(cashDebitLine, mapping.SyncInvoiceAggregated);
@@ -1794,7 +1795,7 @@ namespace AplosConnector.Common.Services
                 var cashCreditLine = new AplosApiTransactionLineDetail
                 {
                     Account = new AplosApiAccountDetail { AccountNumber = mapping.TransfersAplosTransactionAccountNumber },
-                    Amount = -cashPaymentTotal,
+                    Amount = -bankAmount,
                     Fund = new AplosApiFundDetail { Id = mapping.TransfersAplosFundId },
                 };
 
@@ -1809,7 +1810,7 @@ namespace AplosConnector.Common.Services
             var aplosTransaction = new AplosApiTransactionDetail
             {
                 Contact = new AplosApiContactDetail { Id = mapping.TransfersAplosContactId },
-                Amount = cashPaymentTotal,
+                Amount = bankAmount,
                 Date = invoice.DueDate,
                 Note = invoice.InvoiceId.ToString(),
                 Lines = lines.ToArray(),
@@ -1825,9 +1826,8 @@ namespace AplosConnector.Common.Services
         /// Pays off the PEX Register (liability) per allocation fund,
         /// and "applies" the rebate separately as if it was a check deposited after paying off the full liability.
         ///
-        /// Per allocation: debit Register & credit Checking, both under the allocation's fund.
-        ///   This credits Checking for the full invoice total (cash payments + credits).
-        /// Credits (rebates, carry-overs, write-offs, sales credits): credit RebateIncome & debit Checking, both under the dedicated rebate fund.
+        /// Per allocation fund: debit Register & credit Checking for the fund's pro-rata share of the invoice amount.
+        /// Credits (rebates, write-offs, sales credits): credit RebateIncome & debit Checking, both under the dedicated rebate fund.
         ///   This reverses the credit portion out of Checking and records it as income instead.
         ///
         /// Because Checking is first credited in full then debited back for the credit share, this
@@ -1848,7 +1848,9 @@ namespace AplosConnector.Common.Services
             var lines = new List<AplosApiTransactionLineDetail>();
             var totalAllocationsAmount = 0m;
 
-            // --- A. Allocation pairs: debit Register + credit Checking, per fund ---
+            var validAllocations = new List<(int aplosFundId, decimal allocationAmount)>();
+
+            // --- A. Valid allocations with fund IDs ---
             foreach (var allocation in invoiceAllocations)
             {
                 var isFeeAllocation = allocation.TagValue == null
@@ -1868,13 +1870,40 @@ namespace AplosConnector.Common.Services
                 }
 
                 var aplosFundId = isFeeAllocation ? mapping.PexFeesAplosFundId : tagValue;
+                validAllocations.Add((aplosFundId, allocation.TotalAmount));
+                totalAllocationsAmount += allocation.TotalAmount;
+            }
+
+            var totalPaymentsAmount = SumInvoicePayments(invoicePayments).Coverage;
+
+            if (totalAllocationsAmount != invoice.InvoiceAmount)
+            {
+                logger.LogWarning($"totalAllocationsAmount ({totalAllocationsAmount}) != invoice.InvoiceAmount ({invoice.InvoiceAmount}). Skipping invoice {invoice.InvoiceId}.");
+                return TransactionSyncResult.Failed;
+            }
+
+            if (!IsInvoiceFullyPaid(totalAllocationsAmount, totalPaymentsAmount))
+            {
+                logger.LogWarning($"totalPaymentsAmount ({totalPaymentsAmount}) < totalAllocationsAmount ({totalAllocationsAmount}), shortfall ({totalAllocationsAmount - totalPaymentsAmount}). Skipping invoice {invoice.InvoiceId}.");
+                return TransactionSyncResult.Failed;
+            }
+
+            var (bankAmount, creditAmount) = SplitInvoicePaymentTotals(totalAllocationsAmount, invoicePayments);
+
+            // --- B. Allocation pairs: debit Register + credit Checking, per fund ---
+            foreach (var fundSplit in DistributeInvoicePayments(validAllocations, totalAllocationsAmount, bankAmount, creditAmount))
+            {
+                if (fundSplit.RegisterAmount == 0)
+                {
+                    continue;
+                }
 
                 // Debit: Register (liability) account, +amount — no tags (register-side convention)
                 var debitLine = new AplosApiTransactionLineDetail
                 {
                     Account = new AplosApiAccountDetail { AccountNumber = mapping.AplosRegisterAccountNumber },
-                    Amount = allocation.TotalAmount,
-                    Fund = new AplosApiFundDetail { Id = aplosFundId },
+                    Amount = fundSplit.RegisterAmount,
+                    Fund = new AplosApiFundDetail { Id = fundSplit.AplosFundId },
                 };
                 lines.AddLine(debitLine, mapping.SyncInvoiceAggregated);
 
@@ -1882,33 +1911,19 @@ namespace AplosConnector.Common.Services
                 var creditLine = new AplosApiTransactionLineDetail
                 {
                     Account = new AplosApiAccountDetail { AccountNumber = mapping.TransfersAplosTransactionAccountNumber },
-                    Amount = -allocation.TotalAmount,
-                    Fund = new AplosApiFundDetail { Id = aplosFundId },
+                    Amount = -fundSplit.RegisterAmount,
+                    Fund = new AplosApiFundDetail { Id = fundSplit.AplosFundId },
                 };
                 var creditTagValues = new PexTagValuesModel();
                 ApplyTagMappingsToTagValues(creditTagValues, mapping.TransferTagMappings, logger);
                 ApplyTagsToLine(creditLine, creditTagValues);
                 lines.AddLine(creditLine, mapping.SyncInvoiceAggregated);
-
-                totalAllocationsAmount += allocation.TotalAmount;
             }
 
-            var (cashPaymentTotal, _, totalPaymentsAmount) = SumInvoicePayments(invoicePayments);
-
-            if (totalAllocationsAmount != totalPaymentsAmount)
-            {
-                logger.LogWarning($"totalAllocationsAmount ({totalAllocationsAmount}) != totalPaymentsAmount ({totalPaymentsAmount}). Skipping invoice {invoice.InvoiceId}.");
-                return TransactionSyncResult.Failed;
-            }
-
-            // --- B. Non-cash payment pairs: credit RebateIncome + debit Checking, per rebate fund ---
+            // --- C. Non-cash pair: credit RebateIncome + debit Checking, rebate fund ---
             var pexRebatesAplosFundIdString = mapping.PexRebatesAplosFundId.ToString();
 
-            var nonCashPayments = invoicePayments
-                .Where(p => ClassifyInvoicePayment(p)?.IsCredit == true)
-                .ToList();
-
-            if (nonCashPayments.Count > 0)
+            if (creditAmount > 0)
             {
                 if (mapping.PexRebatesAplosFundId == 0
                     || mapping.PexRebatesAplosTransactionAccountNumber == decimal.Zero
@@ -1919,42 +1934,36 @@ namespace AplosConnector.Common.Services
                     return TransactionSyncResult.Failed;
                 }
 
-                foreach (var payment in nonCashPayments)
+                // Credit: RebateIncome account, -creditAmount, rebate fund — no tags (register-side convention)
+                var rebateIncomeLine = new AplosApiTransactionLineDetail
                 {
-                    // Credit reversals: positive (debit) to reverse a prior credit; other credits: negative (credit)
-                    var amount = -ClassifyInvoicePayment(payment).Value.Amount;
+                    Account = new AplosApiAccountDetail { AccountNumber = mapping.PexRebatesAplosTransactionAccountNumber },
+                    Amount = -creditAmount,
+                    Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
+                };
+                lines.AddLine(rebateIncomeLine, mapping.SyncInvoiceAggregated);
 
-                    // Credit: RebateIncome account, -amount (or +amount for reversal), rebate fund — no tags (register-side convention)
-                    var rebateIncomeLine = new AplosApiTransactionLineDetail
-                    {
-                        Account = new AplosApiAccountDetail { AccountNumber = mapping.PexRebatesAplosTransactionAccountNumber },
-                        Amount = amount,
-                        Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
-                    };
-                    lines.AddLine(rebateIncomeLine, mapping.SyncInvoiceAggregated);
-
-                    // Debit: Checking account, +amount (or -amount for reversal), rebate fund — tags + tax tag (transaction-side convention)
-                    var checkingOffsetLine = new AplosApiTransactionLineDetail
-                    {
-                        Account = new AplosApiAccountDetail { AccountNumber = mapping.TransfersAplosTransactionAccountNumber },
-                        Amount = -amount,
-                        Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
-                    };
-                    var checkingOffsetTagValues = new PexTagValuesModel
-                    {
-                        AplosTaxTagId = mapping.SyncTaxTagToPex ? mapping.PexRebatesAplosTaxTagId : null
-                    };
-                    ApplyTagMappingsToTagValues(checkingOffsetTagValues, mapping.RebateTagMappings, logger);
-                    ApplyTagsToLine(checkingOffsetLine, checkingOffsetTagValues);
-                    lines.AddLine(checkingOffsetLine, mapping.SyncInvoiceAggregated);
-                }
+                // Debit: Checking account, +creditAmount, rebate fund — tags + tax tag (transaction-side convention)
+                var checkingOffsetLine = new AplosApiTransactionLineDetail
+                {
+                    Account = new AplosApiAccountDetail { AccountNumber = mapping.TransfersAplosTransactionAccountNumber },
+                    Amount = creditAmount,
+                    Fund = new AplosApiFundDetail { Id = mapping.PexRebatesAplosFundId },
+                };
+                var checkingOffsetTagValues = new PexTagValuesModel
+                {
+                    AplosTaxTagId = mapping.SyncTaxTagToPex ? mapping.PexRebatesAplosTaxTagId : null
+                };
+                ApplyTagMappingsToTagValues(checkingOffsetTagValues, mapping.RebateTagMappings, logger);
+                ApplyTagsToLine(checkingOffsetLine, checkingOffsetTagValues);
+                lines.AddLine(checkingOffsetLine, mapping.SyncInvoiceAggregated);
             }
 
-            // --- C. Build and submit the Aplos transaction ---
+            // --- D. Build and submit the Aplos transaction ---
             var aplosTransaction = new AplosApiTransactionDetail
             {
                 Contact = new AplosApiContactDetail { Id = mapping.TransfersAplosContactId },
-                Amount = cashPaymentTotal,
+                Amount = bankAmount,
                 Date = invoice.DueDate,
                 Note = invoice.InvoiceId.ToString(),
                 Lines = lines.ToArray(),
@@ -1997,58 +2006,50 @@ namespace AplosConnector.Common.Services
         internal static bool IsInvoiceFullyPaid(decimal invoiceAmount, decimal totalPaymentsAmount) =>
             totalPaymentsAmount >= invoiceAmount;
 
-        internal static bool IsInvoiceSurplusBackedByCredits(decimal invoiceAmount, decimal cashPaymentsAmount) =>
-            cashPaymentsAmount <= invoiceAmount;
-
-        internal static (decimal BankAmount, decimal RebateIncomeAmount, decimal SurplusAmount) SplitInvoicePaymentTotals(
-            decimal invoiceAmount,
-            decimal cashPaymentsAmount,
-            decimal totalPaymentsAmount)
+        /// <summary>Credits apply first, up to the invoice amount; the bank covers the rest, so the total posted is always the invoice amount.</summary>
+        internal static (decimal BankAmount, decimal CreditAmount) SplitInvoicePaymentTotals(decimal invoiceAmount, IReadOnlyCollection<InvoicePaymentModel> payments)
         {
-            var bankAmount = Math.Min(cashPaymentsAmount, invoiceAmount);
+            var creditAmount = Math.Clamp(SumInvoicePayments(payments).Credits, 0m, invoiceAmount);
 
-            return (bankAmount, invoiceAmount - bankAmount, totalPaymentsAmount - invoiceAmount);
+            return (invoiceAmount - creditAmount, creditAmount);
         }
 
-        internal static List<InvoiceFundPaymentSplit> DistributeInvoiceRebateIncome(
+        internal static List<InvoiceFundPaymentSplit> DistributeInvoicePayments(
             IReadOnlyList<(int aplosFundId, decimal allocationAmount)> allocations,
             decimal totalAllocationsAmount,
-            decimal rebateIncomeAmount)
+            decimal bankAmount,
+            decimal creditAmount)
         {
-            var splits = new List<InvoiceFundPaymentSplit>(allocations.Count);
-            var distributedRebateIncome = 0m;
+            var bankShares = DistributeProRata(allocations, totalAllocationsAmount, bankAmount);
+            var creditShares = DistributeProRata(allocations, totalAllocationsAmount, creditAmount);
 
-            if (totalAllocationsAmount <= 0)
-            {
-                rebateIncomeAmount = 0m;
-            }
+            return allocations
+                .Select((allocation, i) => new InvoiceFundPaymentSplit(allocation.aplosFundId, bankShares[i] + creditShares[i], bankShares[i], creditShares[i]))
+                .ToList();
+        }
+
+        private static List<decimal> DistributeProRata(
+            IReadOnlyList<(int aplosFundId, decimal allocationAmount)> allocations,
+            decimal totalAllocationsAmount,
+            decimal amount)
+        {
+            var shares = new List<decimal>(allocations.Count);
+            var distributed = 0m;
 
             for (var i = 0; i < allocations.Count; i++)
             {
-                var (aplosFundId, allocationAmount) = allocations[i];
-                var fundRebateIncome = 0m;
+                var share = 0m;
 
-                if (rebateIncomeAmount > 0)
+                if (amount > 0 && totalAllocationsAmount > 0)
                 {
-                    if (i < allocations.Count - 1)
-                    {
-                        fundRebateIncome = Math.Round(rebateIncomeAmount * allocationAmount / totalAllocationsAmount, 2, MidpointRounding.ToEven);
-                        distributedRebateIncome += fundRebateIncome;
-                    }
-                    else
-                    {
-                        fundRebateIncome = rebateIncomeAmount - distributedRebateIncome;
-                    }
+                    share = i < allocations.Count - 1 ? Math.Round(amount * allocations[i].allocationAmount / totalAllocationsAmount, 2, MidpointRounding.ToEven) : amount - distributed;
+                    distributed += share;
                 }
 
-                splits.Add(new InvoiceFundPaymentSplit(
-                    aplosFundId,
-                    allocationAmount,
-                    allocationAmount - fundRebateIncome,
-                    fundRebateIncome));
+                shares.Add(share);
             }
 
-            return splits;
+            return shares;
         }
 
         /// <summary>
@@ -2056,11 +2057,11 @@ namespace AplosConnector.Common.Services
         /// This is the default method.
         ///
         /// Per allocation:
-        ///   1. debit Register (allocation's fund)  — reduces the liability by the full allocation amount.
-        ///   2. credit Checking (allocation's fund)  — only the net cash portion (allocation minus credit share).
-        ///   3. credit RebateIncome (allocation's fund) — the proportional credit share.
+        ///   1. debit Register (allocation's fund)  — the fund's share of the invoice amount.
+        ///   2. credit Checking (allocation's fund)  — the fund's share of the bank amount.
+        ///   3. credit RebateIncome (allocation's fund) — the fund's share of the credits.
         ///
-        /// The rebate total is split across allocation funds in proportion to each fund's share of the
+        /// Credits apply first, up to the invoice amount, and the bank covers the rest; each is split across allocation funds in proportion to each fund's share of the
         /// invoice, so every fund shows exactly how much came from cash and how much from rebate income.
         /// No gross-up on Checking. The last allocation absorbs any rounding remainder.
         /// </summary>
@@ -2104,7 +2105,7 @@ namespace AplosConnector.Common.Services
                 totalAllocationsAmount += allocation.TotalAmount;
             }
 
-            var (cashPaymentTotal, _, totalPaymentsAmount) = SumInvoicePayments(invoicePayments);
+            var totalPaymentsAmount = SumInvoicePayments(invoicePayments).Coverage;
 
             if (totalAllocationsAmount != invoice.InvoiceAmount)
             {
@@ -2118,20 +2119,8 @@ namespace AplosConnector.Common.Services
                 return TransactionSyncResult.Failed;
             }
 
-            // --- B. Split the invoice amount into the bank portion and the rebate income the invoice needed ---
-            if (!IsInvoiceSurplusBackedByCredits(totalAllocationsAmount, cashPaymentTotal))
-            {
-                logger.LogWarning($"cashPaymentTotal ({cashPaymentTotal}) > totalAllocationsAmount ({totalAllocationsAmount}) on invoice {invoice.InvoiceId}, so the surplus is not backed by credits. Skipping invoice {invoice.InvoiceId}.");
-                return TransactionSyncResult.Failed;
-            }
-
-            var (bankAmount, rebateIncomeAmount, surplusAmount) = SplitInvoicePaymentTotals(
-                totalAllocationsAmount, cashPaymentTotal, totalPaymentsAmount);
-
-            if (surplusAmount > 0)
-            {
-                logger.LogInformation($"Invoice {invoice.InvoiceId} is overpaid. invoiceAmount ({totalAllocationsAmount}), totalPaymentsAmount ({totalPaymentsAmount}), bankAmount ({bankAmount}), rebateIncomeAmount ({rebateIncomeAmount}), surplus carried to the next invoice ({surplusAmount}).");
-            }
+            // --- B. Split the invoice amount into credits (first) and the bank portion ---
+            var (bankAmount, rebateIncomeAmount) = SplitInvoicePaymentTotals(totalAllocationsAmount, invoicePayments);
 
             if (rebateIncomeAmount > 0)
             {
@@ -2144,18 +2133,21 @@ namespace AplosConnector.Common.Services
             }
 
             // --- C. Generate lines per allocation (triplet: liability, checking, rebate income) ---
-            var fundSplits = DistributeInvoiceRebateIncome(validAllocations, totalAllocationsAmount, rebateIncomeAmount);
+            var fundSplits = DistributeInvoicePayments(validAllocations, totalAllocationsAmount, bankAmount, rebateIncomeAmount);
 
             foreach (var fundSplit in fundSplits)
             {
-                // Line 1: Debit Register (liability) account, +allocationAmount, allocationFund, no tags
-                var debitLine = new AplosApiTransactionLineDetail
+                // Line 1: Debit Register (liability) account, +registerAmount, allocationFund, no tags
+                if (fundSplit.RegisterAmount != 0)
                 {
-                    Account = new AplosApiAccountDetail { AccountNumber = mapping.AplosRegisterAccountNumber },
-                    Amount = fundSplit.AllocationAmount,
-                    Fund = new AplosApiFundDetail { Id = fundSplit.AplosFundId },
-                };
-                lines.AddLine(debitLine, mapping.SyncInvoiceAggregated);
+                    var debitLine = new AplosApiTransactionLineDetail
+                    {
+                        Account = new AplosApiAccountDetail { AccountNumber = mapping.AplosRegisterAccountNumber },
+                        Amount = fundSplit.RegisterAmount,
+                        Fund = new AplosApiFundDetail { Id = fundSplit.AplosFundId },
+                    };
+                    lines.AddLine(debitLine, mapping.SyncInvoiceAggregated);
+                }
 
                 // Line 2: Credit Checking (asset) account, net cash portion only, allocationFund, TransferTagMappings
                 if (fundSplit.BankAmount != 0)

@@ -73,16 +73,37 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task SyncInvoices_Fails_WhenRejectedPaymentsDoNotExplainTheShortfall()
+        public async Task SyncInvoices_WarnsWithoutFailing_WhenRejectedPaymentsDoNotExplainTheShortfall()
         {
             SetupInvoice(NewInvoice(98764, 100.00m, isPastReturnWindow: true));
             SetupPayments(NewPayment(20.00m), NewPayment(5.00m, rejectedByBank: true));
+            var logger = new ListLogger();
 
-            await GetAplosIntegrationService().SyncInvoices(NullLogger.Instance, NewMapping(), [], new DateTime(2026, 7, 1), default);
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
 
             Assert.Empty(_createdTransactions);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Invoice 98764 is not fully paid") && m.Text.Contains("shortfall (80.00)"));
+            _mockPexApiClient.Verify(client => client.GetInvoiceAllocations(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             var row = Assert.Single(_historyRows);
-            Assert.Equal(SyncStatus.Failed.ToString(), row.SyncStatus);
+            Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
+            Assert.Equal(0, row.SyncedRecords);
+            Assert.Equal(string.Empty, row.SyncNotes);
+        }
+
+        [Fact]
+        public async Task SyncInvoices_WarnsWithoutFailing_WhenTheInvoiceIsUnderpaid()
+        {
+            SetupInvoice(NewInvoice(98769, 100.00m, isPastReturnWindow: true));
+            SetupPayments(NewPayment(60.00m));
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            Assert.Empty(_createdTransactions);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Invoice 98769 is not fully paid") && m.Text.Contains("shortfall (40.00)"));
+            var row = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
+            Assert.Equal(string.Empty, row.SyncNotes);
         }
 
         [Fact]
@@ -162,24 +183,25 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(SyncStatus.Failed.ToString(), Assert.Single(_historyRows).SyncStatus);
         }
 
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task SyncRebates_Skips_ForCreditBusinesses(bool syncInvoices)
+        [Fact]
+        public async Task SyncRebates_Skips_ForCreditBusinessesWithInvoiceSyncOn()
         {
             var logger = new ListLogger();
 
-            await GetAplosIntegrationService().SyncRebates(logger, NewRebateMapping(FundingSource.Credit, syncInvoices), RebateCreditTransactions(), [], default);
+            await GetAplosIntegrationService().SyncRebates(logger, NewRebateMapping(FundingSource.Credit, syncInvoices: true), RebateCreditTransactions(), [], default);
 
             Assert.Empty(_createdTransactions);
             Assert.Empty(_historyRows);
             Assert.Contains(logger.Messages, m => m.Level == LogLevel.Information && m.Text.Contains("Skipping rebates sync for credit business"));
         }
 
-        [Fact]
-        public async Task SyncRebates_PostsRebates_ForPrepaidBusinesses()
+        [Theory]
+        [InlineData(FundingSource.Credit, false)]
+        [InlineData(FundingSource.Prepaid, false)]
+        [InlineData(FundingSource.Prepaid, true)]
+        public async Task SyncRebates_PostsRebates_UnlessACreditBusinessSyncsInvoices(FundingSource fundingSource, bool syncInvoices)
         {
-            await GetAplosIntegrationService().SyncRebates(NullLogger.Instance, NewRebateMapping(FundingSource.Prepaid, syncInvoices: false), RebateCreditTransactions(), [], default);
+            await GetAplosIntegrationService().SyncRebates(NullLogger.Instance, NewRebateMapping(fundingSource, syncInvoices), RebateCreditTransactions(), [], default);
 
             var transaction = Assert.Single(_createdTransactions);
             Assert.Contains(transaction.Lines, line => line.Account.AccountNumber == 4000 && Math.Abs(line.Amount) == 25.00m);
@@ -204,6 +226,29 @@ namespace AplosConnector.Common.Tests
 
         private static BusinessAccountTransactions RebateCreditTransactions() =>
             new([new TransactionModel { TransactionId = 555, Description = "Rebate Credit", TransactionAmount = 25.00m, TransactionTime = new DateTime(2026, 7, 1) }]);
+
+        [Fact]
+        public async Task SyncInvoices_PostsOnlyTheCredit_WhenNetCashIsNegative()
+        {
+            SetupInvoice(NewInvoice(98768, 100.00m, isPastReturnWindow: true));
+            SetupPayments(NewPayment(10.00m, type: PaymentType.Reversal), NewPayment(110.00m, type: PaymentType.RebateCredit));
+            SetupAllocations(new InvoiceAllocationModel { InvoiceId = 98768, TagValue = MissionsFundId, TotalAmount = 100.00m });
+            var mapping = NewMapping();
+            mapping.PexRebatesAplosTransactionAccountNumber = 4000;
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncInvoices(logger, mapping, [], new DateTime(2026, 7, 1), default);
+
+            var transaction = Assert.Single(_createdTransactions);
+            Assert.Equal(0m, transaction.Amount);
+            Assert.DoesNotContain(transaction.Lines, line => line.Account.AccountNumber == 1000);
+            Assert.Equal(new[] { -100.00m }, transaction.Lines.Where(line => line.Account.AccountNumber == 4000).Select(line => line.Amount));
+            Assert.Equal(new[] { 100.00m }, transaction.Lines.Where(line => line.Account.AccountNumber == 2000).Select(line => line.Amount));
+            Assert.DoesNotContain(logger.Messages, m => m.Level >= LogLevel.Warning);
+            var row = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
+            Assert.Equal(1, row.SyncedRecords);
+        }
 
         private static InvoiceModel NewInvoice(int invoiceId, decimal amount, bool isPastReturnWindow, InvoiceStatus status = InvoiceStatus.Closed) => new()
         {
