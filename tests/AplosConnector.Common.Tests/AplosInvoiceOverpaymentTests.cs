@@ -571,7 +571,7 @@ namespace AplosConnector.Common.Tests
         {
             var allocations = new[] { (1, 0m), (2, 0m) };
 
-            var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 0m, 10.00m, 10.00m);
+            var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 0m, 10.00m);
 
             Assert.All(splits, split => Assert.Equal(0m, split.RebateIncomeAmount));
             Assert.All(splits, split => Assert.Equal(0m, split.BankAmount));
@@ -707,12 +707,11 @@ namespace AplosConnector.Common.Tests
         {
             var allocations = new[] { (1, 1800.00m), (2, 900.00m), (3, 302.39m) };
 
-            var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 3002.39m, 3002.00m, 59.78m);
+            var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 3002.39m, 59.78m);
 
-            Assert.Equal(new[] { 1799.77m, 899.88m, 302.35m }, splits.Select(s => s.BankAmount));
             Assert.Equal(new[] { 35.84m, 17.92m, 6.02m }, splits.Select(s => s.RebateIncomeAmount));
-            Assert.Equal(new[] { 1835.61m, 917.80m, 308.37m }, splits.Select(s => s.RegisterAmount));
-            Assert.Equal(3061.78m, splits.Sum(s => s.RegisterAmount));
+            Assert.Equal(new[] { 1764.16m, 882.08m, 296.37m }, splits.Select(s => s.BankAmount));
+            Assert.Equal(new[] { 1800.00m, 900.00m, 302.39m }, splits.Select(s => s.RegisterAmount));
         }
 
         [Fact]
@@ -720,11 +719,50 @@ namespace AplosConnector.Common.Tests
         {
             var allocations = new[] { (1, 60.00m), (2, 30.00m), (3, 20.00m) };
 
-            var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 110.00m, 110.00m, 0m);
+            var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 110.00m, 0m);
 
             Assert.All(splits, split => Assert.Equal(0m, split.RebateIncomeAmount));
             Assert.Equal(new[] { 60.00m, 30.00m, 20.00m }, splits.Select(s => s.BankAmount));
             Assert.Equal(new[] { 60.00m, 30.00m, 20.00m }, splits.Select(s => s.RegisterAmount));
+        }
+
+        [Fact]
+        public async Task RebateDistribute_DebitsEachFundsRegisterWithItsAllocation_WhenTheSharesRoundOnAHalfCent()
+        {
+            var invoice = NewInvoice(2.02m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 1.01m), NewAllocation(GeneralFundId, 1.01m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 2.01m),
+                NewPayment(PaymentType.RebateCredit, 0.01m),
+            };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(2.01m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 1.01m), (GeneralFundId, 1.01m) });
+            AssertBankCredits(new[] { (MissionsFundId, 1.01m), (GeneralFundId, 1.00m) });
+            AssertRebateIncomeCredits(new[] { (GeneralFundId, 0.01m) });
+        }
+
+        [Fact]
+        public async Task RebateDeposit_DebitsEachFundsRegisterWithItsAllocation_WhenTheSharesRoundOnAHalfCent()
+        {
+            var invoice = NewInvoice(2.02m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 1.01m), NewAllocation(GeneralFundId, 1.01m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 2.01m),
+                NewPayment(PaymentType.RebateCredit, 0.01m),
+            };
+
+            var result = await SyncRebateDeposit(invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(2.01m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 1.01m), (GeneralFundId, 1.01m) });
+            AssertRebateIncomeCredits(new[] { ("60", 0.01m) });
         }
 
         private static InvoicePaymentModel[] CreditsFirstExamplePayments(int example) => example switch

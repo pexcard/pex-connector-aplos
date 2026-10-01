@@ -1891,7 +1891,7 @@ namespace AplosConnector.Common.Services
             var (bankAmount, creditAmount) = SplitInvoicePaymentTotals(totalAllocationsAmount, invoicePayments);
 
             // --- B. Allocation pairs: debit Register + credit Checking, per fund ---
-            foreach (var fundSplit in DistributeInvoicePayments(validAllocations, totalAllocationsAmount, bankAmount, creditAmount))
+            foreach (var fundSplit in DistributeInvoicePayments(validAllocations, totalAllocationsAmount, creditAmount))
             {
                 if (fundSplit.RegisterAmount == 0)
                 {
@@ -2017,14 +2017,12 @@ namespace AplosConnector.Common.Services
         internal static List<InvoiceFundPaymentSplit> DistributeInvoicePayments(
             IReadOnlyList<(int aplosFundId, decimal allocationAmount)> allocations,
             decimal totalAllocationsAmount,
-            decimal bankAmount,
             decimal creditAmount)
         {
-            var bankShares = DistributeProRata(allocations, totalAllocationsAmount, bankAmount);
             var creditShares = DistributeProRata(allocations, totalAllocationsAmount, creditAmount);
 
             return allocations
-                .Select((allocation, i) => new InvoiceFundPaymentSplit(allocation.aplosFundId, bankShares[i] + creditShares[i], bankShares[i], creditShares[i]))
+                .Select((allocation, i) => new InvoiceFundPaymentSplit(allocation.aplosFundId, allocation.allocationAmount, allocation.allocationAmount - creditShares[i], creditShares[i]))
                 .ToList();
         }
 
@@ -2133,7 +2131,7 @@ namespace AplosConnector.Common.Services
             }
 
             // --- C. Generate lines per allocation (triplet: liability, checking, rebate income) ---
-            var fundSplits = DistributeInvoicePayments(validAllocations, totalAllocationsAmount, bankAmount, rebateIncomeAmount);
+            var fundSplits = DistributeInvoicePayments(validAllocations, totalAllocationsAmount, rebateIncomeAmount);
 
             foreach (var fundSplit in fundSplits)
             {
