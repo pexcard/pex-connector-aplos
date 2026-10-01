@@ -34,6 +34,7 @@ namespace AplosConnector.Common.Tests
         private const string MissionsFundId = "60";
         private const string GeneralFundId = "30";
         private const string YouthFundId = "20";
+        private const string OutreachFundId = "40";
 
         private readonly Mock<IAplosApiClient> _mockAplosApiClient = new();
         private readonly Mock<IAplosApiClientFactory> _mockAplosApiClientFactory = new();
@@ -696,7 +697,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public void DistributeInvoicePayments_PutsTheRoundingRemainderOnTheLastFund()
+        public void DistributeInvoicePayments_SplitsTheCreditByAllocation()
         {
             var allocations = new[] { (1, 1800.00m), (2, 900.00m), (3, 302.39m) };
 
@@ -735,8 +736,50 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(TransactionSyncResult.Success, result);
             Assert.Equal(2.01m, _createdTransaction.Amount);
             AssertRegisterDebits(new[] { (MissionsFundId, 1.01m), (GeneralFundId, 1.01m) });
-            AssertBankCredits(new[] { (MissionsFundId, 1.01m), (GeneralFundId, 1.00m) });
-            AssertRebateIncomeCredits(new[] { (GeneralFundId, 0.01m) });
+            AssertBankCredits(new[] { (MissionsFundId, 1.00m), (GeneralFundId, 1.01m) });
+            AssertRebateIncomeCredits(new[] { (MissionsFundId, 0.01m) });
+        }
+
+        [Fact]
+        public async Task RebateDistribute_NeverPostsANegativeLine_WhenATinyFundWouldAbsorbTheRoundingRemainder()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[]
+            {
+                NewAllocation(MissionsFundId, 33.35m),
+                NewAllocation(GeneralFundId, 33.35m),
+                NewAllocation(YouthFundId, 33.29m),
+                NewAllocation(OutreachFundId, 0.01m),
+            };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 90.00m),
+                NewPayment(PaymentType.RebateCredit, 10.00m),
+            };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(90.00m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 33.35m), (GeneralFundId, 33.35m), (YouthFundId, 33.29m), (OutreachFundId, 0.01m) });
+            AssertBankCredits(new[] { (MissionsFundId, 30.02m), (GeneralFundId, 30.01m), (YouthFundId, 29.96m), (OutreachFundId, 0.01m) });
+            AssertRebateIncomeCredits(new[] { (MissionsFundId, 3.33m), (GeneralFundId, 3.34m), (YouthFundId, 3.33m) });
+        }
+
+        [Fact]
+        public void DistributeInvoicePayments_KeepsEveryShareWithinItsAllocation_WhenTheRemainderIsLarge()
+        {
+            var allocations = new[] { (1, 50.00m), (2, 49.97m), (3, 0.03m) };
+
+            for (var cents = 1; cents <= 10000; cents++)
+            {
+                var creditAmount = cents / 100m;
+                var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 100.00m, creditAmount);
+
+                Assert.Equal(creditAmount, splits.Sum(s => s.RebateIncomeAmount));
+                Assert.All(splits.Zip(allocations), pair => Assert.InRange(pair.First.RebateIncomeAmount, 0m, pair.Second.Item2));
+                Assert.All(splits, split => Assert.True(split.BankAmount >= 0));
+            }
         }
 
         [Fact]
@@ -888,6 +931,7 @@ namespace AplosConnector.Common.Tests
             new PexAplosApiObject { Id = MissionsFundId, Name = "Missions" },
             new PexAplosApiObject { Id = GeneralFundId, Name = "General" },
             new PexAplosApiObject { Id = YouthFundId, Name = "Youth" },
+            new PexAplosApiObject { Id = OutreachFundId, Name = "Outreach" },
         ];
 
         private static Pex2AplosMappingModel NewMapping() => new()

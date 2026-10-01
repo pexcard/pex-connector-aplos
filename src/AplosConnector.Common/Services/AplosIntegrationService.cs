@@ -2026,25 +2026,36 @@ namespace AplosConnector.Common.Services
                 .ToList();
         }
 
+        /// <summary>Splits the amount pro rata by allocation, keeping each share within 0..allocation; the rounding remainder goes to the largest allocations first.</summary>
         private static List<decimal> DistributeProRata(
             IReadOnlyList<(int aplosFundId, decimal allocationAmount)> allocations,
             decimal totalAllocationsAmount,
             decimal amount)
         {
-            var shares = new List<decimal>(allocations.Count);
-            var distributed = 0m;
+            var shares = allocations.Select(_ => 0m).ToList();
+
+            if (amount <= 0 || totalAllocationsAmount <= 0)
+            {
+                return shares;
+            }
 
             for (var i = 0; i < allocations.Count; i++)
             {
-                var share = 0m;
+                shares[i] = Math.Clamp(Math.Round(amount * allocations[i].allocationAmount / totalAllocationsAmount, 2, MidpointRounding.ToEven), 0m, Math.Max(allocations[i].allocationAmount, 0m));
+            }
 
-                if (amount > 0 && totalAllocationsAmount > 0)
+            var remainder = amount - shares.Sum();
+
+            foreach (var i in Enumerable.Range(0, allocations.Count).OrderByDescending(i => allocations[i].allocationAmount))
+            {
+                if (remainder == 0)
                 {
-                    share = i < allocations.Count - 1 ? Math.Round(amount * allocations[i].allocationAmount / totalAllocationsAmount, 2, MidpointRounding.ToEven) : amount - distributed;
-                    distributed += share;
+                    break;
                 }
 
-                shares.Add(share);
+                var adjustedShare = Math.Clamp(shares[i] + remainder, 0m, Math.Max(allocations[i].allocationAmount, 0m));
+                remainder -= adjustedShare - shares[i];
+                shares[i] = adjustedShare;
             }
 
             return shares;
@@ -2061,7 +2072,7 @@ namespace AplosConnector.Common.Services
         ///
         /// Credits apply first, up to the invoice amount, and the bank covers the rest; each is split across allocation funds in proportion to each fund's share of the
         /// invoice, so every fund shows exactly how much came from cash and how much from rebate income.
-        /// No gross-up on Checking. The last allocation absorbs any rounding remainder.
+        /// No gross-up on Checking. The largest allocation absorbs any rounding remainder.
         /// </summary>
         internal async Task<TransactionSyncResult> SyncInvoiceRebateDistribute(
             Pex2AplosMappingModel mapping,
