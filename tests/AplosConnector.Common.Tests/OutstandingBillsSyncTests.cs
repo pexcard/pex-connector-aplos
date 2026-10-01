@@ -105,6 +105,27 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(1, row.SyncedRecords);
         }
 
+        [Fact]
+        public async Task Gate_NoCashAccountConfigured_ImportsNothing()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+
+            var mapping = NewMapping(syncOutstandingBills: true);
+            mapping.BillPaymentsAplosCashAccountNumber = 0m;
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessSettings(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new BusinessSettingsModel { UseBillPay = true });
+
+            await GetAplosIntegrationService().SyncOutstandingBills(NullLogger.Instance, mapping, UtcNow, default);
+
+            Assert.Empty(_createdBillInbox);
+            var historyRow = Assert.Single(_historyRows);
+            Assert.Equal(SyncTypes.OutstandingBills, historyRow.SyncType);
+            Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
+            Assert.Contains("not available", historyRow.SyncNotes);
+        }
+
         // The double filter: only fully unpaid payables import.
 
         [Fact]
@@ -714,6 +735,7 @@ namespace AplosConnector.Common.Tests
                 MetadataRelationId = 100,
                 Amount = 125.50m,
                 PaidSyncedUtc = UtcNow,
+                FirstFailedUtc = UtcNow.AddDays(-2),
                 CreatedUtc = UtcNow
             };
 
@@ -728,6 +750,7 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(model.MetadataRelationId, rebuilt.MetadataRelationId);
             Assert.Equal(model.Amount, rebuilt.Amount);
             Assert.Equal(model.PaidSyncedUtc, rebuilt.PaidSyncedUtc);
+            Assert.Equal(model.FirstFailedUtc, rebuilt.FirstFailedUtc);
             Assert.Equal(model.CreatedUtc, rebuilt.CreatedUtc);
         }
 
@@ -779,6 +802,14 @@ namespace AplosConnector.Common.Tests
                 return Task.CompletedTask;
             }
 
+            public Task MarkFailedAsync(AplosBillMappingModel model, DateTime failedUtc, CancellationToken cancellationToken)
+            {
+                ThrowIfFailing();
+                model.FirstFailedUtc = failedUtc;
+                Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
+                return Task.CompletedTask;
+            }
+
             private static string Key(int pexBusinessAcctId, string aplosPayableId) => $"{pexBusinessAcctId}|{aplosPayableId}";
         }
 
@@ -810,7 +841,8 @@ namespace AplosConnector.Common.Tests
             AplosPrivateKey = "privateKey",
             IsManualSync = true,
             EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
-            SyncOutstandingBills = syncOutstandingBills
+            SyncOutstandingBills = syncOutstandingBills,
+            BillPaymentsAplosCashAccountNumber = 1000m
         };
 
         private static AplosApiPayableDetail NewPayable(
