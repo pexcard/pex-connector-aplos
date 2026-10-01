@@ -220,7 +220,8 @@ namespace AplosConnector.Common.Tests
                 _mockHistoryStorage.Object,
                 null,
                 new SyncSettingsModel(),
-                null);
+                null,
+                Mock.Of<IAplosBillMappingStorage>());
         }
     }
 }

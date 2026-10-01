@@ -97,6 +97,10 @@ namespace AplosConnector.Web
             services.AddSingleton(provider => new Pex2AplosMappingStorage(pex2AplosMappingTableClient, 
                 provider.GetService<IStorageMappingService>(), provider.GetService<ILogger<Pex2AplosMappingStorage>>()));
 
+            var aplosBillMappingTableClient = tableServiceClient.GetTableClient(AplosBillMappingStorage.TABLE_NAME);
+            aplosBillMappingTableClient.CreateIfNotExistsAsync();
+            services.AddSingleton<IAplosBillMappingStorage>(_ => new AplosBillMappingStorage(aplosBillMappingTableClient));
+
             var syncHistoryTableClient = tableServiceClient.GetTableClient(SyncHistoryStorage.TABLE_NAME);
             syncHistoryTableClient.CreateIfNotExistsAsync();
             services.AddSingleton(_ => new SyncHistoryStorage(syncHistoryTableClient));
@@ -134,7 +138,8 @@ namespace AplosConnector.Web
                 provider.GetService<SyncHistoryStorage>(),
                 provider.GetService<Pex2AplosMappingStorage>(),
                 provider.GetService<SyncSettingsModel>(),
-                provider.GetService<IVendorCardStorage>()));
+                provider.GetService<IVendorCardStorage>(),
+                provider.GetService<IAplosBillMappingStorage>()));
 
             services.AddCors(options =>
             {
