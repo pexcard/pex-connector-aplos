@@ -2014,12 +2014,12 @@ namespace AplosConnector.Common.Services
         internal static bool IsInvoiceFullyPaid(decimal invoiceAmount, decimal totalPaymentsAmount) =>
             totalPaymentsAmount >= invoiceAmount;
 
-        /// <summary>Credits apply first, up to the invoice amount; the bank covers the rest, so the total posted is always the invoice amount.</summary>
+        /// <summary>Cash applies first, up to the invoice amount; credits cover the rest, so the total posted is always the invoice amount.</summary>
         internal static (decimal BankAmount, decimal CreditAmount) SplitInvoicePaymentTotals(decimal invoiceAmount, IReadOnlyCollection<InvoicePaymentModel> payments)
         {
-            var creditAmount = Math.Clamp(SumInvoicePayments(payments).Credits, 0m, invoiceAmount);
+            var bankAmount = Math.Clamp(SumInvoicePayments(payments).Cash, 0m, invoiceAmount);
 
-            return (invoiceAmount - creditAmount, creditAmount);
+            return (bankAmount, invoiceAmount - bankAmount);
         }
 
         internal static List<InvoiceFundPaymentSplit> DistributeInvoicePayments(
@@ -2078,7 +2078,7 @@ namespace AplosConnector.Common.Services
         ///   2. credit Checking (allocation's fund)  — the fund's share of the bank amount.
         ///   3. credit RebateIncome (allocation's fund) — the fund's share of the credits.
         ///
-        /// Credits apply first, up to the invoice amount, and the bank covers the rest; each is split across allocation funds in proportion to each fund's share of the
+        /// Cash applies first, up to the invoice amount, and credits cover the rest; each is split across allocation funds in proportion to each fund's share of the
         /// invoice, so every fund shows exactly how much came from cash and how much from rebate income.
         /// No gross-up on Checking. The largest allocation absorbs any rounding remainder.
         /// </summary>
@@ -2136,7 +2136,7 @@ namespace AplosConnector.Common.Services
                 return TransactionSyncResult.NotEligible;
             }
 
-            // --- B. Split the invoice amount into credits (first) and the bank portion ---
+            // --- B. Split the invoice amount into the bank portion (first) and credits ---
             var (bankAmount, rebateIncomeAmount) = SplitInvoicePaymentTotals(totalAllocationsAmount, invoicePayments);
 
             if (rebateIncomeAmount > 0)
