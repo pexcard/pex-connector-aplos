@@ -68,7 +68,37 @@ public class BillPaymentRetryTests : BillPaymentsTestBase
 
         await RunSync(useBillPay: true);
 
-        _mockAplosApiClient.Verify(client => client.GetPayable(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        VerifyNoPayCall();
+        Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        Assert.DoesNotContain(_historyRows, row => row.SyncStatus != SyncStatus.Success.ToString());
+    }
+
+    [Fact]
+    public async Task ABillNoLongerRetriedStillClosesOnceItIsPaidInAplos()
+    {
+        SeedUnpaidMapping(firstFailedUtc: UtcNow.AddDays(-31));
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(amount: 125.50m, paid: 125.50m);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        Assert.Contains(_cardTransactionNotes, note => note.Contains(AplosIntegrationService.SyncedAsBillPaymentNote));
+        Assert.DoesNotContain(_historyRows, row => row.SyncStatus != SyncStatus.Success.ToString());
+    }
+
+    [Fact]
+    public async Task ABillNoLongerRetriedStaysQuietWhenItsReReadFails()
+    {
+        SeedUnpaidMapping(firstFailedUtc: UtcNow.AddDays(-31));
+        SetupPaidPexBill();
+        _mockAplosApiClient
+            .Setup(client => client.GetPayable(AplosPayableId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Aplos unavailable"));
+
+        await RunSync(useBillPay: true);
+
         VerifyNoPayCall();
         Assert.DoesNotContain(_historyRows, row => row.SyncStatus != SyncStatus.Success.ToString());
     }

@@ -132,7 +132,7 @@ public partial class AplosIntegrationService
 
                 if (HasStoppedRetrying(billMapping, utcNow))
                 {
-                    logger.LogWarning($"Skipping Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}. It has failed since {billMapping.FirstFailedUtc:O} and is no longer retried.");
+                    await TryCloseStoppedBill(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken);
                     continue;
                 }
 
@@ -350,6 +350,34 @@ public partial class AplosIntegrationService
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, $"Failed to record the first failure on the bill mapping for payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}.");
+        }
+    }
+
+    // Past the retry window the bill is the customer's, so nothing is paid or reported; once they pay it in Aplos it
+    // still has to close, or its card charge never gets the marker.
+    private async Task TryCloseStoppedBill(
+        ILogger logger,
+        Pex2AplosMappingModel mapping,
+        AplosBillMappingModel billMapping,
+        BillPaymentRequestModel paymentRequest,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var payable = (await GetAplosPayable(mapping, billMapping.AplosPayableId, cancellationToken))?.Data?.Payable;
+            if (payable is null || AplosPayableFilter.DetermineAction(payable) != AplosPayableAction.SkipAlreadyPaid)
+            {
+                logger.LogWarning($"Skipping Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}. It has failed since {billMapping.FirstFailedUtc:O} and is no longer retried.");
+                return;
+            }
+
+            var cardTransactionId = IsCardPayment(paymentRequest) ? GetSettlementTransactionId(paymentRequest) : null;
+            await CloseHealedBill(logger, mapping, billMapping, paymentRequest, cardTransactionId, utcNow, cancellationToken);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, $"Failed to check Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}, which is no longer retried.");
         }
     }
 
