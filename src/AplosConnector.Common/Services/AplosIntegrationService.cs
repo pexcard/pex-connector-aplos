@@ -528,6 +528,15 @@ namespace AplosConnector.Common.Services
                     mapping.IsSyncing = true;
                     await _mappingStorage.UpdateAsync(mapping, cancellationToken);
 
+                    try
+                    {
+                        await SyncBillPayments(_logger, mapping, utcNow, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Exception during {nameof(SyncBillPayments)} for business: {mapping.PEXBusinessAcctId}.");
+                    }
+
                     List<TransactionModel> additionalFees = [];
 
                     try
@@ -1380,10 +1389,9 @@ namespace AplosConnector.Common.Services
             }
         }
 
-        private static string GetSyncedNote(TransactionModel transaction)
-        {
-            return $"Synced transaction #{transaction.TransactionId} to Aplos";
-        }
+        private static string GetSyncedNote(TransactionModel transaction) => GetSyncedNote(transaction.TransactionId);
+
+        private static string GetSyncedNote(long transactionId) => $"Synced transaction #{transactionId} to Aplos";
 
         private async Task SyncBusinessAccountTransactions(
             ILogger _logger,
@@ -2552,6 +2560,12 @@ namespace AplosConnector.Common.Services
         {
             var aplosApiClient = MakeAplosApiClient(mapping);
             return await aplosApiClient.GetPayables(rangeStart, cancellationToken);
+        }
+
+        public async Task<AplosApiPayableResponse> GetAplosPayable(Pex2AplosMappingModel mapping, string aplosPayableId, CancellationToken cancellationToken)
+        {
+            var aplosApiClient = MakeAplosApiClient(mapping);
+            return await aplosApiClient.GetPayable(aplosPayableId, cancellationToken);
         }
 
         private static IDictionary<string, object> GetLoggingScopeForSync(Pex2AplosMappingModel mapping)

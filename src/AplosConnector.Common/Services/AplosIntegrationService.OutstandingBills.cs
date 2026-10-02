@@ -67,6 +67,20 @@ namespace AplosConnector.Common.Services
                 return;
             }
 
+            if (!BillPayReady(mapping))
+            {
+                logger.LogWarning($"Skipping sync outstanding bills for business {mapping.PEXBusinessAcctId}. No Aplos cash account is configured for bill payments, so imported bills could not be marked paid.");
+                await _historyStorage.CreateAsync(new SyncResultModel
+                {
+                    PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                    SyncType = SyncTypes.OutstandingBills,
+                    SyncStatus = SyncStatus.Failed.ToString(),
+                    SyncedRecords = 0,
+                    SyncNotes = MissingCashAccountNote
+                }, cancellationToken);
+                return;
+            }
+
             var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
             var endDateUtc = GetEndDateUtc(mapping.EndDateUtc, utcNow);
             var (startDate, endDate) = GetEstDayWindow(startDateUtc, endDateUtc);

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Aplos.Api.Client.Models;
 using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
 
@@ -29,6 +30,8 @@ namespace Aplos.Api.Client.Abstractions
         Task<List<AplosApiTransactionDetail>> GetTransactions(DateTime startDate, CancellationToken cancellationToken = default);
         Task<AplosApiTransactionListResponse> GetTransactions(DateTime startDate, int pageSize, int pageNum, CancellationToken cancellationToken = default);
         Task<List<AplosApiPayableDetail>> GetPayables(DateOnly rangeStart, CancellationToken cancellationToken = default);
+        Task<AplosApiPayableResponse> GetPayable(string aplosPayableId, CancellationToken cancellationToken = default);
+        Task<AplosApiPayableResponse> PayPayable(string aplosPayableId, AplosApiPayablePaymentModel payment, CancellationToken cancellationToken = default);
         Task<bool> IsHealthy(CancellationToken cancellationToken = default);
         Task<AplosApiPartnerVerificationResponse> GetPartnerVerification(CancellationToken cancellationToken = default);
         Task<List<AplosApiTaxTagCategoryDetail>> GetTaxTags(CancellationToken cancellationToken = default);

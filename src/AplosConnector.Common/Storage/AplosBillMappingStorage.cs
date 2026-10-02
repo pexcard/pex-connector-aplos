@@ -59,5 +59,20 @@ namespace AplosConnector.Common.Storage
 
             await TableClient.UpdateEntityAsync(paidColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
         }
+
+        // Same shape as MarkPaidAsync: update-only, and only the first-failure column changes.
+        public async Task MarkFailedAsync(AplosBillMappingModel model, DateTime failedUtc, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            model.FirstFailedUtc = failedUtc.ToUniversalTime();
+
+            var failedColumn = new TableEntity(model.PEXBusinessAcctId.ToString(), model.AplosPayableId)
+            {
+                [nameof(AplosBillMappingEntity.FirstFailedUtc)] = model.FirstFailedUtc
+            };
+
+            await TableClient.UpdateEntityAsync(failedColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
+        }
     }
 }
