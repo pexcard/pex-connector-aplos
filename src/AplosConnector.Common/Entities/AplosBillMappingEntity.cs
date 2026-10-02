@@ -23,6 +23,7 @@ namespace AplosConnector.Common.Entities
             MetadataRelationId = model.MetadataRelationId;
             Amount = (double)model.Amount;
             PaidSyncedUtc = model.PaidSyncedUtc?.ToUniversalTime();
+            FirstFailedUtc = model.FirstFailedUtc?.ToUniversalTime();
             CreatedUtc = model.CreatedUtc.ToUniversalTime();
         }
 
@@ -33,6 +34,7 @@ namespace AplosConnector.Common.Entities
         public long? MetadataRelationId { get; set; }
         public double Amount { get; set; }
         public DateTime? PaidSyncedUtc { get; set; }
+        public DateTime? FirstFailedUtc { get; set; }
         public DateTime CreatedUtc { get; set; }
 
         public AplosBillMappingModel ToModel()
@@ -46,6 +48,7 @@ namespace AplosConnector.Common.Entities
                 MetadataRelationId = MetadataRelationId,
                 Amount = (decimal)Amount,
                 PaidSyncedUtc = PaidSyncedUtc,
+                FirstFailedUtc = FirstFailedUtc,
                 CreatedUtc = CreatedUtc
             };
         }

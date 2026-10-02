@@ -246,6 +246,9 @@ namespace AplosConnector.Common.Models
         public int ReimbursementsAplosContactId { get; set; }
         public decimal ReimbursementsAplosRegisterAccountNumber { get; set; }
 
+        // Deliberately not in MappingSettingsModel: nothing may set it before 148049 replaces it, after 148050.
+        public decimal BillPaymentsAplosCashAccountNumber { get; set; }
+
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }
         public AplosTagMappingModel[] TransferTagMappings { get; set; }

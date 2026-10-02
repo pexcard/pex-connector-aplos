@@ -27,6 +27,7 @@ namespace Aplos.Api.Client
         private const string APLOS_ENDPOINT_TAGS = "tags/";
         private const string APLOS_ENDPOINT_TAX_TAGS = "taxtags/";
         private const string APLOS_ENDPOINT_PAYABLES = "payables/";
+        private const string APLOS_ENDPOINT_PAYABLES_PAY_SUFFIX = "/pay";
 
         public const string APLOS_ACCOUNT_CATEGORY_ASSET = "asset";
         public const string APLOS_ACCOUNT_CATEGORY_EXPENSE = "expense";
@@ -583,6 +584,48 @@ namespace Aplos.Api.Client
                 result.AddRange(response.Data.Payables);
             }
             return result;
+        }
+
+        public async Task<AplosApiPayableResponse> GetPayable(string aplosPayableId, CancellationToken cancellationToken = default)
+        {
+            // allTags is undocumented and silently drops every tag off the payable when it is missing.
+            return await InvokeAplosApiWithAccessToken<AplosApiPayableResponse>(
+                HttpMethod.Get,
+                $"{APLOS_ENDPOINT_PAYABLES}{aplosPayableId}?allTags=y",
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task<AplosApiPayableResponse> PayPayable(
+            string aplosPayableId,
+            AplosApiPayablePaymentModel payment,
+            CancellationToken cancellationToken = default)
+        {
+            var requestContent = new AplosApiPayablePaymentRequest
+            {
+                PaidDate = payment.PaidDate.ToString("yyyy-MM-dd"),
+                CashAccount = new AplosApiPayablePaymentCashAccount { AccountNumber = payment.CashAccountNumber }
+            };
+
+            // Answers with the payable, never a transaction; the ledger entry it posts has no id anywhere.
+            return await InvokeAplosApiWithAccessToken<AplosApiPayablePaymentRequest, AplosApiPayableResponse>(
+                HttpMethod.Put,
+                $"{APLOS_ENDPOINT_PAYABLES}{aplosPayableId}{APLOS_ENDPOINT_PAYABLES_PAY_SUFFIX}",
+                requestContent,
+                cancellationToken: cancellationToken);
+        }
+
+        private sealed class AplosApiPayablePaymentRequest
+        {
+            [JsonProperty("paid_date")]
+            public string PaidDate { get; set; }
+            [JsonProperty("cash_account")]
+            public AplosApiPayablePaymentCashAccount CashAccount { get; set; }
+        }
+
+        private sealed class AplosApiPayablePaymentCashAccount
+        {
+            [JsonProperty("account_number")]
+            public decimal AccountNumber { get; set; }
         }
     }
 }

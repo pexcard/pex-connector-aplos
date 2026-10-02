@@ -13,5 +13,7 @@ namespace AplosConnector.Common.Storage
         Task AddAsync(AplosBillMappingModel model, CancellationToken cancellationToken);
 
         Task MarkPaidAsync(AplosBillMappingModel model, DateTime paidUtc, CancellationToken cancellationToken);
+
+        Task MarkFailedAsync(AplosBillMappingModel model, DateTime failedUtc, CancellationToken cancellationToken);
     }
 }

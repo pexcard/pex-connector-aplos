@@ -100,6 +100,8 @@ namespace AplosConnector.Common.Services
                     ReimbursementsAplosContactId = model.ReimbursementsAplosContactId,
                     ReimbursementsAplosRegisterAccountNumber = model.ReimbursementsAplosRegisterAccountNumber.ToString(),
 
+                    BillPaymentsAplosCashAccountNumber = model.BillPaymentsAplosCashAccountNumber.ToString(),
+
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
 
@@ -177,6 +179,7 @@ namespace AplosConnector.Common.Services
                 decimal.TryParse(model.PexFeesAplosTransactionAccountNumber, out var pexFeesAplosTransactionAccountNumber);
                 decimal.TryParse(model.PexRebatesAplosTransactionAccountNumber, out var pexRebatesAplosTransactionAccountNumber);
                 decimal.TryParse(model.ReimbursementsAplosRegisterAccountNumber, out var reimbursementsAplosRegisterAccountNumber);
+                decimal.TryParse(model.BillPaymentsAplosCashAccountNumber, out var billPaymentsAplosCashAccountNumber);
 
                 result = new Pex2AplosMappingModel
                 {
@@ -236,6 +239,8 @@ namespace AplosConnector.Common.Services
                     SyncReimbursementsCreateContact = model.SyncReimbursementsCreateContact,
                     ReimbursementsAplosContactId = model.ReimbursementsAplosContactId,
                     ReimbursementsAplosRegisterAccountNumber = reimbursementsAplosRegisterAccountNumber,
+
+                    BillPaymentsAplosCashAccountNumber = billPaymentsAplosCashAccountNumber,
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
