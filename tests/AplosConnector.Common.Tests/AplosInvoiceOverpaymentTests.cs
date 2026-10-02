@@ -34,6 +34,7 @@ namespace AplosConnector.Common.Tests
         private const string MissionsFundId = "60";
         private const string GeneralFundId = "30";
         private const string YouthFundId = "20";
+        private const string OutreachFundId = "40";
 
         private readonly Mock<IAplosApiClient> _mockAplosApiClient = new();
         private readonly Mock<IAplosApiClientFactory> _mockAplosApiClientFactory = new();
@@ -44,7 +45,7 @@ namespace AplosConnector.Common.Tests
         private AplosApiTransactionDetail _createdTransaction;
 
         [Fact]
-        public async Task RebateDistribute_WritesNoRebateIncomeLine_WhenBankTransferCoveredTheWholeInvoice()
+        public async Task RebateDistribute_AppliesCashFirst_WhenTheBankTransferAlsoCoveredTheWholeInvoice()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
@@ -64,7 +65,29 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task RebateDistribute_WritesNoRebateIncomeLine_WhenSingleFundInvoiceIsOverpaid()
+        public async Task RebateDistribute_SyncsWithoutRebateSettings_WhenCashCoversTheInvoiceAndARebateAlsoLanded()
+        {
+            var mapping = NewMapping();
+            mapping.PexRebatesAplosTransactionAccountNumber = decimal.Zero;
+            mapping.PexRebatesAplosTaxTagId = null;
+
+            var invoice = NewInvoice(110.00m);
+            var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 110.00m),
+                NewPayment(PaymentType.RebateCredit, 10.00m),
+            };
+
+            var result = await SyncRebateDistribute(mapping, invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(110.00m, _createdTransaction.Amount);
+            Assert.Empty(LinesFor(RebateIncomeAccount));
+        }
+
+        [Fact]
+        public async Task RebateDistribute_AppliesCashFirst_WhenSingleFundInvoiceIsOverpaid()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = new[] { NewAllocation(MissionsFundId, 110.00m) };
@@ -84,7 +107,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task RebateDistribute_SyncsWithoutRebateSettings_WhenTheRebateWasNotNeeded()
+        public async Task RebateDistribute_SyncsWithoutRebateSettings_WhenNoCreditPosts()
         {
             var mapping = NewMapping();
             mapping.PexRebatesAplosTransactionAccountNumber = decimal.Zero;
@@ -92,21 +115,18 @@ namespace AplosConnector.Common.Tests
 
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
-            var payments = new[]
-            {
-                NewPayment(PaymentType.PEXTransfer, 110.00m),
-                NewPayment(PaymentType.RebateCredit, 10.00m),
-            };
+            var payments = new[] { NewPayment(PaymentType.PEXTransfer, 115.00m) };
 
             var result = await SyncRebateDistribute(mapping, invoice, allocations, payments);
 
             Assert.Equal(TransactionSyncResult.Success, result);
             Assert.Equal(110.00m, _createdTransaction.Amount);
             AssertBankCredits(new[] { (MissionsFundId, 60.00m), (GeneralFundId, 30.00m), (YouthFundId, 20.00m) });
+            Assert.Empty(LinesFor(RebateIncomeAccount));
         }
 
         [Fact]
-        public async Task RebateDistribute_RecordsOnlyTheRebateTheInvoiceNeeded_WhenAFeePostedAfterThePayment()
+        public async Task RebateDistribute_AppliesCashFirst_WhenAFeePostedAfterThePayment()
         {
             var invoice = NewInvoice(3002.39m);
             var allocations = ThreeFundAllocations(1800.00m, 900.00m, 302.39m);
@@ -198,20 +218,20 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task RebateDistribute_Fails_WhenTheInvoiceIsUnderpaid()
+        public async Task EveryMethod_SkipsWithoutFailing_WhenTheInvoiceIsUnderpaid()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
             var payments = new[] { NewPayment(PaymentType.PEXTransfer, 100.00m) };
 
-            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
-
-            Assert.Equal(TransactionSyncResult.Failed, result);
+            Assert.Equal(TransactionSyncResult.NotEligible, await SyncRebateDistribute(NewMapping(), invoice, allocations, payments));
+            Assert.Equal(TransactionSyncResult.NotEligible, await SyncSimple(invoice, allocations, payments));
+            Assert.Equal(TransactionSyncResult.NotEligible, await SyncRebateDeposit(invoice, allocations, payments));
             Assert.Null(_createdTransaction);
         }
 
         [Fact]
-        public async Task RebateDistribute_Fails_WhenTheSurplusIsCashRatherThanCredits()
+        public async Task RebateDistribute_SyncsTheInvoiceAmountOnce_WhenCashAloneOverpaysIt()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
@@ -219,12 +239,15 @@ namespace AplosConnector.Common.Tests
 
             var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
 
-            Assert.Equal(TransactionSyncResult.Failed, result);
-            Assert.Null(_createdTransaction);
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(110.00m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 60.00m), (GeneralFundId, 30.00m), (YouthFundId, 20.00m) });
+            AssertBankCredits(new[] { (MissionsFundId, 60.00m), (GeneralFundId, 30.00m), (YouthFundId, 20.00m) });
+            Assert.Empty(LinesFor(RebateIncomeAccount));
         }
 
         [Fact]
-        public async Task RebateDistribute_Fails_WhenCashExceedsTheInvoiceAmountAlongsideARebateCredit()
+        public async Task RebateDistribute_AppliesCashFirst_WhenCashExceedsTheInvoiceAlongsideARebateCredit()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
@@ -236,31 +259,339 @@ namespace AplosConnector.Common.Tests
 
             var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
 
-            Assert.Equal(TransactionSyncResult.Failed, result);
-            Assert.Null(_createdTransaction);
-        }
-
-        [Theory]
-        [InlineData(110.00, 110.00, true)]
-        [InlineData(110.00, 100.00, true)]
-        [InlineData(110.00, 0.00, true)]
-        [InlineData(110.00, 110.01, false)]
-        [InlineData(110.00, 120.00, false)]
-        public void IsInvoiceSurplusBackedByCredits_RejectsCashAboveTheInvoiceAmount(
-            decimal invoiceAmount, decimal cashPaymentsAmount, bool expected)
-        {
-            Assert.Equal(expected, AplosIntegrationService.IsInvoiceSurplusBackedByCredits(invoiceAmount, cashPaymentsAmount));
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(110.00m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 60.00m), (GeneralFundId, 30.00m), (YouthFundId, 20.00m) });
+            AssertBankCredits(new[] { (MissionsFundId, 60.00m), (GeneralFundId, 30.00m), (YouthFundId, 20.00m) });
+            Assert.Empty(LinesFor(RebateIncomeAccount));
         }
 
         [Fact]
-        public void DistributeInvoiceRebateIncome_DoesNotDivideByZero_WhenAllocationsAreEmptyOfValue()
+        public async Task RebateDistribute_SyncsTheInvoiceAmountOnce_WhenCashOverpaysAndACreditIsReversed()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 100.00m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.SameDayACH, 110.00m),
+                NewPayment(PaymentType.RebateCreditReversal, 10.00m),
+            };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(100.00m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 100.00m) });
+            AssertBankCredits(new[] { (MissionsFundId, 100.00m) });
+            Assert.Empty(LinesFor(RebateIncomeAccount));
+        }
+
+        [Fact]
+        public async Task RebateDeposit_SubtractsReversalsFromCash()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 100.00m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.SameDayACH, 100.00m),
+                NewPayment(PaymentType.Reversal, 40.00m),
+                NewPayment(PaymentType.SameDayACH, 40.00m),
+            };
+
+            var result = await SyncRebateDeposit(invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(100.00m, _createdTransaction.Amount);
+            AssertBankCredits(new[] { (MissionsFundId, 100.00m) });
+            Assert.Empty(LinesFor(RebateIncomeAccount));
+        }
+
+        [Fact]
+        public async Task RebateDeposit_SyncsTheInvoiceAmountOnce_WhenCashOverpaysAndACreditIsReversed()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 100.00m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.SameDayACH, 110.00m),
+                NewPayment(PaymentType.WriteOffReversal, 10.00m),
+            };
+
+            var result = await SyncRebateDeposit(invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(100.00m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 100.00m) });
+            AssertBankCredits(new[] { (MissionsFundId, 100.00m) });
+            Assert.Empty(LinesFor(RebateIncomeAccount));
+        }
+
+        [Fact]
+        public async Task RebateDeposit_PostsOnlyTheCredit_WhenNetCashIsNegative()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 100.00m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.Reversal, 10.00m),
+                NewPayment(PaymentType.RebateCredit, 110.00m),
+            };
+
+            var result = await SyncRebateDeposit(invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(0m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 100.00m) });
+            AssertRebateIncomeCredits(new[] { ("60", 100.00m) });
+            Assert.Equal(new[] { -100.00m, 100.00m }, LinesFor(CheckingAccount).Select(line => line.Amount));
+        }
+
+        [Fact]
+        public async Task RebateDistribute_PostsOnlyTheCredit_WhenNetCashIsNegative()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 100.00m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.Reversal, 10.00m),
+                NewPayment(PaymentType.RebateCredit, 110.00m),
+            };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(0m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 100.00m) });
+            Assert.Empty(LinesFor(CheckingAccount));
+            AssertRebateIncomeCredits(new[] { (MissionsFundId, 100.00m) });
+        }
+
+        [Theory]
+        [InlineData(PaymentType.WriteOff)]
+        [InlineData(PaymentType.SalesCredit)]
+        public async Task RebateDistribute_TreatsWriteOffsAndSalesCreditsAsCredits(PaymentType creditType)
+        {
+            var invoice = NewInvoice(110.00m);
+            var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 99.00m),
+                NewPayment(creditType, 11.00m),
+            };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(99.00m, _createdTransaction.Amount);
+            AssertBankCredits(new[] { (MissionsFundId, 54.00m), (GeneralFundId, 27.00m), (YouthFundId, 18.00m) });
+            AssertRebateIncomeCredits(new[] { (MissionsFundId, 6.00m), (GeneralFundId, 3.00m), (YouthFundId, 2.00m) });
+        }
+
+        [Fact]
+        public async Task RebateDistribute_SubtractsWriteOffReversalsFromCredits()
+        {
+            var invoice = NewInvoice(110.00m);
+            var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 99.00m),
+                NewPayment(PaymentType.WriteOff, 22.00m),
+                NewPayment(PaymentType.WriteOffReversal, 11.00m),
+            };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(99.00m, _createdTransaction.Amount);
+            AssertBankCredits(new[] { (MissionsFundId, 54.00m), (GeneralFundId, 27.00m), (YouthFundId, 18.00m) });
+            AssertRebateIncomeCredits(new[] { (MissionsFundId, 6.00m), (GeneralFundId, 3.00m), (YouthFundId, 2.00m) });
+        }
+
+        [Fact]
+        public async Task RebateDistribute_SkipsWithoutFailing_WhenAWriteOffReversalLeavesAShortfall()
+        {
+            var invoice = NewInvoice(110.00m);
+            var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 99.00m),
+                NewPayment(PaymentType.WriteOff, 11.00m),
+                NewPayment(PaymentType.WriteOffReversal, 11.00m),
+            };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.NotEligible, result);
+            Assert.Null(_createdTransaction);
+        }
+
+        [Fact]
+        public async Task RebateDistribute_SubtractsReversalsFromCash()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 100.00m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.SameDayACH, 100.00m),
+                NewPayment(PaymentType.Reversal, 40.00m),
+                NewPayment(PaymentType.SameDayACH, 40.00m),
+            };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(100.00m, _createdTransaction.Amount);
+            AssertBankCredits(new[] { (MissionsFundId, 100.00m) });
+            Assert.Empty(LinesFor(RebateIncomeAccount));
+        }
+
+        [Fact]
+        public async Task Simple_SubtractsReversalsFromCash()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 100.00m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.SameDayACH, 100.00m),
+                NewPayment(PaymentType.Reversal, 40.00m),
+                NewPayment(PaymentType.SameDayACH, 40.00m),
+            };
+
+            var service = GetAplosIntegrationService();
+#pragma warning disable CS0618
+            var result = await service.SyncInvoiceSimple(
+                NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
+#pragma warning restore CS0618
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(100.00m, _createdTransaction.Amount);
+            Assert.Equal(new[] { -100.00m }, LinesFor(CheckingAccount).Select(line => line.Amount));
+            Assert.Empty(LinesFor(RebateIncomeAccount));
+        }
+
+        [Fact]
+        public async Task Simple_SyncsTheInvoiceAmountOnce_WhenCashOverpaysAndACreditIsReversed()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 100.00m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 110.00m),
+                NewPayment(PaymentType.WriteOffReversal, 10.00m),
+            };
+
+            var result = await SyncSimple(invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(100.00m, _createdTransaction.Amount);
+            Assert.Equal(new[] { 100.00m }, LinesFor(RegisterAccount).Select(line => line.Amount));
+            Assert.Equal(new[] { -100.00m }, LinesFor(CheckingAccount).Select(line => line.Amount));
+            Assert.Empty(LinesFor(RebateIncomeAccount));
+        }
+
+        [Fact]
+        public async Task Simple_PostsOnlyTheCredit_WhenNetCashIsNegative()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 100.00m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.Reversal, 10.00m),
+                NewPayment(PaymentType.RebateCredit, 110.00m),
+            };
+
+            var result = await SyncSimple(invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(0m, _createdTransaction.Amount);
+            Assert.Equal(new[] { 100.00m }, LinesFor(RegisterAccount).Select(line => line.Amount));
+            Assert.Empty(LinesFor(CheckingAccount));
+            AssertRebateIncomeCredits(new[] { ("60", 100.00m) });
+        }
+
+        [Fact]
+        public async Task Simple_WritesNoCashLine_WhenCreditsCoverTheWholeInvoice()
+        {
+            var invoice = NewInvoice(110.00m);
+            var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
+            var payments = new[] { NewPayment(PaymentType.WriteOff, 110.00m) };
+
+            var result = await SyncSimple(invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(0m, _createdTransaction.Amount);
+            Assert.Empty(LinesFor(CheckingAccount));
+            AssertRebateIncomeCredits(new[] { ("60", 110.00m) });
+        }
+
+        [Fact]
+        public async Task RebateDistribute_WritesNoBankLine_WhenCreditsExactlyCoverTheWholeInvoice()
+        {
+            var invoice = NewInvoice(110.00m);
+            var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
+            var payments = new[] { NewPayment(PaymentType.WriteOff, 110.00m) };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(0m, _createdTransaction.Amount);
+            Assert.Empty(LinesFor(CheckingAccount));
+            AssertRebateIncomeCredits(new[] { (MissionsFundId, 60.00m), (GeneralFundId, 30.00m), (YouthFundId, 20.00m) });
+        }
+
+        [Fact]
+        public async Task RebateDeposit_PostsWriteOffsToTheRebateFund()
+        {
+            var invoice = NewInvoice(110.00m);
+            var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 99.00m),
+                NewPayment(PaymentType.WriteOff, 11.00m),
+            };
+
+            var service = GetAplosIntegrationService();
+            var result = await service.SyncInvoiceRebateDeposit(
+                NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(99.00m, _createdTransaction.Amount);
+            AssertRebateIncomeCredits(new[] { ("60", 11.00m) });
+        }
+
+        [Theory]
+        [InlineData(PaymentType.PEXTransfer, false, 10.00)]
+        [InlineData(PaymentType.SameDayACH, false, 10.00)]
+        [InlineData(PaymentType.Reversal, false, -10.00)]
+        [InlineData(PaymentType.SalesCredit, true, 10.00)]
+        [InlineData(PaymentType.WriteOff, true, 10.00)]
+        [InlineData(PaymentType.RebateCredit, true, 10.00)]
+        [InlineData(PaymentType.CarryOverCredit, true, 10.00)]
+        [InlineData(PaymentType.RebateCreditReversal, true, -10.00)]
+        [InlineData(PaymentType.WriteOffReversal, true, -10.00)]
+        public void ClassifyInvoicePayment_SplitsCashFromCredits(PaymentType type, bool expectedIsCredit, decimal expectedAmount)
+        {
+            var classification = AplosIntegrationService.ClassifyInvoicePayment(NewPayment(type, 10.00m));
+
+            Assert.Equal((expectedIsCredit, expectedAmount), classification);
+        }
+
+        [Fact]
+        public void ClassifyInvoicePayment_ReturnsNull_ForAnUnknownType()
+        {
+            Assert.Null(AplosIntegrationService.ClassifyInvoicePayment(NewPayment((PaymentType)99, 10.00m)));
+        }
+
+        [Fact]
+        public void DistributeInvoicePayments_DoesNotDivideByZero_WhenAllocationsAreEmptyOfValue()
         {
             var allocations = new[] { (1, 0m), (2, 0m) };
 
-            var splits = AplosIntegrationService.DistributeInvoiceRebateIncome(allocations, 0m, 10.00m);
+            var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 0m, 10.00m);
 
             Assert.All(splits, split => Assert.Equal(0m, split.RebateIncomeAmount));
             Assert.All(splits, split => Assert.Equal(0m, split.BankAmount));
+            Assert.All(splits, split => Assert.Equal(0m, split.RegisterAmount));
         }
 
         [Fact]
@@ -281,7 +612,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task Simple_StillSkipsOverpaidInvoices()
+        public async Task Simple_AppliesCashFirst_WhenTheInvoiceIsOverpaid()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
@@ -291,18 +622,17 @@ namespace AplosConnector.Common.Tests
                 NewPayment(PaymentType.RebateCredit, 10.00m),
             };
 
-            var service = GetAplosIntegrationService();
-#pragma warning disable CS0618
-            var result = await service.SyncInvoiceSimple(
-                NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
-#pragma warning restore CS0618
+            var result = await SyncSimple(invoice, allocations, payments);
 
-            Assert.Equal(TransactionSyncResult.Failed, result);
-            Assert.Null(_createdTransaction);
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(110.00m, _createdTransaction.Amount);
+            Assert.Equal(new[] { 110.00m }, LinesFor(RegisterAccount).Select(line => line.Amount));
+            Assert.Equal(new[] { -110.00m }, LinesFor(CheckingAccount).Select(line => line.Amount));
+            Assert.Empty(LinesFor(RebateIncomeAccount));
         }
 
         [Fact]
-        public async Task RebateDeposit_StillSkipsOverpaidInvoices()
+        public async Task RebateDeposit_AppliesCashFirst_WhenTheInvoiceIsOverpaid()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
@@ -312,12 +642,13 @@ namespace AplosConnector.Common.Tests
                 NewPayment(PaymentType.RebateCredit, 10.00m),
             };
 
-            var service = GetAplosIntegrationService();
-            var result = await service.SyncInvoiceRebateDeposit(
-                NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
+            var result = await SyncRebateDeposit(invoice, allocations, payments);
 
-            Assert.Equal(TransactionSyncResult.Failed, result);
-            Assert.Null(_createdTransaction);
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(110.00m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 60.00m), (GeneralFundId, 30.00m), (YouthFundId, 20.00m) });
+            AssertBankCredits(new[] { (MissionsFundId, 60.00m), (GeneralFundId, 30.00m), (YouthFundId, 20.00m) });
+            Assert.Empty(LinesFor(RebateIncomeAccount));
         }
 
         [Fact]
@@ -342,48 +673,222 @@ namespace AplosConnector.Common.Tests
         }
 
         [Theory]
-        [InlineData(110.00, 110.00, 120.00, 110.00, 0.00, 10.00)]
-        [InlineData(3002.39, 3002.00, 3061.78, 3002.00, 0.39, 59.39)]
-        [InlineData(110.00, 0.00, 150.00, 0.00, 110.00, 40.00)]
-        [InlineData(500.00, 490.00, 500.00, 490.00, 10.00, 0.00)]
-        public void SplitInvoicePaymentTotals_TakesOnlyWhatTheInvoiceNeeded(
-            decimal invoiceAmount,
-            decimal cashPaymentsAmount,
-            decimal totalPaymentsAmount,
-            decimal expectedBankAmount,
-            decimal expectedRebateIncomeAmount,
-            decimal expectedSurplusAmount)
+        [InlineData(1, 100.00, 0.00)]
+        [InlineData(2, 100.00, 0.00)]
+        [InlineData(3, 90.00, 10.00)]
+        [InlineData(4, 60.00, 40.00)]
+        [InlineData(5, 0.00, 100.00)]
+        [InlineData(6, 100.00, 0.00)]
+        public void SplitInvoicePaymentTotals_AppliesCashFirstUpToTheInvoiceAmount(int example, decimal expectedBankAmount, decimal expectedCreditAmount)
         {
-            var (bankAmount, rebateIncomeAmount, surplusAmount) =
-                AplosIntegrationService.SplitInvoicePaymentTotals(invoiceAmount, cashPaymentsAmount, totalPaymentsAmount);
+            var (bankAmount, creditAmount) = AplosIntegrationService.SplitInvoicePaymentTotals(100.00m, CashFirstExamplePayments(example));
 
             Assert.Equal(expectedBankAmount, bankAmount);
-            Assert.Equal(expectedRebateIncomeAmount, rebateIncomeAmount);
-            Assert.Equal(expectedSurplusAmount, surplusAmount);
+            Assert.Equal(expectedCreditAmount, creditAmount);
+        }
+
+        [Theory]
+        [InlineData(1, 100.00, 0.00)]
+        [InlineData(2, 100.00, 0.00)]
+        [InlineData(3, 90.00, 10.00)]
+        [InlineData(4, 60.00, 40.00)]
+        [InlineData(5, 0.00, 100.00)]
+        [InlineData(6, 100.00, 0.00)]
+        public async Task EveryMethod_PostsTheInvoiceAmountWithCashFirst_ForAHundredDollarInvoice(int example, decimal expectedBankAmount, decimal expectedCreditAmount)
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 100.00m) };
+            var payments = CashFirstExamplePayments(example);
+
+            foreach (var sync in new Func<Task<TransactionSyncResult>>[]
+            {
+                () => SyncRebateDistribute(NewMapping(), invoice, allocations, payments),
+                () => SyncSimple(invoice, allocations, payments),
+                () => SyncRebateDeposit(invoice, allocations, payments),
+            })
+            {
+                _createdTransaction = null;
+
+                Assert.Equal(TransactionSyncResult.Success, await sync());
+                Assert.Equal(expectedBankAmount, _createdTransaction.Amount);
+                Assert.Equal(100.00m, LinesFor(RegisterAccount).Sum(line => line.Amount));
+                Assert.Equal(-expectedBankAmount, LinesFor(CheckingAccount).Sum(line => line.Amount));
+                Assert.Equal(-expectedCreditAmount, LinesFor(RebateIncomeAccount).Sum(line => line.Amount));
+                Assert.DoesNotContain(_createdTransaction.Lines, line => line.Amount == 0);
+                Assert.All(LinesFor(RegisterAccount), line => Assert.True(line.Amount > 0));
+                Assert.All(LinesFor(RebateIncomeAccount), line => Assert.True(line.Amount < 0));
+            }
         }
 
         [Fact]
-        public void DistributeInvoiceRebateIncome_PutsTheRoundingRemainderOnTheLastFund()
+        public async Task EveryMethod_PostsTheRebateOnce_WhenItRollsToTheNextInvoiceAsCarryOverCredit()
+        {
+            var firstInvoice = NewInvoice(3002.39m);
+            var firstAllocations = new[] { NewAllocation(MissionsFundId, 3002.39m) };
+            var firstPayments = new[] { NewPayment(PaymentType.SameDayACH, 3002.00m), NewPayment(PaymentType.RebateCredit, 59.78m) };
+
+            var nextInvoice = NewInvoice(500.00m);
+            var nextAllocations = new[] { NewAllocation(MissionsFundId, 500.00m) };
+            var nextPayments = new[] { NewPayment(PaymentType.CarryOverCredit, 59.39m), NewPayment(PaymentType.SameDayACH, 440.61m) };
+
+            foreach (var sync in new Func<InvoiceModel, InvoiceAllocationModel[], InvoicePaymentModel[], Task<TransactionSyncResult>>[]
+            {
+                (invoice, allocations, payments) => SyncRebateDistribute(NewMapping(), invoice, allocations, payments),
+                (invoice, allocations, payments) => SyncSimple(invoice, allocations, payments),
+                (invoice, allocations, payments) => SyncRebateDeposit(invoice, allocations, payments),
+            })
+            {
+                _createdTransaction = null;
+                Assert.Equal(TransactionSyncResult.Success, await sync(firstInvoice, firstAllocations, firstPayments));
+                Assert.Equal(3002.00m, _createdTransaction.Amount);
+                var firstCredit = -LinesFor(RebateIncomeAccount).Sum(line => line.Amount);
+
+                _createdTransaction = null;
+                Assert.Equal(TransactionSyncResult.Success, await sync(nextInvoice, nextAllocations, nextPayments));
+                Assert.Equal(440.61m, _createdTransaction.Amount);
+                var nextCredit = -LinesFor(RebateIncomeAccount).Sum(line => line.Amount);
+
+                Assert.Equal(0.39m, firstCredit);
+                Assert.Equal(59.39m, nextCredit);
+                Assert.Equal(59.78m, firstCredit + nextCredit);
+            }
+        }
+
+        [Fact]
+        public void DistributeInvoicePayments_SplitsTheCreditByAllocation()
         {
             var allocations = new[] { (1, 1800.00m), (2, 900.00m), (3, 302.39m) };
 
-            var splits = AplosIntegrationService.DistributeInvoiceRebateIncome(allocations, 3002.39m, 0.39m);
+            var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 3002.39m, 59.78m);
 
-            Assert.Equal(new[] { 0.23m, 0.12m, 0.04m }, splits.Select(s => s.RebateIncomeAmount));
-            Assert.Equal(new[] { 1799.77m, 899.88m, 302.35m }, splits.Select(s => s.BankAmount));
-            Assert.Equal(0.39m, splits.Sum(s => s.RebateIncomeAmount));
+            Assert.Equal(new[] { 35.84m, 17.92m, 6.02m }, splits.Select(s => s.RebateIncomeAmount));
+            Assert.Equal(new[] { 1764.16m, 882.08m, 296.37m }, splits.Select(s => s.BankAmount));
+            Assert.Equal(new[] { 1800.00m, 900.00m, 302.39m }, splits.Select(s => s.RegisterAmount));
         }
 
         [Fact]
-        public void DistributeInvoiceRebateIncome_LeavesEveryFundOnCash_WhenNoRebateWasNeeded()
+        public void DistributeInvoicePayments_LeavesEveryFundOnCash_WhenThereAreNoCredits()
         {
             var allocations = new[] { (1, 60.00m), (2, 30.00m), (3, 20.00m) };
 
-            var splits = AplosIntegrationService.DistributeInvoiceRebateIncome(allocations, 110.00m, 0m);
+            var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 110.00m, 0m);
 
             Assert.All(splits, split => Assert.Equal(0m, split.RebateIncomeAmount));
             Assert.Equal(new[] { 60.00m, 30.00m, 20.00m }, splits.Select(s => s.BankAmount));
+            Assert.Equal(new[] { 60.00m, 30.00m, 20.00m }, splits.Select(s => s.RegisterAmount));
         }
+
+        [Fact]
+        public async Task RebateDistribute_DebitsEachFundsRegisterWithItsAllocation_WhenTheSharesRoundOnAHalfCent()
+        {
+            var invoice = NewInvoice(2.02m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 1.01m), NewAllocation(GeneralFundId, 1.01m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 2.01m),
+                NewPayment(PaymentType.RebateCredit, 0.01m),
+            };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(2.01m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 1.01m), (GeneralFundId, 1.01m) });
+            AssertBankCredits(new[] { (MissionsFundId, 1.00m), (GeneralFundId, 1.01m) });
+            AssertRebateIncomeCredits(new[] { (MissionsFundId, 0.01m) });
+        }
+
+        [Fact]
+        public async Task RebateDistribute_NeverPostsANegativeLine_WhenATinyFundWouldAbsorbTheRoundingRemainder()
+        {
+            var invoice = NewInvoice(100.00m);
+            var allocations = new[]
+            {
+                NewAllocation(MissionsFundId, 33.35m),
+                NewAllocation(GeneralFundId, 33.35m),
+                NewAllocation(YouthFundId, 33.29m),
+                NewAllocation(OutreachFundId, 0.01m),
+            };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 90.00m),
+                NewPayment(PaymentType.RebateCredit, 10.00m),
+            };
+
+            var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(90.00m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 33.35m), (GeneralFundId, 33.35m), (YouthFundId, 33.29m), (OutreachFundId, 0.01m) });
+            AssertBankCredits(new[] { (MissionsFundId, 30.02m), (GeneralFundId, 30.01m), (YouthFundId, 29.96m), (OutreachFundId, 0.01m) });
+            AssertRebateIncomeCredits(new[] { (MissionsFundId, 3.33m), (GeneralFundId, 3.34m), (YouthFundId, 3.33m) });
+        }
+
+        [Fact]
+        public void DistributeInvoicePayments_KeepsEveryShareWithinItsAllocation_WhenTheRemainderIsLarge()
+        {
+            var allocations = new[] { (1, 50.00m), (2, 49.97m), (3, 0.03m) };
+
+            for (var cents = 1; cents <= 10000; cents++)
+            {
+                var creditAmount = cents / 100m;
+                var splits = AplosIntegrationService.DistributeInvoicePayments(allocations, 100.00m, creditAmount);
+
+                Assert.Equal(creditAmount, splits.Sum(s => s.RebateIncomeAmount));
+                Assert.All(splits.Zip(allocations), pair => Assert.InRange(pair.First.RebateIncomeAmount, 0m, pair.Second.Item2));
+                Assert.All(splits, split => Assert.True(split.BankAmount >= 0));
+            }
+        }
+
+        [Fact]
+        public async Task RebateDeposit_DebitsEachFundsRegisterWithItsAllocation_WhenTheSharesRoundOnAHalfCent()
+        {
+            var invoice = NewInvoice(2.02m);
+            var allocations = new[] { NewAllocation(MissionsFundId, 1.01m), NewAllocation(GeneralFundId, 1.01m) };
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 2.01m),
+                NewPayment(PaymentType.RebateCredit, 0.01m),
+            };
+
+            var result = await SyncRebateDeposit(invoice, allocations, payments);
+
+            Assert.Equal(TransactionSyncResult.Success, result);
+            Assert.Equal(2.01m, _createdTransaction.Amount);
+            AssertRegisterDebits(new[] { (MissionsFundId, 1.01m), (GeneralFundId, 1.01m) });
+            AssertRebateIncomeCredits(new[] { ("60", 0.01m) });
+        }
+
+        [Fact]
+        public async Task SimpleAndRebateDeposit_Fail_WhenACreditPostsAndTheRebateAccountIsMissing()
+        {
+            var mapping = NewMapping();
+            mapping.PexRebatesAplosTransactionAccountNumber = decimal.Zero;
+
+            var invoice = NewInvoice(110.00m);
+            var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
+            var payments = new[]
+            {
+                NewPayment(PaymentType.PEXTransfer, 100.00m),
+                NewPayment(PaymentType.RebateCredit, 10.00m),
+            };
+
+            Assert.Equal(TransactionSyncResult.Failed, await SyncSimple(invoice, allocations, payments, mapping));
+            Assert.Null(_createdTransaction);
+            Assert.Equal(TransactionSyncResult.Failed, await SyncRebateDeposit(invoice, allocations, payments, mapping));
+            Assert.Null(_createdTransaction);
+        }
+
+        private static InvoicePaymentModel[] CashFirstExamplePayments(int example) => example switch
+        {
+            1 => [NewPayment(PaymentType.PEXTransfer, 110.00m)],
+            2 => [NewPayment(PaymentType.PEXTransfer, 100.00m), NewPayment(PaymentType.RebateCredit, 10.00m)],
+            3 => [NewPayment(PaymentType.CarryOverCredit, 10.00m), NewPayment(PaymentType.PEXTransfer, 90.00m)],
+            4 => [NewPayment(PaymentType.SameDayACH, 60.00m), NewPayment(PaymentType.RebateCredit, 40.00m)],
+            5 => [NewPayment(PaymentType.Reversal, 10.00m), NewPayment(PaymentType.RebateCredit, 110.00m)],
+            6 => [NewPayment(PaymentType.PEXTransfer, 110.00m), NewPayment(PaymentType.RebateCreditReversal, 10.00m)],
+            _ => throw new ArgumentOutOfRangeException(nameof(example)),
+        };
 
         private async Task<TransactionSyncResult> SyncRebateDistribute(
             Pex2AplosMappingModel mapping,
@@ -395,6 +900,32 @@ namespace AplosConnector.Common.Tests
 
             return await service.SyncInvoiceRebateDistribute(
                 mapping, invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
+        }
+
+        private async Task<TransactionSyncResult> SyncRebateDeposit(
+            InvoiceModel invoice,
+            IReadOnlyList<InvoiceAllocationModel> allocations,
+            IReadOnlyList<InvoicePaymentModel> payments,
+            Pex2AplosMappingModel mapping = null)
+        {
+            var service = GetAplosIntegrationService();
+
+            return await service.SyncInvoiceRebateDeposit(
+                mapping ?? NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
+        }
+
+        private async Task<TransactionSyncResult> SyncSimple(
+            InvoiceModel invoice,
+            IReadOnlyList<InvoiceAllocationModel> allocations,
+            IReadOnlyList<InvoicePaymentModel> payments,
+            Pex2AplosMappingModel mapping = null)
+        {
+            var service = GetAplosIntegrationService();
+
+#pragma warning disable CS0618
+            return await service.SyncInvoiceSimple(
+                mapping ?? NewMapping(), invoice, allocations, payments, AplosFunds(), NullLogger.Instance, default);
+#pragma warning restore CS0618
         }
 
         private void AssertRegisterDebits((string fundId, decimal amount)[] expected) =>
@@ -459,6 +990,7 @@ namespace AplosConnector.Common.Tests
             new PexAplosApiObject { Id = MissionsFundId, Name = "Missions" },
             new PexAplosApiObject { Id = GeneralFundId, Name = "General" },
             new PexAplosApiObject { Id = YouthFundId, Name = "Youth" },
+            new PexAplosApiObject { Id = OutreachFundId, Name = "Outreach" },
         ];
 
         private static Pex2AplosMappingModel NewMapping() => new()
