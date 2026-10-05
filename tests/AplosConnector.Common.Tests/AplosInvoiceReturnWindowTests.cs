@@ -76,7 +76,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task SyncInvoices_WarnsWithoutFailing_WhenRejectedPaymentsDoNotExplainTheShortfall()
+        public async Task SyncInvoices_Fails_WhenRejectedPaymentsDoNotExplainTheShortfall()
         {
             SetupInvoice(NewInvoice(98764, 100.00m, isPastReturnWindow: true));
             SetupPayments(NewPayment(20.00m), NewPayment(5.00m, rejectedByBank: true));
@@ -88,13 +88,13 @@ namespace AplosConnector.Common.Tests
             Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Invoice 98764 is not fully paid") && m.Text.Contains("shortfall (80.00)"));
             _mockPexApiClient.Verify(client => client.GetInvoiceAllocations(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             var row = Assert.Single(_historyRows);
-            Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
+            Assert.Equal(SyncStatus.Failed.ToString(), row.SyncStatus);
             Assert.Equal(0, row.SyncedRecords);
-            Assert.Equal(string.Empty, row.SyncNotes);
+            Assert.Equal("Failed to sync 1 invoices from PEX.", row.SyncNotes);
         }
 
         [Fact]
-        public async Task SyncInvoices_Warns_WhenARejectedReversalHidesTheShortfall()
+        public async Task SyncInvoices_Fails_WhenARejectedReversalHidesTheShortfall()
         {
             SetupInvoice(NewInvoice(98766, 49.90m, isPastReturnWindow: true));
             SetupPayments(NewPayment(49.90m, type: PaymentType.SameDayACH), NewPayment(79.20m, type: PaymentType.Reversal), NewPayment(79.20m, rejectedByBank: true, type: PaymentType.Reversal));
@@ -105,10 +105,11 @@ namespace AplosConnector.Common.Tests
             Assert.Empty(_createdTransactions);
             Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Invoice 98766 is not fully paid"));
             Assert.DoesNotContain(logger.Messages, m => m.Text.Contains("re-billed on a later invoice"));
+            Assert.Equal(SyncStatus.Failed.ToString(), Assert.Single(_historyRows).SyncStatus);
         }
 
         [Fact]
-        public async Task SyncInvoices_WarnsWithoutFailing_WhenTheInvoiceIsUnderpaid()
+        public async Task SyncInvoices_Fails_WhenTheInvoiceIsUnderpaid()
         {
             SetupInvoice(NewInvoice(98769, 100.00m, isPastReturnWindow: true));
             SetupPayments(NewPayment(60.00m));
@@ -118,9 +119,35 @@ namespace AplosConnector.Common.Tests
 
             Assert.Empty(_createdTransactions);
             Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Invoice 98769 is not fully paid") && m.Text.Contains("shortfall (40.00)"));
+            _mockPexApiClient.Verify(client => client.GetInvoiceAllocations(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             var row = Assert.Single(_historyRows);
-            Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
-            Assert.Equal(string.Empty, row.SyncNotes);
+            Assert.Equal(SyncStatus.Failed.ToString(), row.SyncStatus);
+            Assert.Equal(0, row.SyncedRecords);
+            Assert.Equal("Failed to sync 1 invoices from PEX.", row.SyncNotes);
+        }
+
+        [Fact]
+        public async Task SyncInvoices_FailsOnlyThatInvoice_WhenTheInvoiceIsUnderpaid()
+        {
+            _mockPexApiClient
+                .Setup(client => client.GetInvoices(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([NewInvoice(98771, 100.00m, isPastReturnWindow: true), NewInvoice(98772, 50.00m, isPastReturnWindow: true)]);
+            _mockPexApiClient
+                .Setup(client => client.GetInvoicePayments(It.IsAny<string>(), 98771, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([NewPayment(60.00m)]);
+            _mockPexApiClient
+                .Setup(client => client.GetInvoicePayments(It.IsAny<string>(), 98772, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([NewPayment(50.00m)]);
+            SetupAllocations(new InvoiceAllocationModel { InvoiceId = 98772, TagValue = MissionsFundId, TotalAmount = 50.00m });
+
+            await GetAplosIntegrationService().SyncInvoices(NullLogger.Instance, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            var transaction = Assert.Single(_createdTransactions);
+            Assert.Equal("98772", transaction.Note);
+            var row = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Partial.ToString(), row.SyncStatus);
+            Assert.Equal(1, row.SyncedRecords);
+            Assert.Equal("Failed to sync 1 invoices from PEX.", row.SyncNotes);
         }
 
         [Fact]

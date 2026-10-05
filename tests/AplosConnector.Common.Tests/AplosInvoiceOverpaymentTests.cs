@@ -218,15 +218,15 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task EveryMethod_SkipsWithoutFailing_WhenTheInvoiceIsUnderpaid()
+        public async Task EveryMethod_Fails_WhenTheInvoiceIsUnderpaid()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
             var payments = new[] { NewPayment(PaymentType.PEXTransfer, 100.00m) };
 
-            Assert.Equal(TransactionSyncResult.NotEligible, await SyncRebateDistribute(NewMapping(), invoice, allocations, payments));
-            Assert.Equal(TransactionSyncResult.NotEligible, await SyncSimple(invoice, allocations, payments));
-            Assert.Equal(TransactionSyncResult.NotEligible, await SyncRebateDeposit(invoice, allocations, payments));
+            Assert.Equal(TransactionSyncResult.Failed, await SyncRebateDistribute(NewMapping(), invoice, allocations, payments));
+            Assert.Equal(TransactionSyncResult.Failed, await SyncSimple(invoice, allocations, payments));
+            Assert.Equal(TransactionSyncResult.Failed, await SyncRebateDeposit(invoice, allocations, payments));
             Assert.Null(_createdTransaction);
         }
 
@@ -408,7 +408,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task RebateDistribute_SkipsWithoutFailing_WhenAWriteOffReversalLeavesAShortfall()
+        public async Task RebateDistribute_Fails_WhenAWriteOffReversalLeavesAShortfall()
         {
             var invoice = NewInvoice(110.00m);
             var allocations = ThreeFundAllocations(60.00m, 30.00m, 20.00m);
@@ -421,7 +421,7 @@ namespace AplosConnector.Common.Tests
 
             var result = await SyncRebateDistribute(NewMapping(), invoice, allocations, payments);
 
-            Assert.Equal(TransactionSyncResult.NotEligible, result);
+            Assert.Equal(TransactionSyncResult.Failed, result);
             Assert.Null(_createdTransaction);
         }
 

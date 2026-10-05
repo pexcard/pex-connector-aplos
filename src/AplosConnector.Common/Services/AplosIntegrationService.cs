@@ -1617,7 +1617,8 @@ namespace AplosConnector.Common.Services
                                 continue;
                             }
 
-                            _logger.LogWarning($"Invoice {invoiceModel.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}), shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}). Skipping invoice {invoiceModel.InvoiceId}; it is retried on the next run.");
+                            _logger.LogWarning($"Invoice {invoiceModel.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}), shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}). Failing invoice {invoiceModel.InvoiceId}.");
+                            failureCount++;
                             continue;
                         }
 
@@ -1744,8 +1745,8 @@ namespace AplosConnector.Common.Services
 
             if (!IsInvoiceFullyPaid(totalAllocationsAmount, totalPaymentsAmount))
             {
-                logger.LogWarning($"Invoice {invoice.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < totalAllocationsAmount ({totalAllocationsAmount}), shortfall ({totalAllocationsAmount - totalPaymentsAmount}). Skipping invoice {invoice.InvoiceId}; it is retried on the next run.");
-                return TransactionSyncResult.NotEligible;
+                logger.LogWarning($"Invoice {invoice.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < totalAllocationsAmount ({totalAllocationsAmount}), shortfall ({totalAllocationsAmount - totalPaymentsAmount}). Failing invoice {invoice.InvoiceId}.");
+                return TransactionSyncResult.Failed;
             }
 
             var (bankAmount, totalNonCash) = SplitInvoicePaymentTotals(totalAllocationsAmount, invoicePayments);
@@ -1892,8 +1893,8 @@ namespace AplosConnector.Common.Services
 
             if (!IsInvoiceFullyPaid(totalAllocationsAmount, totalPaymentsAmount))
             {
-                logger.LogWarning($"Invoice {invoice.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < totalAllocationsAmount ({totalAllocationsAmount}), shortfall ({totalAllocationsAmount - totalPaymentsAmount}). Skipping invoice {invoice.InvoiceId}; it is retried on the next run.");
-                return TransactionSyncResult.NotEligible;
+                logger.LogWarning($"Invoice {invoice.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < totalAllocationsAmount ({totalAllocationsAmount}), shortfall ({totalAllocationsAmount - totalPaymentsAmount}). Failing invoice {invoice.InvoiceId}.");
+                return TransactionSyncResult.Failed;
             }
 
             var (bankAmount, creditAmount) = SplitInvoicePaymentTotals(totalAllocationsAmount, invoicePayments);
@@ -2132,8 +2133,8 @@ namespace AplosConnector.Common.Services
 
             if (!IsInvoiceFullyPaid(totalAllocationsAmount, totalPaymentsAmount))
             {
-                logger.LogWarning($"Invoice {invoice.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < totalAllocationsAmount ({totalAllocationsAmount}), shortfall ({totalAllocationsAmount - totalPaymentsAmount}). Skipping invoice {invoice.InvoiceId}; it is retried on the next run.");
-                return TransactionSyncResult.NotEligible;
+                logger.LogWarning($"Invoice {invoice.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < totalAllocationsAmount ({totalAllocationsAmount}), shortfall ({totalAllocationsAmount - totalPaymentsAmount}). Failing invoice {invoice.InvoiceId}.");
+                return TransactionSyncResult.Failed;
             }
 
             // --- B. Split the invoice amount into the bank portion (first) and credits ---
