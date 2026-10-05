@@ -1610,13 +1610,6 @@ namespace AplosConnector.Common.Services
 
                         if (!IsInvoiceFullyPaid(invoiceModel.InvoiceAmount, totalPaymentsAmount))
                         {
-                            var rejectedPaymentsAmount = SumInvoicePayments(allInvoicePayments.Where(p => p.RejectedByBank)).Coverage;
-                            if (rejectedPaymentsAmount > 0 && IsInvoiceFullyPaid(invoiceModel.InvoiceAmount, totalPaymentsAmount + rejectedPaymentsAmount))
-                            {
-                                _logger.LogInformation($"totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}) after excluding bank-rejected payments; the shortfall is re-billed on a later invoice. Skipping invoice {invoiceModel.InvoiceId}.");
-                                continue;
-                            }
-
                             _logger.LogWarning($"Invoice {invoiceModel.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}), shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}). Failing invoice {invoiceModel.InvoiceId}.");
                             failureCount++;
                             continue;

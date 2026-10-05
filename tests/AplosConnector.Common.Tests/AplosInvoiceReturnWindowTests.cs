@@ -58,7 +58,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task SyncInvoices_SkipsWithoutFailing_WhenTheShortfallIsFromRejectedPayments()
+        public async Task SyncInvoices_Fails_WhenTheShortfallIsFromRejectedPayments()
         {
             SetupInvoice(NewInvoice(98762, 79.20m, isPastReturnWindow: true));
             SetupPayments(NewPayment(79.20m, rejectedByBank: true));
@@ -67,11 +67,27 @@ namespace AplosConnector.Common.Tests
             await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
 
             Assert.Empty(_createdTransactions);
-            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Information && m.Text.Contains("the shortfall is re-billed on a later invoice. Skipping invoice 98762"));
-            Assert.DoesNotContain(logger.Messages, m => m.Level >= LogLevel.Warning);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Invoice 98762 is not fully paid") && m.Text.Contains("shortfall (79.20)"));
             _mockPexApiClient.Verify(client => client.GetInvoiceAllocations(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             var row = Assert.Single(_historyRows);
-            Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
+            Assert.Equal(SyncStatus.Failed.ToString(), row.SyncStatus);
+            Assert.Equal(0, row.SyncedRecords);
+            Assert.Equal("Failed to sync 1 invoices from PEX.", row.SyncNotes);
+        }
+
+        [Fact]
+        public async Task SyncInvoices_Fails_WhenRejectedPaymentsPartlyExplainTheShortfall()
+        {
+            SetupInvoice(NewInvoice(98763, 100.00m, isPastReturnWindow: true));
+            SetupPayments(NewPayment(60.00m), NewPayment(40.00m, rejectedByBank: true));
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            Assert.Empty(_createdTransactions);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Invoice 98763 is not fully paid") && m.Text.Contains("shortfall (40.00)"));
+            var row = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Failed.ToString(), row.SyncStatus);
             Assert.Equal(0, row.SyncedRecords);
         }
 
@@ -104,7 +120,6 @@ namespace AplosConnector.Common.Tests
 
             Assert.Empty(_createdTransactions);
             Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Invoice 98766 is not fully paid"));
-            Assert.DoesNotContain(logger.Messages, m => m.Text.Contains("re-billed on a later invoice"));
             Assert.Equal(SyncStatus.Failed.ToString(), Assert.Single(_historyRows).SyncStatus);
         }
 
