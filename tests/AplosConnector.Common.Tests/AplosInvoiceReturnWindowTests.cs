@@ -94,6 +94,20 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public async Task SyncInvoices_Warns_WhenARejectedReversalHidesTheShortfall()
+        {
+            SetupInvoice(NewInvoice(98766, 49.90m, isPastReturnWindow: true));
+            SetupPayments(NewPayment(49.90m, type: PaymentType.SameDayACH), NewPayment(79.20m, type: PaymentType.Reversal), NewPayment(79.20m, rejectedByBank: true, type: PaymentType.Reversal));
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            Assert.Empty(_createdTransactions);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Invoice 98766 is not fully paid"));
+            Assert.DoesNotContain(logger.Messages, m => m.Text.Contains("re-billed on a later invoice"));
+        }
+
+        [Fact]
         public async Task SyncInvoices_WarnsWithoutFailing_WhenTheInvoiceIsUnderpaid()
         {
             SetupInvoice(NewInvoice(98769, 100.00m, isPastReturnWindow: true));
