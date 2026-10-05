@@ -3,12 +3,15 @@ using AplosConnector.Common.Const;
 using AplosConnector.Common.Enums;
 using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Aplos;
+using AplosConnector.Common.Storage;
+using Azure;
 using Microsoft.Extensions.Logging;
 using PexCard.Api.Client.Core.Enums;
 using PexCard.Api.Client.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,13 +21,29 @@ namespace AplosConnector.Common.Services
     {
         internal const string AplosVendorCustomIdPrefix = "APLOS";
 
-        public async Task<List<AplosOutstandingBillModel>> GetAplosOutstandingBills(Pex2AplosMappingModel mapping, DateOnly startDate, CancellationToken cancellationToken)
+        // A startDate overrides only the start of the import window.
+        public async Task<List<AplosOutstandingBillModel>> GetAplosOutstandingBills(Pex2AplosMappingModel mapping, DateOnly? startDate, DateTime utcNow, CancellationToken cancellationToken)
         {
-            var payables = await GetAplosPayables(mapping, startDate, cancellationToken);
-            return AplosPayableFilter.SelectUnpaid(payables)
+            var (firstBillDate, lastBillDate) = GetOutstandingBillsWindow(mapping, utcNow);
+            firstBillDate = startDate ?? firstBillDate;
+
+            var payables = await GetAplosPayables(mapping, firstBillDate, cancellationToken);
+            return SelectImportable(payables, firstBillDate, lastBillDate)
                 .Select(AplosPayableFilter.ToOutstandingBill)
                 .ToList();
         }
+
+        // f_rangestart is date-only and read as a local calendar day, so the window is EST calendar days.
+        private (DateOnly FirstBillDate, DateOnly LastBillDate) GetOutstandingBillsWindow(Pex2AplosMappingModel mapping, DateTime utcNow)
+            => (GetStartDateUtc(mapping, utcNow, _syncSettings).ToEstCalendarDate(), GetEndDateUtc(mapping.EndDateUtc, utcNow).ToEstCalendarDate());
+
+        // Only f_rangestart is sent, and Aplos ignores filters it doesn't honour. A bill dated outside the window
+        // would miss the bill-inbox dedup search and import every run, so the window is enforced here too.
+        private static List<AplosApiPayableDetail> SelectImportable(IEnumerable<AplosApiPayableDetail> payables, DateOnly firstBillDate, DateOnly lastBillDate)
+            => AplosPayableFilter.SelectUnpaid(payables)
+                .Where(payable => DateOnly.FromDateTime(payable.BillDate) >= firstBillDate
+                                  && DateOnly.FromDateTime(payable.BillDate) <= lastBillDate)
+                .ToList();
 
         internal async Task SyncOutstandingBills(
             ILogger logger,
@@ -48,6 +67,20 @@ namespace AplosConnector.Common.Services
                 return;
             }
 
+            if (!BillPayReady(mapping))
+            {
+                logger.LogWarning($"Skipping sync outstanding bills for business {mapping.PEXBusinessAcctId}. No Aplos cash account is configured for bill payments, so imported bills could not be marked paid.");
+                await _historyStorage.CreateAsync(new SyncResultModel
+                {
+                    PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                    SyncType = SyncTypes.OutstandingBills,
+                    SyncStatus = SyncStatus.Failed.ToString(),
+                    SyncedRecords = 0,
+                    SyncNotes = MissingCashAccountNote
+                }, cancellationToken);
+                return;
+            }
+
             var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
             var endDateUtc = GetEndDateUtc(mapping.EndDateUtc, utcNow);
             var (startDate, endDate) = GetEstDayWindow(startDateUtc, endDateUtc);
@@ -64,22 +97,23 @@ namespace AplosConnector.Common.Services
 
             try
             {
-                // f_rangestart is date-only and read as a local calendar day, so a UTC-day start drops bills in the gap.
-                var payables = await GetAplosPayables(mapping, startDateUtc.ToEstCalendarDate(), cancellationToken);
-                // Only f_rangestart is sent, and Aplos ignores filters it doesn't honour. A bill dated outside the window
-                // would miss the bill-inbox dedup search and import every run, so the window is enforced here too.
-                var firstBillDate = startDateUtc.ToEstCalendarDate();
-                var lastBillDate = endDateUtc.ToEstCalendarDate();
-                var unpaid = AplosPayableFilter.SelectUnpaid(payables)
-                    .Where(payable => DateOnly.FromDateTime(payable.BillDate) >= firstBillDate
-                                      && DateOnly.FromDateTime(payable.BillDate) <= lastBillDate)
-                    .ToList();
+                var (firstBillDate, lastBillDate) = GetOutstandingBillsWindow(mapping, utcNow);
+                var payables = await GetAplosPayables(mapping, firstBillDate, cancellationToken);
+                var unpaid = SelectImportable(payables, firstBillDate, lastBillDate);
                 logger.LogInformation($"Retrieved {payables.Count} Aplos payables ({unpaid.Count} unpaid) for business {mapping.PEXBusinessAcctId} from {startDate:yyyy-MM-dd}.");
 
-                var syncedNotes = await GetExistingAplosBillInboxNotes(mapping, startDate, endDate, cancellationToken);
-                var newBills = unpaid
-                    .Where(payable => !syncedNotes.Any(note => note.Contains(GetAplosBillSyncedNote(payable.Id), StringComparison.OrdinalIgnoreCase)))
-                    .ToList();
+                foreach (var payable in unpaid.Where(payable => string.IsNullOrEmpty(payable.Id)))
+                {
+                    failureCount++;
+                    failureNotes.Add($"Bill {payable.ReferenceNumber}: Aplos returned it without an id, so it cannot be imported; add it in PEX by hand.");
+                    logger.LogWarning($"Skipping Aplos payable {payable.ReferenceNumber} with no id for business {mapping.PEXBusinessAcctId}.");
+                }
+                unpaid.RemoveAll(payable => string.IsNullOrEmpty(payable.Id));
+
+                var storedMappings = await GetBillMappingsByPayableId(mapping, cancellationToken);
+                var candidates = unpaid.Where(payable => !storedMappings.ContainsKey(payable.Id)).ToList();
+
+                var newBills = await RecoverUnmappedImports(logger, mapping, candidates, storedMappings.Values, startDate, endDate, cancellationToken);
 
                 logger.LogInformation($"Found {newBills.Count} new Aplos payables to create in the PEX bill inbox for business {mapping.PEXBusinessAcctId}.");
 
@@ -142,8 +176,13 @@ namespace AplosConnector.Common.Services
                                 continue;
                             }
 
-                            await CreatePexBillInbox(logger, mapping, payable, pexVendor, cancellationToken);
+                            var problem = await CreatePexBillInbox(logger, mapping, payable, pexVendor, cancellationToken);
                             syncCount++;
+                            if (problem != null)
+                            {
+                                failureCount++;
+                                failureNotes.Add($"Bill {payable.ReferenceNumber ?? payable.Id}: {problem}");
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -186,7 +225,113 @@ namespace AplosConnector.Common.Services
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
-        internal static string GetAplosBillSyncedNote(string payableId) => $"Synced Aplos bill #{payableId} to PEX";
+        internal const string AplosBillSyncedNotePrefix = "Synced Aplos bill #";
+
+        internal static string GetAplosBillSyncedNote(string payableId) => $"{AplosBillSyncedNotePrefix}{payableId} to PEX";
+
+        // Never a bare "#<id>": the note also carries the bill inbox id as "#<id>", and 4250 would match 42509 (138157).
+        internal static bool NoteMatchesAplosPayableId(string noteText, string payableId)
+        {
+            if (string.IsNullOrEmpty(noteText) || string.IsNullOrEmpty(payableId)) return false;
+
+            return noteText.Contains(GetAplosBillSyncedNote(payableId), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private async Task<Dictionary<string, AplosBillMappingModel>> GetBillMappingsByPayableId(
+            Pex2AplosMappingModel mapping,
+            CancellationToken cancellationToken)
+        {
+            var result = new Dictionary<string, AplosBillMappingModel>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var billMapping in await _billMappingStorage.GetByBusinessAsync(mapping.PEXBusinessAcctId, cancellationToken))
+            {
+                if (string.IsNullOrEmpty(billMapping.AplosPayableId)) continue;
+                result[billMapping.AplosPayableId] = billMapping;
+            }
+
+            return result;
+        }
+
+        // Finds bills imported by an earlier run whose mapping write failed, and backfills their rows.
+        private async Task<List<AplosApiPayableDetail>> RecoverUnmappedImports(
+            ILogger logger,
+            Pex2AplosMappingModel mapping,
+            List<AplosApiPayableDetail> candidates,
+            IEnumerable<AplosBillMappingModel> storedMappings,
+            DateTime startDate,
+            DateTime endDate,
+            CancellationToken cancellationToken)
+        {
+            if (candidates.Count == 0) return candidates;
+
+            var existingItems = await GetExistingAplosBillInboxItems(mapping, startDate, endDate, cancellationToken);
+            var ownedBillInboxIds = storedMappings.Select(row => row.PexBillInboxId).ToHashSet();
+            var ownedMetadataIds = storedMappings.Where(row => row.MetadataRelationId.HasValue).Select(row => row.MetadataRelationId.Value).ToHashSet();
+            existingItems.RemoveAll(item => ownedBillInboxIds.Contains(item.BillInboxId)
+                                            || (item.MetadataId.HasValue && ownedMetadataIds.Contains(item.MetadataId.Value)));
+            if (existingItems.Count == 0) return candidates;
+
+            var newBills = new List<AplosApiPayableDetail>();
+
+            foreach (var payable in candidates)
+            {
+                var alreadyImported = existingItems.FirstOrDefault(item =>
+                    item.Notes.Any(note => NoteMatchesAplosPayableId(note, payable.Id)));
+
+                if (alreadyImported == null)
+                {
+                    newBills.Add(payable);
+                    continue;
+                }
+
+                logger.LogWarning($"Aplos payable {payable.Id} has no stored mapping but was already imported as PEX bill inbox item {alreadyImported.BillInboxId} for business {mapping.PEXBusinessAcctId}. Backfilling the mapping instead of re-importing.");
+                await TryAddBillMapping(logger, mapping, payable, alreadyImported.BillInboxId, alreadyImported.MetadataId, cancellationToken);
+                existingItems.Remove(alreadyImported);
+            }
+
+            return newBills;
+        }
+
+        private enum BillMappingWrite
+        {
+            Recorded,
+            // Another run mapped the payable first, so this run's bill inbox item is a second copy.
+            Duplicate,
+            NotRecorded
+        }
+
+        private async Task<BillMappingWrite> TryAddBillMapping(
+            ILogger logger,
+            Pex2AplosMappingModel mapping,
+            AplosApiPayableDetail payable,
+            int billInboxId,
+            long? metadataId,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _billMappingStorage.AddAsync(new AplosBillMappingModel
+                {
+                    PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                    AplosPayableId = payable.Id,
+                    AplosReferenceNumber = payable.ReferenceNumber,
+                    PexBillInboxId = billInboxId,
+                    MetadataRelationId = metadataId,
+                    Amount = AplosPayableFilter.NormalizeAmount(payable.Amount)
+                }, cancellationToken);
+                return BillMappingWrite.Recorded;
+            }
+            catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.Conflict)
+            {
+                logger.LogError($"Aplos payable {payable.Id} was already mapped by another sync run for business {mapping.PEXBusinessAcctId}; PEX bill inbox item {billInboxId} is a duplicate and should be rejected in PEX.");
+                return BillMappingWrite.Duplicate;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, $"Failed to persist the Aplos bill mapping for payable {payable.Id} (PEX bill inbox {billInboxId}) for business {mapping.PEXBusinessAcctId}.");
+                return BillMappingWrite.NotRecorded;
+            }
+        }
 
         internal static string BuildAplosVendorCustomId(int aplosContactId) => $"{AplosVendorCustomIdPrefix}{aplosContactId}";
 
@@ -455,7 +600,8 @@ namespace AplosConnector.Common.Services
             }
         }
 
-        private async Task CreatePexBillInbox(
+        // Returns a per-bill problem to report, or null. The bill is created either way.
+        private async Task<string> CreatePexBillInbox(
             ILogger logger,
             Pex2AplosMappingModel mapping,
             AplosApiPayableDetail payable,
@@ -476,18 +622,49 @@ namespace AplosConnector.Common.Services
             var billInbox = await _pexApiClient.CreateBillInbox(mapping.PEXExternalAPIToken, request, cancellationToken);
             logger.LogInformation($"Created PEX bill inbox item {billInbox.BillInboxId} for Aplos payable {payable.Id} for business {mapping.PEXBusinessAcctId}.");
 
-            if (billInbox.MetadataId.HasValue)
+            // The mapping row is the dedup key, so it goes first; the note is only its fallback.
+            var mapped = await TryAddBillMapping(logger, mapping, payable, billInbox.BillInboxId, billInbox.MetadataId, cancellationToken);
+            var notRecordedProblem = $"PEX bill inbox item {billInbox.BillInboxId} could not be recorded and may import again; reject the duplicate in PEX.";
+
+            // The other run's item carries the note, so this copy gets none.
+            if (mapped == BillMappingWrite.Duplicate)
+            {
+                return $"PEX bill inbox item {billInbox.BillInboxId} duplicates one another sync run imported at the same time; reject it in PEX.";
+            }
+
+            if (!billInbox.MetadataId.HasValue)
+            {
+                logger.LogWarning($"PEX bill inbox item {billInbox.BillInboxId} for Aplos payable {payable.Id} has no metadata id for business {mapping.PEXBusinessAcctId}.");
+                return mapped == BillMappingWrite.Recorded
+                    ? $"PEX bill inbox item {billInbox.BillInboxId} has no metadata id, so its payment cannot be marked paid in Aplos automatically."
+                    : notRecordedProblem;
+            }
+
+            try
             {
                 var noteText = $"{GetAplosBillSyncedNote(payable.Id)} with ID #{billInbox.BillInboxId} on {DateTime.UtcNow:O}.";
                 await _pexApiClient.AddTransactionRelationshipNote(mapping.PEXExternalAPIToken, billInbox.MetadataId.Value, noteText, cancellationToken);
             }
-            else
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogWarning($"PEX bill inbox item {billInbox.BillInboxId} has no metadata id; the Aplos payable {payable.Id} audit note was not written and this bill may import again.");
+                logger.LogWarning(ex, $"Failed to write the audit note on PEX bill inbox item {billInbox.BillInboxId} for Aplos payable {payable.Id} for business {mapping.PEXBusinessAcctId}.");
+                if (mapped == BillMappingWrite.NotRecorded)
+                {
+                    return notRecordedProblem;
+                }
             }
+
+            return null;
         }
 
-        private async Task<List<string>> GetExistingAplosBillInboxNotes(
+        internal sealed class ImportedBillInboxItem
+        {
+            public int BillInboxId { get; init; }
+            public long? MetadataId { get; init; }
+            public List<string> Notes { get; init; } = new();
+        }
+
+        private async Task<List<ImportedBillInboxItem>> GetExistingAplosBillInboxItems(
             Pex2AplosMappingModel mapping,
             DateTime startDate,
             DateTime endDate,
@@ -499,22 +676,37 @@ namespace AplosConnector.Common.Services
             {
                 Source = BillInboxSource.Aplos,
                 BillDateFrom = startDate.Date,
-                BillDateTo = endDate.Date.AddDays(1).AddTicks(-1)
+                BillDateTo = endDate.Date.AddDays(1).AddTicks(-1),
+                // The default ReceivedDate DESC puts items created mid-paging at the front and shifts every page.
+                SortColumn = BillInboxSortBy.Created,
+                SortDirection = SortDirection.Ascending
             };
 
             const int pageSize = 100;
             var page = 1;
             var fetched = 0;
-            var notes = new List<string>();
+            var items = new List<ImportedBillInboxItem>();
 
             while (true)
             {
                 var response = await _pexApiClient.SearchBillInbox(mapping.PEXExternalAPIToken, request, page, pageSize, cancellationToken);
                 if (response?.Items == null || response.Items.Count == 0) break;
 
-                foreach (var note in response.Items.SelectMany(item => item.Metadata?.Notes ?? Enumerable.Empty<TransactionNoteModel>()))
+                foreach (var item in response.Items)
                 {
-                    if (!string.IsNullOrEmpty(note.NoteText)) notes.Add(note.NoteText);
+                    var notes = (item.Metadata?.Notes ?? Enumerable.Empty<TransactionNoteModel>())
+                        .Select(note => note.NoteText)
+                        .Where(noteText => !string.IsNullOrEmpty(noteText))
+                        .ToList();
+
+                    if (notes.Count == 0) continue;
+
+                    items.Add(new ImportedBillInboxItem
+                    {
+                        BillInboxId = item.BillInboxId,
+                        MetadataId = item.MetadataId,
+                        Notes = notes
+                    });
                 }
 
                 fetched += response.Items.Count;
@@ -523,7 +715,7 @@ namespace AplosConnector.Common.Services
                 page++;
             }
 
-            return notes;
+            return items;
         }
     }
 }

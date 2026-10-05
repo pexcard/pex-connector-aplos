@@ -43,6 +43,7 @@ namespace AplosConnector.Common.Services
         private readonly Pex2AplosMappingStorage _mappingStorage;
         private readonly SyncSettingsModel _syncSettings;
         private readonly IVendorCardStorage _vendorCardStorage;
+        private readonly IAplosBillMappingStorage _billMappingStorage;
 
         public AplosIntegrationService(
             ILogger<AplosIntegrationService> logger,
@@ -53,7 +54,8 @@ namespace AplosConnector.Common.Services
             SyncHistoryStorage historyStorage,
             Pex2AplosMappingStorage mappingStorage,
             SyncSettingsModel syncSettings,
-            IVendorCardStorage vendorCardStorage)
+            IVendorCardStorage vendorCardStorage,
+            IAplosBillMappingStorage billMappingStorage)
         {
             _appSettings = appSettings?.Value;
             _logger = logger;
@@ -64,6 +66,7 @@ namespace AplosConnector.Common.Services
             _mappingStorage = mappingStorage;
             _syncSettings = syncSettings;
             _vendorCardStorage = vendorCardStorage;
+            _billMappingStorage = billMappingStorage;
         }
 
         public async Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session, CancellationToken cancellationToken)
@@ -524,6 +527,15 @@ namespace AplosConnector.Common.Services
 
                     mapping.IsSyncing = true;
                     await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+
+                    try
+                    {
+                        await SyncBillPayments(_logger, mapping, utcNow, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Exception during {nameof(SyncBillPayments)} for business: {mapping.PEXBusinessAcctId}.");
+                    }
 
                     List<TransactionModel> additionalFees = [];
 
@@ -1377,10 +1389,9 @@ namespace AplosConnector.Common.Services
             }
         }
 
-        private static string GetSyncedNote(TransactionModel transaction)
-        {
-            return $"Synced transaction #{transaction.TransactionId} to Aplos";
-        }
+        private static string GetSyncedNote(TransactionModel transaction) => GetSyncedNote(transaction.TransactionId);
+
+        private static string GetSyncedNote(long transactionId) => $"Synced transaction #{transactionId} to Aplos";
 
         private async Task SyncBusinessAccountTransactions(
             ILogger _logger,
@@ -2534,6 +2545,12 @@ namespace AplosConnector.Common.Services
         {
             var aplosApiClient = MakeAplosApiClient(mapping);
             return await aplosApiClient.GetPayables(rangeStart, cancellationToken);
+        }
+
+        public async Task<AplosApiPayableResponse> GetAplosPayable(Pex2AplosMappingModel mapping, string aplosPayableId, CancellationToken cancellationToken)
+        {
+            var aplosApiClient = MakeAplosApiClient(mapping);
+            return await aplosApiClient.GetPayable(aplosPayableId, cancellationToken);
         }
 
         private static IDictionary<string, object> GetLoggingScopeForSync(Pex2AplosMappingModel mapping)

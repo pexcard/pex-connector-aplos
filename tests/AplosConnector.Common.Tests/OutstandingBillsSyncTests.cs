@@ -4,6 +4,7 @@ using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
 using Aplos.Api.Client.Models.Single;
 using AplosConnector.Common.Const;
+using AplosConnector.Common.Entities;
 using AplosConnector.Common.Enums;
 using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Settings;
@@ -41,6 +42,8 @@ namespace AplosConnector.Common.Tests
         private readonly Mock<SyncHistoryStorage> _mockHistoryStorage = new(MockBehavior.Loose, (TableClient)null);
         private readonly Mock<Pex2AplosMappingStorage> _mockMappingStorage =
             new(MockBehavior.Loose, (TableClient)null, (IStorageMappingService)null, (ILogger)null);
+
+        private readonly FakeBillMappingStorage _billMappingStorage = new();
 
         private readonly List<SyncResultModel> _historyRows = [];
         private readonly List<CreateBillInboxRequestModel> _createdBillInbox = [];
@@ -100,6 +103,27 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(SyncTypes.OutstandingBills, row.SyncType);
             Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
             Assert.Equal(1, row.SyncedRecords);
+        }
+
+        [Fact]
+        public async Task Gate_NoCashAccountConfigured_ImportsNothing()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+
+            var mapping = NewMapping(syncOutstandingBills: true);
+            mapping.BillPaymentsAplosCashAccountNumber = 0m;
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessSettings(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new BusinessSettingsModel { UseBillPay = true });
+
+            await GetAplosIntegrationService().SyncOutstandingBills(NullLogger.Instance, mapping, UtcNow, default);
+
+            Assert.Empty(_createdBillInbox);
+            var historyRow = Assert.Single(_historyRows);
+            Assert.Equal(SyncTypes.OutstandingBills, historyRow.SyncType);
+            Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
+            Assert.Contains("not available", historyRow.SyncNotes);
         }
 
         // The double filter: only fully unpaid payables import.
@@ -265,9 +289,8 @@ namespace AplosConnector.Common.Tests
             Assert.Empty(_createdBillInbox);
         }
 
-        // Known gap until 148047: the note is the only dedup key, so a bill created without one imports again.
         [Fact]
-        public async Task ANoteWriteFailureAfterTheBillIsCreatedLeavesItToImportAgain()
+        public async Task ANoteWriteFailureAfterTheBillIsCreatedDoesNotImportItAgain()
         {
             SetupExistingPexVendor();
             SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
@@ -278,9 +301,69 @@ namespace AplosConnector.Common.Tests
             await RunSync(useBillPay: true, syncOutstandingBills: true);
             await RunSync(useBillPay: true, syncOutstandingBills: true);
 
-            Assert.Equal(2, _createdBillInbox.Count);
-            Assert.Equal(2, _historyRows.Count);
-            Assert.All(_historyRows, row => Assert.Contains("INV-9001", row.SyncNotes));
+            Assert.Single(_createdBillInbox);
+            Assert.Equal(100, Assert.Single(_billMappingStorage.Rows.Values).PexBillInboxId);
+            Assert.Equal(SyncStatus.Success.ToString(), _historyRows[0].SyncStatus);
+        }
+
+        [Fact]
+        public async Task ABillInboxItemWithNoMetadataIdIsImportedButReportedAsUnpayable()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+            _mockPexApiClient
+                .Setup(client => client.CreateBillInbox(It.IsAny<string>(), It.IsAny<CreateBillInboxRequestModel>(), It.IsAny<CancellationToken>()))
+                .Callback<string, CreateBillInboxRequestModel, CancellationToken>((_, request, _) => _createdBillInbox.Add(request))
+                .ReturnsAsync(new BillInboxModel { BillInboxId = 100, MetadataId = null });
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Single(_createdBillInbox);
+            Assert.Equal(100, Assert.Single(_billMappingStorage.Rows.Values).PexBillInboxId);
+            var history = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Partial.ToString(), history.SyncStatus);
+            Assert.Contains("INV-9001", history.SyncNotes);
+            Assert.Contains("marked paid", history.SyncNotes);
+        }
+
+        [Fact]
+        public async Task APayableWithNoIdIsNeverImported()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable(null, amount: 125.50m, paid: 0m));
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Empty(_createdBillInbox);
+        }
+
+        [Fact]
+        public async Task APayableWithNoIdIsReportedSoItCanBeAddedByHand()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable(null, amount: 125.50m, paid: 0m), NewPayable("9002", amount: 10m, paid: 0m));
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Equal("INV-9002", Assert.Single(_createdBillInbox).BillNumber);
+            var history = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Partial.ToString(), history.SyncStatus);
+            Assert.Contains("add it in PEX by hand", history.SyncNotes);
+        }
+
+        [Fact]
+        public async Task TheRecoverySearchPagesInCreationOrder()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            _mockPexApiClient.Verify(client => client.SearchBillInbox(
+                It.IsAny<string>(),
+                It.Is<SearchBillInboxRequestModel>(r => r.SortColumn == BillInboxSortBy.Created && r.SortDirection == SortDirection.Ascending),
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         }
 
         [Fact]
@@ -353,6 +436,21 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(AplosContactName, Assert.Single(cardOrder.VendorCards).VendorName);
 
             Assert.Single(_createdBillInbox);
+        }
+
+        [Fact]
+        public async Task TheOutstandingBillsListUsesTheImportWindow()
+        {
+            var inWindow = NewPayable("9001", amount: 10m, paid: 0m);
+            var pastTheEnd = NewPayable("9002", amount: 10m, paid: 0m);
+            pastTheEnd.BillDate = new DateTime(2026, 9, 12);
+            SetupPayables(inWindow, pastTheEnd);
+
+            var bills = await GetAplosIntegrationService().GetAplosOutstandingBills(NewMapping(syncOutstandingBills: true), null, UtcNow, default);
+
+            Assert.Equal("9001", Assert.Single(bills).Id);
+            // EarliestTransactionDateToSync is 2026-08-01T00:00Z, which is still 2026-07-31 in EST - as the import reads.
+            _mockAplosApiClient.Verify(c => c.GetPayables(new DateOnly(2026, 7, 31), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -430,6 +528,291 @@ namespace AplosConnector.Common.Tests
             Assert.True(rebuilt.SyncOutstandingBills);
         }
 
+        [Fact]
+        public async Task EveryImportedPayableGetsAMappingRowCarryingBothIds()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Single(_createdBillInbox);
+            const int billInboxId = 100;
+            var row = Assert.Single(_billMappingStorage.Rows.Values);
+            Assert.Equal(6118231, row.PEXBusinessAcctId);
+            Assert.Equal("9001", row.AplosPayableId);
+            Assert.Equal("INV-9001", row.AplosReferenceNumber);
+            Assert.Equal(billInboxId, row.PexBillInboxId);
+            Assert.Equal(billInboxId, row.MetadataRelationId);
+            Assert.Equal(125.50m, row.Amount);
+        }
+
+        [Fact]
+        public async Task AStoredMappingSkipsThePayableWithoutEverSearchingNotes()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+            _billMappingStorage.Seed(new AplosBillMappingModel { PEXBusinessAcctId = 6118231, AplosPayableId = "9001", PexBillInboxId = 42 });
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Empty(_createdBillInbox);
+            _mockPexApiClient.Verify(client => client.SearchBillInbox(
+                It.IsAny<string>(), It.IsAny<SearchBillInboxRequestModel>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task AStoredMappingForALongerIdDoesNotSuppressTheShorterId()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("4250", amount: 10m, paid: 0m));
+            _billMappingStorage.Seed(new AplosBillMappingModel { PEXBusinessAcctId = 6118231, AplosPayableId = "42509", PexBillInboxId = 42 });
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Equal("INV-4250", Assert.Single(_createdBillInbox).BillNumber);
+        }
+
+        // Work item 138157 regression, carried over to Aplos payable ids: a strict substring must not match.
+
+        [Theory]
+        [InlineData("4250", false)]
+        [InlineData("42509", true)]
+        [InlineData("250", false)]
+        public void NoteMatchingIsDelimiterAwareOnBothSidesOfThePayableId(string payableId, bool expectedMatch)
+        {
+            var note = $"{AplosIntegrationService.GetAplosBillSyncedNote("42509")} with ID #42 on 2026-09-10T00:00:00.0000000Z.";
+
+            Assert.Equal(expectedMatch, AplosIntegrationService.NoteMatchesAplosPayableId(note, payableId));
+        }
+
+        [Fact]
+        public void ABillInboxIdInTheNoteIsNotMistakenForAPayableId()
+        {
+            var note = $"{AplosIntegrationService.GetAplosBillSyncedNote("4250")} with ID #98765 on 2026-09-10T00:00:00.0000000Z.";
+
+            Assert.False(AplosIntegrationService.NoteMatchesAplosPayableId(note, "98765"));
+            Assert.True(AplosIntegrationService.NoteMatchesAplosPayableId(note, "4250"));
+        }
+
+        [Fact]
+        public async Task APayableWhoseIdEqualsAnotherItemsBillInboxIdIsStillImported()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("98765", amount: 10m, paid: 0m));
+            SetupExistingBillInboxNote($"{AplosIntegrationService.GetAplosBillSyncedNote("4250")} with ID #98765 on 2026-09-10T00:00:00.0000000Z.", billInboxId: 98765);
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Equal("INV-98765", Assert.Single(_createdBillInbox).BillNumber);
+            Assert.Equal(100, Assert.Single(_billMappingStorage.Rows.Values).PexBillInboxId);
+        }
+
+        [Fact]
+        public async Task RecoveryNeverClaimsABillInboxItemAnotherPayableAlreadyOwns()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 10m, paid: 0m));
+            _billMappingStorage.Seed(new AplosBillMappingModel { PEXBusinessAcctId = 6118231, AplosPayableId = "7777", PexBillInboxId = 42, MetadataRelationId = 42 });
+            SetupExistingBillInboxNote($"{AplosIntegrationService.GetAplosBillSyncedNote("9001")} with ID #42 on 2026-09-10T00:00:00.0000000Z.", billInboxId: 42);
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Equal("INV-9001", Assert.Single(_createdBillInbox).BillNumber);
+            Assert.Equal(100, _billMappingStorage.Rows.Values.Single(row => row.AplosPayableId == "9001").PexBillInboxId);
+            Assert.Equal(42, _billMappingStorage.Rows.Values.Single(row => row.AplosPayableId == "7777").PexBillInboxId);
+        }
+
+        [Fact]
+        public async Task APayableWhoseIdIsASubstringOfAnImportedIdIsStillImported()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("4250", amount: 10m, paid: 0m));
+            SetupExistingBillInboxNote($"{AplosIntegrationService.GetAplosBillSyncedNote("42509")} with ID #42 on 2026-09-10T00:00:00.0000000Z.");
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Equal("INV-4250", Assert.Single(_createdBillInbox).BillNumber);
+        }
+
+        [Fact]
+        public async Task AFailedMappingWriteIsRecoveredFromTheNoteWithoutDuplicatingTheBill()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+            _billMappingStorage.FailNextWrite = true;
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Single(_createdBillInbox);
+            Assert.Empty(_billMappingStorage.Rows);
+            Assert.Equal(SyncStatus.Success.ToString(), Assert.Single(_historyRows).SyncStatus);
+
+            // Next run: the payable is still unpaid in Aplos and still unmapped, so only the audit note stands
+            // between it and a duplicate bill inbox item.
+            SetupExistingBillInboxNote(Assert.Single(_relationshipNotes), billInboxId: 100);
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Single(_createdBillInbox);
+            var row = Assert.Single(_billMappingStorage.Rows.Values);
+            Assert.Equal("9001", row.AplosPayableId);
+            Assert.Equal(100, row.PexBillInboxId);
+        }
+
+        [Fact]
+        public async Task AMappingConflictReportsTheDuplicateBillInsteadOfSucceeding()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+            _billMappingStorage.FailNextWriteWith = new Azure.RequestFailedException(409, "The specified entity already exists.");
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Single(_createdBillInbox);
+            Assert.Empty(_relationshipNotes);
+            var history = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Partial.ToString(), history.SyncStatus);
+            Assert.Contains("INV-9001", history.SyncNotes);
+            Assert.Contains("reject it in PEX", history.SyncNotes);
+        }
+
+        [Fact]
+        public async Task AFailedMappingWriteAndAFailedNoteReportTheBillAsUnrecorded()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+            _billMappingStorage.FailNextWrite = true;
+            _mockPexApiClient
+                .Setup(client => client.AddTransactionRelationshipNote(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("PEX unavailable"));
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Single(_createdBillInbox);
+            Assert.Empty(_billMappingStorage.Rows);
+            var history = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Partial.ToString(), history.SyncStatus);
+            Assert.Contains("could not be recorded", history.SyncNotes);
+        }
+
+        [Fact]
+        public async Task ACancelledMappingWriteStopsBeforeTheNote()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+            _billMappingStorage.FailNextWriteWith = new OperationCanceledException();
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Empty(_relationshipNotes);
+        }
+
+        [Fact]
+        public async Task AMappingMarkedPaidIsNeverReimported()
+        {
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+            await _billMappingStorage.MarkPaidAsync(Assert.Single(_billMappingStorage.Rows.Values), UtcNow, default);
+
+            _createdBillInbox.Clear();
+            await RunSync(useBillPay: true, syncOutstandingBills: true);
+
+            Assert.Empty(_createdBillInbox);
+            Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        }
+
+        [Fact]
+        public void TheMappingEntitySurvivesTheTableRoundTrip()
+        {
+            var model = new AplosBillMappingModel
+            {
+                PEXBusinessAcctId = 6118231,
+                AplosPayableId = "9001",
+                AplosReferenceNumber = "INV-9001",
+                PexBillInboxId = 100,
+                MetadataRelationId = 100,
+                Amount = 125.50m,
+                PaidSyncedUtc = UtcNow,
+                FirstFailedUtc = UtcNow.AddDays(-2),
+                CreatedUtc = UtcNow
+            };
+
+            var entity = new AplosBillMappingEntity(model);
+            Assert.Equal("6118231", entity.PartitionKey);
+            Assert.Equal("9001", entity.RowKey);
+
+            var rebuilt = entity.ToModel();
+            Assert.Equal(model.AplosPayableId, rebuilt.AplosPayableId);
+            Assert.Equal(model.AplosReferenceNumber, rebuilt.AplosReferenceNumber);
+            Assert.Equal(model.PexBillInboxId, rebuilt.PexBillInboxId);
+            Assert.Equal(model.MetadataRelationId, rebuilt.MetadataRelationId);
+            Assert.Equal(model.Amount, rebuilt.Amount);
+            Assert.Equal(model.PaidSyncedUtc, rebuilt.PaidSyncedUtc);
+            Assert.Equal(model.FirstFailedUtc, rebuilt.FirstFailedUtc);
+            Assert.Equal(model.CreatedUtc, rebuilt.CreatedUtc);
+        }
+
+        private sealed class FakeBillMappingStorage : IAplosBillMappingStorage
+        {
+            public readonly Dictionary<string, AplosBillMappingModel> Rows = new(StringComparer.OrdinalIgnoreCase);
+
+            public bool FailNextWrite { get; set; }
+
+            public Exception FailNextWriteWith { get; set; }
+
+            public void Seed(AplosBillMappingModel model) => Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
+
+            public Task<List<AplosBillMappingModel>> GetByBusinessAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
+                => Task.FromResult(Rows.Values.Where(row => row.PEXBusinessAcctId == pexBusinessAcctId).ToList());
+
+            // Mirrors TableClient.AddEntityAsync: a second insert of the same key is a 409, not a replace.
+            public Task AddAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
+            {
+                ThrowIfFailing();
+                if (!Rows.TryAdd(Key(model.PEXBusinessAcctId, model.AplosPayableId), model))
+                {
+                    throw new Azure.RequestFailedException(409, "The specified entity already exists.");
+                }
+
+                return Task.CompletedTask;
+            }
+
+            private void ThrowIfFailing()
+            {
+                if (FailNextWriteWith != null)
+                {
+                    var failure = FailNextWriteWith;
+                    FailNextWriteWith = null;
+                    throw failure;
+                }
+
+                if (!FailNextWrite) return;
+
+                FailNextWrite = false;
+                throw new InvalidOperationException("Table storage is unavailable.");
+            }
+
+            public Task MarkPaidAsync(AplosBillMappingModel model, DateTime paidUtc, CancellationToken cancellationToken)
+            {
+                ThrowIfFailing();
+                model.PaidSyncedUtc = paidUtc;
+                Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
+                return Task.CompletedTask;
+            }
+
+            public Task MarkFailedAsync(AplosBillMappingModel model, DateTime failedUtc, CancellationToken cancellationToken)
+            {
+                ThrowIfFailing();
+                model.FirstFailedUtc = failedUtc;
+                Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
+                return Task.CompletedTask;
+            }
+
+            private static string Key(int pexBusinessAcctId, string aplosPayableId) => $"{pexBusinessAcctId}|{aplosPayableId}";
+        }
+
         public OutstandingBillsSyncTests()
         {
             SetupDefaults();
@@ -458,7 +841,8 @@ namespace AplosConnector.Common.Tests
             AplosPrivateKey = "privateKey",
             IsManualSync = true,
             EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
-            SyncOutstandingBills = syncOutstandingBills
+            SyncOutstandingBills = syncOutstandingBills,
+            BillPaymentsAplosCashAccountNumber = 1000m
         };
 
         private static AplosApiPayableDetail NewPayable(
@@ -552,7 +936,7 @@ namespace AplosConnector.Common.Tests
                 });
         }
 
-        private void SetupExistingBillInboxNote(string noteText)
+        private void SetupExistingBillInboxNote(string noteText, int billInboxId = 42)
         {
             _mockPexApiClient
                 .Setup(client => client.SearchBillInbox(It.IsAny<string>(), It.IsAny<SearchBillInboxRequestModel>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -560,7 +944,8 @@ namespace AplosConnector.Common.Tests
                 {
                     Items = [new BillInboxModel
                     {
-                        BillInboxId = 42,
+                        BillInboxId = billInboxId,
+                        MetadataId = billInboxId,
                         Metadata = new PaymentRequestMetadataModel { Notes = [new TransactionNoteModel { NoteText = noteText }] }
                     }],
                     PageInfo = new PageInfoModel { Page = 1, PageSize = 100, TotalItems = 1 }
@@ -656,7 +1041,8 @@ namespace AplosConnector.Common.Tests
                 _mockHistoryStorage.Object,
                 _mockMappingStorage.Object,
                 new SyncSettingsModel(),
-                null);
+                null,
+                _billMappingStorage);
         }
     }
 }

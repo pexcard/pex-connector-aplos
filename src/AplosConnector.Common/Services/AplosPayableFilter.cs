@@ -1,4 +1,5 @@
 using Aplos.Api.Client.Models.Detail;
+using AplosConnector.Common.Enums;
 using AplosConnector.Common.Models.Aplos;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,14 @@ namespace AplosConnector.Common.Services
         {
             var paid = NormalizeAmount(payable.PaidAmount);
             return paid > 0m && paid < NormalizeAmount(payable.Amount);
+        }
+
+        // Same amount/paid reading as the inbound filter, so the two halves can't disagree on "paid".
+        public static AplosPayableAction DetermineAction(AplosApiPayableDetail payable)
+        {
+            if (!HasOutstandingBalance(payable)) return AplosPayableAction.SkipAlreadyPaid;
+            if (IsPartiallyPaid(payable)) return AplosPayableAction.SkipPartiallyPaid;
+            return AplosPayableAction.Pay;
         }
 
         public static List<AplosApiPayableDetail> SelectUnpaid(IEnumerable<AplosApiPayableDetail> payables)

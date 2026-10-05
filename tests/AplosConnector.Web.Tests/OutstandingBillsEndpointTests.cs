@@ -43,13 +43,13 @@ namespace AplosConnector.Web.Tests
             mappings.Setup(m => m.GetByBusinessAcctIdAsync(4242, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Pex2AplosMappingModel { PEXBusinessAcctId = 4242 });
             var service = new Mock<IAplosIntegrationService>();
-            service.Setup(s => s.GetAplosOutstandingBills(It.IsAny<Pex2AplosMappingModel>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            service.Setup(s => s.GetAplosOutstandingBills(It.IsAny<Pex2AplosMappingModel>(), It.IsAny<DateOnly?>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<AplosOutstandingBillModel>());
 
             var controller = new AplosController(sessions.Object, mappings.Object, service.Object, null);
             await controller.GetOutstandingBills(sessionGuid.ToString(), new DateOnly(2026, 1, 15), default);
 
-            service.Verify(s => s.GetAplosOutstandingBills(It.IsAny<Pex2AplosMappingModel>(), new DateOnly(2026, 1, 15), It.IsAny<CancellationToken>()), Times.Once);
+            service.Verify(s => s.GetAplosOutstandingBills(It.IsAny<Pex2AplosMappingModel>(), new DateOnly(2026, 1, 15), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }

@@ -224,10 +224,7 @@ namespace AplosConnector.Web.Controllers
             var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
             if (mapping == null) return NotFound();
 
-            var bills = await _aplosIntegrationService.GetAplosOutstandingBills(
-                mapping,
-                startDate ?? DateTime.UtcNow.AddDays(-180).ToEstCalendarDate(),
-                cancellationToken);
+            var bills = await _aplosIntegrationService.GetAplosOutstandingBills(mapping, startDate, DateTime.UtcNow, cancellationToken);
 
             return Ok(bills);
         }
