@@ -504,6 +504,11 @@ public partial class AplosIntegrationService
             try
             {
                 var cardCharge = await _pexApiClient.GetCardholderTransaction(mapping.PEXExternalAPIToken, cardTransactionId.Value, cancellationToken);
+                if (HasNote(cardCharge, GetSyncedNote(cardTransactionId.Value)))
+                {
+                    logger.LogWarning($"Closing Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}, but its card charge (PEX transaction {cardTransactionId}) was also synced to Aplos as a purchase.");
+                }
+
                 if (!HasNote(cardCharge, SyncedAsBillPaymentNote))
                 {
                     await AddCardChargeMarker(mapping, paymentRequest, cardTransactionId.Value, cancellationToken);
