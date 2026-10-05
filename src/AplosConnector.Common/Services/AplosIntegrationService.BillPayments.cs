@@ -490,14 +490,14 @@ public partial class AplosIntegrationService
         {
             if (cardTransactionId is null)
             {
-                // Past the grace period the customer was told to mark it paid in Aplos; it now reads paid, so close it.
                 if (utcNow - paymentRequest.PayoutDate.Value.UtcDateTime <= UnlinkedCardPaymentGracePeriod)
                 {
                     throw UnlinkedCardPayment(logger, mapping, paymentRequest, utcNow);
                 }
 
-                logger.LogWarning($"Closing Aplos payable {billMapping.AplosPayableId} for PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId} without a card charge marker. PEX never linked the charge, and Aplos shows the payable paid.");
-                await TryMarkBillMappingPaid(logger, mapping, billMapping, utcNow, cancellationToken);
+                // Past the grace period the customer was told to mark it paid in Aplos. The row stays open, so a link
+                // that arrives later still marks the charge before the transaction sync can book it.
+                logger.LogInformation($"Skipping Aplos payable {billMapping.AplosPayableId} for PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId}. Aplos shows it paid, and PEX has not linked its card charge.");
                 return;
             }
 
