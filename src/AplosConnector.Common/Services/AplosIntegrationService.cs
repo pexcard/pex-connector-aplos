@@ -1598,7 +1598,7 @@ namespace AplosConnector.Common.Services
                         var allInvoicePayments = await _pexApiClient.GetInvoicePayments(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
                         var invoicePayments = allInvoicePayments.Where(p => !p.RejectedByBank).ToList();
 
-                        var unknownPayment = invoicePayments.FirstOrDefault(p => ClassifyInvoicePayment(p) == null);
+                        var unknownPayment = allInvoicePayments.FirstOrDefault(p => ClassifyInvoicePayment(p) == null);
                         if (unknownPayment != null)
                         {
                             _logger.LogWarning($"Payment {unknownPayment.PaymentId} on invoice {invoiceModel.InvoiceId} has unknown payment type {unknownPayment.Type}. Skipping invoice {invoiceModel.InvoiceId}.");

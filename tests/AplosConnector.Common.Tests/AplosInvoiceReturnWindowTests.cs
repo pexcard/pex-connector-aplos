@@ -186,6 +186,33 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public async Task SyncInvoices_FailsOnlyThatInvoice_WhenARejectedPaymentTypeIsUnknown()
+        {
+            _mockPexApiClient
+                .Setup(client => client.GetInvoices(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync([NewInvoice(98769, 100.00m, isPastReturnWindow: true), NewInvoice(98770, 50.00m, isPastReturnWindow: true)]);
+            _mockPexApiClient
+                .Setup(client => client.GetInvoicePayments(It.IsAny<string>(), 98769, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([NewPayment(100.00m), NewPayment(50.00m, rejectedByBank: true, type: (PaymentType)99)]);
+            _mockPexApiClient
+                .Setup(client => client.GetInvoicePayments(It.IsAny<string>(), 98770, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([NewPayment(50.00m)]);
+            _mockPexApiClient
+                .Setup(client => client.GetInvoiceAllocations(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string _, int invoiceId, CancellationToken _) => [new InvoiceAllocationModel { InvoiceId = invoiceId, TagValue = MissionsFundId, TotalAmount = invoiceId == 98769 ? 100.00m : 50.00m }]);
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            var transaction = Assert.Single(_createdTransactions);
+            Assert.Equal("98770", transaction.Note);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("invoice 98769 has unknown payment type 99"));
+            var row = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Partial.ToString(), row.SyncStatus);
+            Assert.Equal(1, row.SyncedRecords);
+        }
+
+        [Fact]
         public async Task SyncInvoices_Fails_AndAsksForTheRebateAccount_WhenCreditsNeedOne()
         {
             SetupInvoice(NewInvoice(98767, 110.00m, isPastReturnWindow: true));
