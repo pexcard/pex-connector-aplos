@@ -113,9 +113,7 @@ namespace AplosConnector.Common.Tests
 
             var mapping = NewMapping(syncOutstandingBills: true);
             mapping.BillPaymentsAplosCashAccountNumber = 0m;
-            _mockPexApiClient
-                .Setup(client => client.GetBusinessSettings(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new BusinessSettingsModel { UseBillPay = true });
+            mapping.UseBillPayEnabled = true;
 
             await GetAplosIntegrationService().SyncOutstandingBills(NullLogger.Instance, mapping, UtcNow, default);
 
@@ -736,6 +734,7 @@ namespace AplosConnector.Common.Tests
                 Amount = 125.50m,
                 PaidSyncedUtc = UtcNow,
                 FirstFailedUtc = UtcNow.AddDays(-2),
+                AwaitingChargeSinceUtc = UtcNow.AddDays(-1),
                 CreatedUtc = UtcNow
             };
 
@@ -751,6 +750,7 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(model.Amount, rebuilt.Amount);
             Assert.Equal(model.PaidSyncedUtc, rebuilt.PaidSyncedUtc);
             Assert.Equal(model.FirstFailedUtc, rebuilt.FirstFailedUtc);
+            Assert.Equal(model.AwaitingChargeSinceUtc, rebuilt.AwaitingChargeSinceUtc);
             Assert.Equal(model.CreatedUtc, rebuilt.CreatedUtc);
         }
 
@@ -810,6 +810,14 @@ namespace AplosConnector.Common.Tests
                 return Task.CompletedTask;
             }
 
+            public Task MarkAwaitingChargeAsync(AplosBillMappingModel model, DateTime awaitingSinceUtc, CancellationToken cancellationToken)
+            {
+                ThrowIfFailing();
+                model.AwaitingChargeSinceUtc = awaitingSinceUtc;
+                Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
+                return Task.CompletedTask;
+            }
+
             private static string Key(int pexBusinessAcctId, string aplosPayableId) => $"{pexBusinessAcctId}|{aplosPayableId}";
         }
 
@@ -822,6 +830,9 @@ namespace AplosConnector.Common.Tests
         {
             var mapping = NewMapping(syncOutstandingBills);
             mapping.EndDateUtc = endDateUtc;
+            // Set by Sync's run-level settings refresh, which also clears the import toggle when bill pay is off.
+            mapping.UseBillPayEnabled = useBillPay;
+            mapping.SyncOutstandingBills = syncOutstandingBills && useBillPay;
 
             _mockPexApiClient
                 .Setup(client => client.GetBusinessSettings(It.IsAny<string>(), It.IsAny<CancellationToken>()))

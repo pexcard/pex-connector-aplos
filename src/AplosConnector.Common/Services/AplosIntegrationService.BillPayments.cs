@@ -24,6 +24,7 @@ public partial class AplosIntegrationService
     private const int BillPaymentsPageSize = 50;
 
     private static readonly TimeSpan UnlinkedCardPaymentGracePeriod = TimeSpan.FromDays(3);
+    private static readonly TimeSpan AwaitingCardChargeLimit = TimeSpan.FromDays(30);
     // Aplos answers a deleted payable like an outage, so a failing bill can't be told apart from a stuck one.
     private static readonly TimeSpan BillPaymentRetryWindow = TimeSpan.FromDays(30);
 
@@ -37,12 +38,12 @@ public partial class AplosIntegrationService
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        // Runs whatever the import toggle says now: an imported bill's payment is always written back.
+        // Runs whatever the import toggle says now: an imported bill's payment is always written back. Sync refreshed the
+        // business settings before any stage.
+        if (!mapping.UseBillPayEnabled) return;
+
         var billMappings = await _billMappingStorage.GetByBusinessAsync(mapping.PEXBusinessAcctId, cancellationToken);
         if (billMappings.Count == 0) return;
-
-        await RefreshBusinessSettings(mapping, cancellationToken);
-        if (!mapping.UseBillPayEnabled) return;
 
         if (!BillPayReady(mapping))
         {
@@ -108,7 +109,7 @@ public partial class AplosIntegrationService
                 {
                     aplosOriginated.Add((paymentRequest, billMapping));
                 }
-                else if (CameFromAplosImport(paymentRequest))
+                else if (paymentRequest.PayoutDate is not null && CameFromAplosImport(paymentRequest))
                 {
                     failureCount++;
                     failureNotes.Add($"Bill {paymentRequest.BillRefNo ?? paymentRequest.PaymentRequestId.ToString()}: this bill was imported from Aplos but the connector has no usable record of the import, so its payment was not synced. Mark it paid in Aplos.");
@@ -127,6 +128,18 @@ public partial class AplosIntegrationService
                 if (billMapping.PaidSyncedUtc is not null)
                 {
                     logger.LogInformation($"Skipping Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}. It was already marked paid on {billMapping.PaidSyncedUtc:O}.");
+                    continue;
+                }
+
+                if (paymentRequest.PayoutDate is null)
+                {
+                    var awaitingNote = await CheckAwaitingCardCharge(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken);
+                    if (awaitingNote is not null)
+                    {
+                        failureCount++;
+                        failureNotes.Add(awaitingNote);
+                    }
+
                     continue;
                 }
 
@@ -381,6 +394,53 @@ public partial class AplosIntegrationService
         }
     }
 
+    // PEX closes a card request when it sends the vendor the card, and PayoutDate stays null until it links the charge.
+    // A link that never arrives looks the same as a vendor who has not charged the card yet.
+    private static bool IsAwaitingCardCharge(BillPaymentRequestModel paymentRequest)
+        => IsCardPayment(paymentRequest)
+           && paymentRequest.PaymentRequestStatus == PaymentRequestStatus.Closed
+           && paymentRequest.PaymentRequestStatusTrigger == PaymentRequestStatusTrigger.Paid;
+
+    private async Task<string> CheckAwaitingCardCharge(
+        ILogger logger,
+        Pex2AplosMappingModel mapping,
+        AplosBillMappingModel billMapping,
+        BillPaymentRequestModel paymentRequest,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        if (billMapping.AwaitingChargeSinceUtc is null)
+        {
+            try
+            {
+                await _billMappingStorage.MarkAwaitingChargeAsync(billMapping, utcNow, cancellationToken);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning(ex, $"Failed to record the start of the card charge wait on the bill mapping for payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}.");
+            }
+
+            return null;
+        }
+
+        var waited = utcNow - billMapping.AwaitingChargeSinceUtc.Value;
+        if (waited <= AwaitingCardChargeLimit) return null;
+
+        try
+        {
+            // Paid by hand in Aplos: say nothing, and a link that arrives later still closes it with its marker.
+            var payable = (await GetAplosPayable(mapping, billMapping.AplosPayableId, cancellationToken))?.Data?.Payable;
+            if (payable is not null && AplosPayableFilter.DetermineAction(payable) == AplosPayableAction.SkipAlreadyPaid) return null;
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, $"Failed to check Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}, whose card payment has had no charge for {waited.Days} days.");
+        }
+
+        logger.LogWarning($"PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId} has had no card charge linked since {billMapping.AwaitingChargeSinceUtc:O}.");
+        return $"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: PEX sent the vendor a card for this bill at least {waited.Days} days ago and has no charge on it yet. If the vendor has charged it, mark the bill paid in Aplos and delete the expense if the sync booked one.";
+    }
+
     private static bool HasStoppedRetrying(AplosBillMappingModel billMapping, DateTime utcNow)
         => billMapping.FirstFailedUtc is not null && utcNow - billMapping.FirstFailedUtc.Value > BillPaymentRetryWindow;
 
@@ -597,7 +657,7 @@ public partial class AplosIntegrationService
             if (paymentRequest is null) continue;
 
             // PayoutDate is the one paid signal both rails set; the status trigger differs between them.
-            if (paymentRequest.PayoutDate is null) continue;
+            if (paymentRequest.PayoutDate is null && !IsAwaitingCardCharge(paymentRequest)) continue;
 
             requests.Add(paymentRequest);
         }

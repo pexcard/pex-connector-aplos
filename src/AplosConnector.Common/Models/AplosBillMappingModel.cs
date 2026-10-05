@@ -14,6 +14,8 @@ namespace AplosConnector.Common.Models
         public DateTime? PaidSyncedUtc { get; set; }
         // Start of the retry window; see BillPaymentRetryWindow.
         public DateTime? FirstFailedUtc { get; set; }
+        // When a card payment was first seen waiting for its charge; see AwaitingCardChargeLimit.
+        public DateTime? AwaitingChargeSinceUtc { get; set; }
         public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     }
 }

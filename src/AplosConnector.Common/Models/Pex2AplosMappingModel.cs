@@ -204,7 +204,8 @@ namespace AplosConnector.Common.Models
         public bool SyncReimbursements { get; set; }
         public bool SyncOutstandingBills { get; set; }
 
-        // Live PEX business-account flags, refreshed on each read via RefreshBusinessSettings — never persisted.
+        // Live PEX business-account flags, refreshed on each read via RefreshBusinessSettings. UseBillPayEnabled is also
+        // persisted as the last-known value, so a run whose refresh fails keeps the bill pay claim it had.
         public bool UseReimbursementsEnabled { get; set; }
         public bool UseBillPayEnabled { get; set; }
         public bool SyncApprovedOnly { get; set; }

@@ -525,9 +525,22 @@ namespace AplosConnector.Common.Services
 
                     await EnsurePartnerInfoPopulated(mapping, cancellationToken);
 
+                    // Once per run, before any stage. RefreshBusinessSettings falls back to stored values by itself, but
+                    // rethrows on a first load (no funding source yet), which must not stop the stages that don't need it.
+                    try
+                    {
+                        await RefreshBusinessSettings(mapping, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Failed to refresh business settings for business {mapping.PEXBusinessAcctId}. The stages run with the stored values.");
+                    }
+
                     mapping.IsSyncing = true;
                     await _mappingStorage.UpdateAsync(mapping, cancellationToken);
 
+                    // Before the transaction sync: a card charge written back here as a bill payment is marked by the
+                    // time that sync reads it, so it is skipped instead of booked a second time as a purchase.
                     try
                     {
                         await SyncBillPayments(_logger, mapping, utcNow, cancellationToken);
@@ -1007,7 +1020,7 @@ namespace AplosConnector.Common.Services
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
 
-        private async Task<List<TransactionModel>> SyncTransactions(
+        internal async Task<List<TransactionModel>> SyncTransactions(
             ILogger _logger,
             Pex2AplosMappingModel mapping,
             DateTime utcNow,
@@ -1086,7 +1099,7 @@ namespace AplosConnector.Common.Services
             {
                 _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod} in batches of {fetchBatchSizeDays} day(s) (batchSizeSource={fetchBatchSizeSource}).");
 
-                var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, cancelToken: cancellationToken);
+                var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, includeVendorBillPay: true, cancelToken: cancellationToken);
                 allCardholderTransactions.AddRange(cardholderTransactions);
                 var transactions = FilterCardholderTransactions(mapping, cardholderTransactions).ToList();
 
@@ -1381,6 +1394,12 @@ namespace AplosConnector.Common.Services
                 }
 
                 if (transaction.TransactionNotes.Any(x => x.NoteText.Contains(GetSyncedNote(transaction))))
+                {
+                    continue;
+                }
+
+                // Already booked by the bill stage as the payment of an imported Aplos bill.
+                if (transaction.TransactionNotes.Any(x => x.NoteText.Contains(SyncedAsBillPaymentNote, StringComparison.OrdinalIgnoreCase)))
                 {
                     continue;
                 }
@@ -2687,13 +2706,6 @@ namespace AplosConnector.Common.Services
             CancellationToken cancellationToken)
         {
             if (!mapping.SyncReimbursements) return;
-
-            await RefreshBusinessSettings(mapping, cancellationToken);
-            if (!mapping.SyncReimbursements)
-            {
-                logger.LogInformation($"Skipping sync reimbursements for business {mapping.PEXBusinessAcctId}. Reimbursements are disabled for this business account.");
-                return;
-            }
 
             // Reimbursements share the purchases mapping configuration (the "Purchases and
             // Reimbursements" wizard page): fund, expense account, category tags, and 990

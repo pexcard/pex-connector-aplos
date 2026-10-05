@@ -32,6 +32,7 @@ namespace AplosConnector.Common.Entities
         public bool SyncRebates { get; set; }
         public bool SyncReimbursements { get; set; }
         public bool SyncOutstandingBills { get; set; }
+        public bool UseBillPayEnabled { get; set; }
         public bool SyncApprovedOnly { get; set; }
         public DateTime EarliestTransactionDateToSync { get; set; }
         public DateTime? EndDateUtc { get; set; }

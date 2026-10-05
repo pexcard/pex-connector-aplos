@@ -53,17 +53,9 @@ namespace AplosConnector.Common.Services
         {
             if (!mapping.SyncOutstandingBills) return;
 
-            await RefreshBusinessSettings(mapping, cancellationToken);
-
             if (!mapping.UseBillPayEnabled)
             {
                 logger.LogInformation($"Skipping sync outstanding bills for business {mapping.PEXBusinessAcctId}. Bill Pay is disabled for this business account.");
-                return;
-            }
-
-            if (!mapping.SyncOutstandingBills)
-            {
-                logger.LogInformation($"Skipping sync outstanding bills for business {mapping.PEXBusinessAcctId}. Outstanding bill sync is turned off.");
                 return;
             }
 
