@@ -118,7 +118,7 @@ public class BillPaymentRetryTests : BillPaymentsTestBase
     }
 
     [Fact]
-    public async Task ACardPaidBillUnlinkedPastTheGracePeriodClosesOnceAplosShowsItPaid()
+    public async Task ACardPaidBillUnlinkedPastTheGracePeriodStaysOpenOnceAplosShowsItPaid()
     {
         SeedUnpaidMapping();
         SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, linkedCardCharge: false, payoutDate: UtcNow.AddDays(-4));
@@ -127,8 +127,24 @@ public class BillPaymentRetryTests : BillPaymentsTestBase
         await RunSync(useBillPay: true);
 
         VerifyNoPayCall();
-        Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
         Assert.Equal(SyncStatus.Success.ToString(), Assert.Single(_historyRows).SyncStatus);
+    }
+
+    [Fact]
+    public async Task ALateLinkStillMarksTheChargeOfABillPaidInAplos()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, linkedCardCharge: false, payoutDate: UtcNow.AddDays(-4));
+        SetupLivePayable(amount: 125.50m, paid: 125.50m);
+        await RunSync(useBillPay: true);
+
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, payoutDate: UtcNow.AddDays(-4));
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.NotNull(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        Assert.Contains(_cardTransactionNotes, note => note.Contains(AplosIntegrationService.SyncedAsBillPaymentNote));
     }
 
     [Fact]

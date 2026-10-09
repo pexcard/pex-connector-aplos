@@ -78,6 +78,7 @@ public abstract class BillPaymentsTestBase
             IsManualSync = true,
             EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
             BillPaymentsAplosCashAccountNumber = cashAccountNumber,
+            // Set by Sync's run-level settings refresh.
             UseBillPayEnabled = useBillPay
         };
 
@@ -91,7 +92,11 @@ public abstract class BillPaymentsTestBase
 
     protected void SeedPaidMapping() => SeedUnpaidMapping(paidSyncedUtc: new DateTime(2026, 9, 16, 12, 0, 0, DateTimeKind.Utc));
 
-    protected void SeedUnpaidMapping(DateTime? createdUtc = null, DateTime? firstFailedUtc = null, DateTime? paidSyncedUtc = null)
+    protected void SeedUnpaidMapping(
+        DateTime? createdUtc = null,
+        DateTime? firstFailedUtc = null,
+        DateTime? paidSyncedUtc = null,
+        DateTime? awaitingChargeSinceUtc = null)
     {
         _billMappingStorage.Seed(new AplosBillMappingModel
         {
@@ -103,7 +108,8 @@ public abstract class BillPaymentsTestBase
             MetadataRelationId = MetadataRelationId,
             Amount = 125.50m,
             FirstFailedUtc = firstFailedUtc,
-            PaidSyncedUtc = paidSyncedUtc
+            PaidSyncedUtc = paidSyncedUtc,
+            AwaitingChargeSinceUtc = awaitingChargeSinceUtc
         });
     }
 
@@ -114,7 +120,8 @@ public abstract class BillPaymentsTestBase
         decimal amount = 125.50m,
         bool linkedCardCharge = true,
         DateTimeOffset? payoutDate = null,
-        PaymentRequestMetadataModel metadata = null)
+        PaymentRequestMetadataModel metadata = null,
+        PaymentRequestStatusTrigger statusTrigger = PaymentRequestStatusTrigger.Paid)
     {
         _mockPexApiClient
             .Setup(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -145,7 +152,7 @@ public abstract class BillPaymentsTestBase
                 UserFirstName = "Dana",
                 UserLastName = "Ross",
                 PaymentRequestStatus = PaymentRequestStatus.Closed,
-                PaymentRequestStatusTrigger = PaymentRequestStatusTrigger.Paid,
+                PaymentRequestStatusTrigger = statusTrigger,
                 PayoutDate = hasPayoutDate ? payoutDate ?? PayoutDate : null,
                 PaymentId = AchPaymentId,
                 Metadata = metadata
@@ -325,6 +332,14 @@ public abstract class BillPaymentsTestBase
             return Task.CompletedTask;
         }
 
+        public Task MarkAwaitingChargeAsync(AplosBillMappingModel model, DateTime awaitingSinceUtc, CancellationToken cancellationToken)
+        {
+            ThrowIfFailing();
+            model.AwaitingChargeSinceUtc = awaitingSinceUtc;
+            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].AwaitingChargeSinceUtc = awaitingSinceUtc;
+            return Task.CompletedTask;
+        }
+
         private void ThrowIfFailing()
         {
             if (!FailNextWrite) return;
@@ -345,6 +360,7 @@ public abstract class BillPaymentsTestBase
             Amount = model.Amount,
             PaidSyncedUtc = model.PaidSyncedUtc,
             FirstFailedUtc = model.FirstFailedUtc,
+            AwaitingChargeSinceUtc = model.AwaitingChargeSinceUtc,
             CreatedUtc = model.CreatedUtc
         };
     }

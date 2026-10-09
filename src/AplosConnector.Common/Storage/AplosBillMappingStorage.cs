@@ -74,5 +74,19 @@ namespace AplosConnector.Common.Storage
 
             await TableClient.UpdateEntityAsync(failedColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
         }
+
+        public async Task MarkAwaitingChargeAsync(AplosBillMappingModel model, DateTime awaitingSinceUtc, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            model.AwaitingChargeSinceUtc = awaitingSinceUtc.ToUniversalTime();
+
+            var awaitingColumn = new TableEntity(model.PEXBusinessAcctId.ToString(), model.AplosPayableId)
+            {
+                [nameof(AplosBillMappingEntity.AwaitingChargeSinceUtc)] = model.AwaitingChargeSinceUtc
+            };
+
+            await TableClient.UpdateEntityAsync(awaitingColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
+        }
     }
 }

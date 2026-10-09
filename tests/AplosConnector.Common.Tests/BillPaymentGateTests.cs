@@ -112,12 +112,16 @@ public class BillPaymentGateTests : BillPaymentsTestBase
         var original = new Pex2AplosMappingModel
         {
             PEXBusinessAcctId = PexBusinessAcctId,
-            BillPaymentsAplosCashAccountNumber = CashAccountNumber
+            BillPaymentsAplosCashAccountNumber = CashAccountNumber,
+            UseBillPayEnabled = true
         };
 
         var service = new StorageMappingService(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
         var roundTripped = service.Map(service.Map(original));
         Assert.Equal(CashAccountNumber, roundTripped.BillPaymentsAplosCashAccountNumber);
+        // Last known, for a run whose business settings refresh fails: the worker loads the mapping from storage, and
+        // a false here would hand bill pay card transactions back to the transaction sync.
+        Assert.True(roundTripped.UseBillPayEnabled);
 
     }
 
