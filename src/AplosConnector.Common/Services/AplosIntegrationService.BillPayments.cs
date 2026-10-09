@@ -176,12 +176,30 @@ public partial class AplosIntegrationService
             foreach (var rail in readyToPay.GroupBy(bill => GetBillPaymentClearingAccount(mapping, bill.PaymentRequest)))
             {
                 var (clearingAccountNumber, settingName) = rail.Key;
+
+                // No setting can fix this one, so it takes the retry window, and the stopped-bill check closes it once
+                // it is paid in Aplos.
+                if (settingName is null)
+                {
+                    foreach (var (_, billMapping) in rail)
+                    {
+                        failureCount++;
+                        if (billMapping.FirstFailedUtc is null)
+                        {
+                            await TryMarkBillMappingFailed(logger, mapping, billMapping, utcNow, cancellationToken);
+                        }
+
+                        var reportedUntil = ((billMapping.FirstFailedUtc ?? utcNow) + BillPaymentRetryWindow).ToEstCalendarDate();
+                        failureNotes.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: not marked paid, because the PEX payment method has no Aplos clearing account. Mark it paid in Aplos by hand; it is reported until {reportedUntil:yyyy-MM-dd}.");
+                    }
+
+                    continue;
+                }
+
                 string railError;
                 try
                 {
-                    railError = settingName is null
-                        ? "not marked paid, because the PEX payment method has no Aplos clearing account. Mark paid in Aplos by hand."
-                        : await CheckClearingAccount(mapping, clearingAccountNumber, settingName, cancellationToken);
+                    railError = await CheckClearingAccount(mapping, clearingAccountNumber, settingName, cancellationToken);
                 }
                 catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
                 {

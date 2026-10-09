@@ -656,7 +656,8 @@ namespace AplosConnector.Common.Services
         {
             var cardNameByVendorId = AssignVendorCardNames(vendorsNeedingCards.Select(c => c.Value).ToList(), vendorCardAcctIdByName.Keys);
 
-            // Read before any row is written: a row left by a failure here would block this vendor's card for good.
+            // Read before any row is written. A failure here or below still leaves this vendor without a card for good,
+            // because only a vendor created this run is ordered one; it is reported on its contact's bills.
             var adminProfile = await _pexApiClient.GetMyAdminProfile(mapping.PEXExternalAPIToken, cancellationToken);
 
             List<AplosVendorCardOrderModel> rows = [];

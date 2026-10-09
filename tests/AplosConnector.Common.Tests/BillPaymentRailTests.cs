@@ -255,6 +255,34 @@ public class BillPaymentRailTests : BillPaymentsTestBase
     }
 
     [Fact]
+    public async Task APaymentMethodWithNoClearingAccountStartsTheRetryWindow()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.NonPlatform);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        _mockAplosApiClient.Verify(client => client.GetAccount(It.IsAny<decimal>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).FirstFailedUtc);
+        Assert.Contains("no Aplos clearing account", Assert.Single(_historyRows).SyncNotes);
+    }
+
+    [Fact]
+    public async Task APaymentMethodWithNoClearingAccountClosesOncePaidInAplosAfterTheRetryWindow()
+    {
+        SeedUnpaidMapping(firstFailedUtc: UtcNow.AddDays(-31));
+        SetupPaidPexBill(PayeeFundsDestinationType.NonPlatform);
+        SetupLivePayable(amount: 125.50m, paid: 125.50m);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        Assert.DoesNotContain(_historyRows, row => row.SyncStatus != SyncStatus.Success.ToString());
+    }
+
+    [Fact]
     public async Task AnAlreadyPaidBillDoesNotCheckTheClearingAccounts()
     {
         SeedPaidMapping();
