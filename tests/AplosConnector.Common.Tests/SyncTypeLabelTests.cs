@@ -63,7 +63,7 @@ namespace AplosConnector.Common.Tests
 
             _mockPexApiClient
                 .Setup(client => client.GetInvoicePayments(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync([]);
+                .ReturnsAsync([new InvoicePaymentModel { Type = (PaymentType)99, Amount = 110.00m }]);
 
             await GetAplosIntegrationService().SyncInvoices(
                 NullLogger.Instance, NewMapping(), [], new DateTime(2026, 8, 1), default);
