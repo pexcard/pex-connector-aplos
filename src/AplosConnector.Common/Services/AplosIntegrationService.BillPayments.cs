@@ -213,7 +213,19 @@ public partial class AplosIntegrationService
                     continue;
                 }
 
-                var bills = rail.Select(bill => bill.BillMapping).ToList();
+                // Closing a bill already paid in Aplos needs no clearing account, and marks its card charge before the
+                // transaction sync can book it.
+                List<AplosBillMappingModel> bills = [];
+                foreach (var (paymentRequest, billMapping) in rail)
+                {
+                    if (!await TryClosePaidBill(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken))
+                    {
+                        bills.Add(billMapping);
+                    }
+                }
+
+                if (bills.Count == 0) continue;
+
                 failureCount += bills.Count;
                 failureNotes.Add($"{(bills.Count == 1 ? "Bill" : "Bills")} {DescribeBills(bills)}: {railError}");
                 logger.LogWarning($"Business {mapping.PEXBusinessAcctId} has {bills.Count} Aplos bills not marked paid: {railError}");
@@ -436,21 +448,34 @@ public partial class AplosIntegrationService
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
+        if (!await TryClosePaidBill(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken))
+        {
+            logger.LogWarning($"Skipping Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}. It has failed since {billMapping.FirstFailedUtc:O} and is no longer retried.");
+        }
+    }
+
+    // True when Aplos already shows the bill paid and it was closed without a pay call.
+    private async Task<bool> TryClosePaidBill(
+        ILogger logger,
+        Pex2AplosMappingModel mapping,
+        AplosBillMappingModel billMapping,
+        BillPaymentRequestModel paymentRequest,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
         try
         {
             var payable = (await GetAplosPayable(mapping, billMapping.AplosPayableId, cancellationToken))?.Data?.Payable;
-            if (payable is null || AplosPayableFilter.DetermineAction(payable) != AplosPayableAction.SkipAlreadyPaid)
-            {
-                logger.LogWarning($"Skipping Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}. It has failed since {billMapping.FirstFailedUtc:O} and is no longer retried.");
-                return;
-            }
+            if (payable is null || AplosPayableFilter.DetermineAction(payable) != AplosPayableAction.SkipAlreadyPaid) return false;
 
             var cardTransactionId = IsCardPayment(paymentRequest) ? GetSettlementTransactionId(paymentRequest) : null;
             await CloseHealedBill(logger, mapping, billMapping, paymentRequest, cardTransactionId, utcNow, cancellationToken);
+            return true;
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, $"Failed to check Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}, which is no longer retried.");
+            logger.LogWarning(ex, $"Failed to check whether Aplos payable {billMapping.AplosPayableId} is already paid for business {mapping.PEXBusinessAcctId}.");
+            return false;
         }
     }
 

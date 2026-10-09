@@ -173,7 +173,7 @@ public class VendorCardRetryTests : VendorSetupTestBase
     }
 
     [Fact]
-    public async Task AFailedTableReadReportsNoCardProblemAndOrdersNothing()
+    public async Task AFailedTableReadReportsTheCardCheckFailedAndOrdersNothing()
     {
         CardOrderStorage.FailRead = true;
 
@@ -181,7 +181,8 @@ public class VendorCardRetryTests : VendorSetupTestBase
 
         Assert.Single(CreatedBillInbox);
         Assert.Empty(CardOrders);
-        AssertSucceeded();
+        AssertReported("could not be checked this run");
+        Assert.DoesNotContain("has no linked PEX vendor card", Assert.Single(HistoryRows).SyncNotes);
     }
 
     [Fact]

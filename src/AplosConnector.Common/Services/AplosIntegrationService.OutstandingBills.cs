@@ -595,6 +595,13 @@ namespace AplosConnector.Common.Services
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 logger.LogError(ex, $"Failed to read vendor card orders for business {mapping.PEXBusinessAcctId}; vendor cards are not set up this run.");
+
+                // Which vendors have a card is unknown here, so the problem says the check failed, not that a card is missing.
+                foreach (var (contactId, vendor) in connectorVendors)
+                {
+                    AddVendorSetupProblem(problems, contactId, $"The PEX vendor card for {vendor.VendorName} could not be checked this run.");
+                }
+
                 return;
             }
 

@@ -238,7 +238,7 @@ public class BillPaymentRailTests : BillPaymentsTestBase
         VerifyNoPayCall();
         Assert.Contains($"vendor card clearing account {CardClearingAccountNumber}", Assert.Single(_historyRows).SyncNotes);
         Assert.Empty(_cardTransactionNotes);
-        _mockAplosApiClient.Verify(client => client.GetPayable(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
     }
 
     [Fact]
@@ -252,6 +252,23 @@ public class BillPaymentRailTests : BillPaymentsTestBase
 
         _mockAplosApiClient.Verify(client => client.GetAccount(AchClearingAccountNumber, It.IsAny<CancellationToken>()), Times.Once);
         _mockAplosApiClient.Verify(client => client.GetAccount(CardClearingAccountNumber, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // Left open, its unmarked card charge would be booked as a purchase too, with nothing to tell the customer.
+    [Fact]
+    public async Task ABillAlreadyPaidInAplosClosesAndMarksItsChargeWhenItsClearingAccountIsBroken()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(amount: 125.50m, paid: 125.50m);
+        SetupClearingAccount(null);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        Assert.Contains(_cardTransactionNotes, note => note.Contains(AplosIntegrationService.SyncedAsBillPaymentNote));
+        Assert.DoesNotContain(_historyRows, row => row.SyncStatus != SyncStatus.Success.ToString());
     }
 
     [Fact]
