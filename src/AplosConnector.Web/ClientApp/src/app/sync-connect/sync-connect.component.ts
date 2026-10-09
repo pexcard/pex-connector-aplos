@@ -83,7 +83,9 @@ export class SyncConnectComponent implements OnInit {
     pexRebatesAplosFundId: new UntypedFormControl(),
     pexRebatesAplosTransactionAccountNumber: new UntypedFormControl(),
     pexRebatesAplosTaxTag: new UntypedFormControl(),
-    reimbursementsAplosRegisterAccountNumber: new UntypedFormControl()
+    reimbursementsAplosRegisterAccountNumber: new UntypedFormControl(),
+    billPaymentsAchClearingAccountNumber: new UntypedFormControl(),
+    billPaymentsCardClearingAccountNumber: new UntypedFormControl()
   });
 
 
@@ -170,6 +172,10 @@ export class SyncConnectComponent implements OnInit {
     syncRebates: false,
     syncReimbursements: false,
     useReimbursementsEnabled: false,
+    syncOutstandingBills: false,
+    useBillPayEnabled: false,
+    billPaymentsAchClearingAccountNumber: 0,
+    billPaymentsCardClearingAccountNumber: 0,
     transfersAplosContactId: 0,
     transfersAplosFundId: 0,
     transfersAplosTransactionAccountNumber: 0,
@@ -677,7 +683,9 @@ export class SyncConnectComponent implements OnInit {
       pexRebatesAplosFundId: settings.pexRebatesAplosFundId,
       pexRebatesAplosTransactionAccountNumber: settings.pexRebatesAplosTransactionAccountNumber,
       pexRebatesAplosTaxTag: settings.pexRebatesAplosTaxTag,
-      reimbursementsAplosRegisterAccountNumber: settings.reimbursementsAplosRegisterAccountNumber
+      reimbursementsAplosRegisterAccountNumber: settings.reimbursementsAplosRegisterAccountNumber,
+      billPaymentsAchClearingAccountNumber: settings.billPaymentsAchClearingAccountNumber,
+      billPaymentsCardClearingAccountNumber: settings.billPaymentsCardClearingAccountNumber
     });
 
     this.updateOtherOptionsValidators();
@@ -706,7 +714,7 @@ export class SyncConnectComponent implements OnInit {
   // Invoked on init and via (clrWizardPageOnLoad) when the user enters this page.
   // That is sufficient ONLY because every sync-type toggle it reads (syncTransactions,
   // syncTransfers, syncInvoices, syncPexFees, syncRebates, syncReimbursements,
-  // syncTaxTagToPex) lives on an EARLIER wizard page and cannot be changed while
+  // syncOutstandingBills, syncTaxTagToPex) lives on an EARLIER wizard page and cannot be changed while
   // "Other Options" is shown. If any of those toggles is ever surfaced on this page,
   // also call this from that toggle's (change) handler or the validators will go stale.
   updateOtherOptionsValidators() {
@@ -739,6 +747,10 @@ export class SyncConnectComponent implements OnInit {
     // Reimbursements: only the bank account (register line) is configured here —
     // fund/expense/tags come from the shared mapping page or the shared defaults above.
     this.applyRequired('reimbursementsAplosRegisterAccountNumber', s.syncReimbursements);
+
+    // Bill pay: PEX picks the rail only when a bill is paid, so both clearing accounts are needed up front.
+    this.applyRequired('billPaymentsAchClearingAccountNumber', s.syncOutstandingBills);
+    this.applyRequired('billPaymentsCardClearingAccountNumber', s.syncOutstandingBills);
   }
 
   updateSettingsFromDefaultCategoryForm() {
@@ -764,6 +776,8 @@ export class SyncConnectComponent implements OnInit {
     this.settingsModel.pexRebatesAplosTransactionAccountNumber = formValue.pexRebatesAplosTransactionAccountNumber;
     this.settingsModel.pexRebatesAplosTaxTag = formValue.pexRebatesAplosTaxTag;
     this.settingsModel.reimbursementsAplosRegisterAccountNumber = formValue.reimbursementsAplosRegisterAccountNumber;
+    this.settingsModel.billPaymentsAchClearingAccountNumber = formValue.billPaymentsAchClearingAccountNumber;
+    this.settingsModel.billPaymentsCardClearingAccountNumber = formValue.billPaymentsCardClearingAccountNumber;
   }
 
   private validatePexSetup() {

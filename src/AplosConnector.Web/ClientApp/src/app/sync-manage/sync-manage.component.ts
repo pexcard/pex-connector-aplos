@@ -55,6 +55,9 @@ export class SyncManageComponent implements OnInit {
   reimbursementsContact: AplosObject;
   reimbursementsBankAccount: AplosObject;
 
+  billPaymentsAchClearingAccount: AplosObject;
+  billPaymentsCardClearingAccount: AplosObject;
+
   AplosPreferences: AplosPreferences = { isClassEnabled: false, isLocationEnabled: false, locationFieldName: '' };
   isPrepaid: boolean = false;
   isCredit: boolean = false;
@@ -103,6 +106,7 @@ export class SyncManageComponent implements OnInit {
         this.getFeesInfo();
         this.getRebatesInfo();
         this.getReimbursementsInfo();
+        this.getBillPaymentsInfo();
       }
     }
     );
@@ -305,6 +309,28 @@ export class SyncManageComponent implements OnInit {
           }
         );
       }
+    }
+  }
+
+  getBillPaymentsInfo() {
+    if (!this.settings.syncOutstandingBills) {
+      return;
+    }
+
+    if (this.settings.billPaymentsAchClearingAccountNumber > 0) {
+      this.aplos.getAccount(this.sessionId, this.settings.billPaymentsAchClearingAccountNumber).subscribe(
+        account => {
+          this.billPaymentsAchClearingAccount = { ...account };
+        }
+      );
+    }
+
+    if (this.settings.billPaymentsCardClearingAccountNumber > 0) {
+      this.aplos.getAccount(this.sessionId, this.settings.billPaymentsCardClearingAccountNumber).subscribe(
+        account => {
+          this.billPaymentsCardClearingAccount = { ...account };
+        }
+      );
     }
   }
 

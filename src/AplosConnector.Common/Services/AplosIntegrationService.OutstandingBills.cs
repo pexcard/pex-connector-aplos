@@ -59,16 +59,19 @@ namespace AplosConnector.Common.Services
                 return;
             }
 
+            // Importing bills the payment stage cannot then mark paid is worse than importing none - the bill stays
+            // open in Aplos A/P while the PEX payment books as a fresh expense. The customer turned the import on, so
+            // the skip says what to set up.
             if (!BillPayReady(mapping))
             {
-                logger.LogWarning($"Skipping sync outstanding bills for business {mapping.PEXBusinessAcctId}. No Aplos cash account is configured for bill payments, so imported bills could not be marked paid.");
+                logger.LogWarning($"Skipping sync outstanding bills for business {mapping.PEXBusinessAcctId}. The bill payment clearing accounts are not configured, so imported bills could not be marked paid.");
                 await _historyStorage.CreateAsync(new SyncResultModel
                 {
                     PEXBusinessAcctId = mapping.PEXBusinessAcctId,
                     SyncType = SyncTypes.OutstandingBills,
                     SyncStatus = SyncStatus.Failed.ToString(),
                     SyncedRecords = 0,
-                    SyncNotes = MissingCashAccountNote
+                    SyncNotes = MissingClearingAccountsNote
                 }, cancellationToken);
                 return;
             }
@@ -124,32 +127,27 @@ namespace AplosConnector.Common.Services
                     // Phase 1: resolve or create the PEX vendor behind each Aplos contact. The reason a contact
                     // can't be used (missing address vs email) is captured here, where the Aplos contact is still
                     // in hand, so phase 3 can fail that bill with the field name instead of a generic message.
-                    var newlyCreatedVendorIds = new List<int>();
+                    var connectorVendors = new Dictionary<int, VendorModel>();
+                    var createdVendorIds = new HashSet<int>();
                     var unresolvedContactMessages = new Dictionary<int, string>();
                     foreach (var contactId in newBills.Select(b => b.Contact?.Id ?? 0).Distinct())
                     {
                         try
                         {
-                            await ResolvePexVendorForAplosContact(logger, mapping, contactId, vendorsByName, vendorsByCustomId, newlyCreatedVendorIds, unresolvedContactMessages, cancellationToken);
+                            await ResolvePexVendorForAplosContact(logger, mapping, contactId, vendorsByName, vendorsByCustomId, connectorVendors, createdVendorIds, unresolvedContactMessages, cancellationToken);
                         }
                         catch (Exception ex)
                         {
-                            unresolvedContactMessages.TryAdd(contactId, "Could not create or approve the PEX vendor for this contact.");
+                            unresolvedContactMessages.TryAdd(contactId, "Could not create the PEX vendor for this contact.");
                             logger.LogWarning(ex, $"Failed to resolve PEX vendor for Aplos contact {contactId} for business {mapping.PEXBusinessAcctId}.");
                         }
                     }
 
-                    if (newlyCreatedVendorIds.Count > 0)
-                    {
-                        try
-                        {
-                            await BatchCreateAndLinkVendorCards(logger, mapping, vendorsByName, vendorsByCustomId, newlyCreatedVendorIds, vendorCardAcctIdByName, cancellationToken);
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.LogError(ex, $"Failed to batch-create vendor cards for business {mapping.PEXBusinessAcctId}.");
-                        }
-                    }
+                    // Phase 2: finish setting up the vendors the connector created. The bill is imported even when
+                    // this fails, since an ACH payment needs neither step, and the reason is reported against it.
+                    var vendorSetupProblems = new Dictionary<int, List<string>>();
+                    await ApproveConnectorVendors(logger, mapping, connectorVendors, createdVendorIds, vendorSetupProblems, cancellationToken);
+                    await SetUpConnectorVendorCards(logger, mapping, connectorVendors, createdVendorIds, vendorCardAcctIdByName, vendorSetupProblems, cancellationToken);
 
                     foreach (var payable in newBills)
                     {
@@ -170,10 +168,16 @@ namespace AplosConnector.Common.Services
 
                             var problem = await CreatePexBillInbox(logger, mapping, payable, pexVendor, cancellationToken);
                             syncCount++;
-                            if (problem != null)
+
+                            List<string> problems = problem is null ? [] : [problem];
+                            if (vendorSetupProblems.TryGetValue(payable.Contact?.Id ?? 0, out var setupProblems))
+                            {
+                                problems.AddRange(setupProblems);
+                            }
+                            if (problems.Count > 0)
                             {
                                 failureCount++;
-                                failureNotes.Add($"Bill {payable.ReferenceNumber ?? payable.Id}: {problem}");
+                                failureNotes.Add($"Bill {payable.ReferenceNumber ?? payable.Id}: {string.Join(" ", problems)}");
                             }
                         }
                         catch (Exception ex)
@@ -411,7 +415,8 @@ namespace AplosConnector.Common.Services
             int aplosContactId,
             Dictionary<string, VendorModel> vendorsByName,
             Dictionary<string, VendorModel> vendorsByCustomId,
-            List<int> newlyCreatedVendorIds,
+            Dictionary<int, VendorModel> connectorVendors,
+            HashSet<int> createdVendorIds,
             Dictionary<int, string> unresolvedContactMessages,
             CancellationToken cancellationToken)
         {
@@ -422,8 +427,9 @@ namespace AplosConnector.Common.Services
             }
 
             var customId = BuildAplosVendorCustomId(aplosContactId);
-            if (vendorsByCustomId.ContainsKey(customId))
+            if (vendorsByCustomId.TryGetValue(customId, out var existingVendor))
             {
+                connectorVendors[aplosContactId] = existingVendor;
                 return;
             }
 
@@ -474,13 +480,63 @@ namespace AplosConnector.Common.Services
             };
 
             var pexVendor = await _pexApiClient.CreateVendor(mapping.PEXExternalAPIToken, createVendorRequest, cancellationToken);
-            pexVendor = await _pexApiClient.ApproveVendor(mapping.PEXExternalAPIToken, pexVendor.VendorId, cancellationToken);
 
-            logger.LogInformation($"Created and approved PEX vendor {pexVendor.VendorId} from Aplos contact {aplosContactId} for business {mapping.PEXBusinessAcctId}.");
+            logger.LogInformation($"Created PEX vendor {pexVendor.VendorId} from Aplos contact {aplosContactId} for business {mapping.PEXBusinessAcctId}.");
 
             vendorsByName[pexVendor.VendorName] = pexVendor;
             vendorsByCustomId[customId] = pexVendor;
-            newlyCreatedVendorIds.Add(pexVendor.VendorId);
+            connectorVendors[aplosContactId] = pexVendor;
+            createdVendorIds.Add(pexVendor.VendorId);
+        }
+
+        private static void AddVendorSetupProblem(Dictionary<int, List<string>> problems, int aplosContactId, string problem)
+        {
+            if (!problems.TryGetValue(aplosContactId, out var contactProblems))
+            {
+                problems[aplosContactId] = contactProblems = [];
+            }
+            contactProblems.Add(problem);
+        }
+
+        // One ApproveVendor try per run. A multi-level approval policy leaves the vendor Pending after a 200,
+        // and only a PEX admin can finish it.
+        private async Task ApproveConnectorVendors(
+            ILogger logger,
+            Pex2AplosMappingModel mapping,
+            Dictionary<int, VendorModel> connectorVendors,
+            HashSet<int> createdVendorIds,
+            Dictionary<int, List<string>> problems,
+            CancellationToken cancellationToken)
+        {
+            foreach (var (contactId, vendor) in connectorVendors)
+            {
+                var approvable = vendor.VendorStatus is VendorStatus.Pending
+                                 || (createdVendorIds.Contains(vendor.VendorId) && vendor.VendorStatus is not VendorStatus.Onboarded);
+                if (approvable)
+                {
+                    try
+                    {
+                        var approved = await _pexApiClient.ApproveVendor(mapping.PEXExternalAPIToken, vendor.VendorId, cancellationToken);
+                        if (approved is not null)
+                        {
+                            vendor.VendorStatus = approved.VendorStatus;
+                        }
+                    }
+                    catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        logger.LogWarning(ex, $"Failed to approve PEX vendor {vendor.VendorId} for Aplos contact {contactId} for business {mapping.PEXBusinessAcctId}.");
+                    }
+                }
+
+                if (vendor.VendorStatus is VendorStatus.Closed)
+                {
+                    AddVendorSetupProblem(problems, contactId, $"The {vendor.VendorName} vendor is closed in PEX; reopen it there to pay this bill.");
+                }
+                else if (vendor.VendorStatus is not VendorStatus.Onboarded)
+                {
+                    AddVendorSetupProblem(problems, contactId, $"Approve the {vendor.VendorName} vendor in PEX before paying this bill.");
+                }
+            }
         }
 
         // PEX vendor card names are capped at 15 characters, the same limit VendorCardService applies.
@@ -511,29 +567,126 @@ namespace AplosConnector.Common.Services
             });
         }
 
-        private async Task BatchCreateAndLinkVendorCards(
+        // The card-order row is written before the order and a card is never re-ordered from it: PEX card orders
+        // are not idempotent. A row whose order id was never recorded is reported for the customer to resolve.
+        private async Task SetUpConnectorVendorCards(
             ILogger logger,
             Pex2AplosMappingModel mapping,
-            Dictionary<string, VendorModel> vendorsByName,
-            Dictionary<string, VendorModel> vendorsByCustomId,
-            List<int> newlyCreatedVendorIds,
+            Dictionary<int, VendorModel> connectorVendors,
+            HashSet<int> createdVendorIds,
+            Dictionary<string, int> vendorCardAcctIdByName,
+            Dictionary<int, List<string>> problems,
+            CancellationToken cancellationToken)
+        {
+            if (connectorVendors.Count == 0) return;
+
+            var rows = new Dictionary<int, AplosVendorCardOrderModel>();
+            try
+            {
+                foreach (var row in await _vendorCardOrderStorage.GetByBusinessAsync(mapping.PEXBusinessAcctId, cancellationToken))
+                {
+                    // A row left by an earlier vendor for the same contact says nothing about this vendor's card.
+                    if (connectorVendors.TryGetValue(row.AplosContactId, out var vendor) && vendor.VendorId == row.PexVendorId)
+                    {
+                        rows[row.AplosContactId] = row;
+                    }
+                }
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogError(ex, $"Failed to read vendor card orders for business {mapping.PEXBusinessAcctId}; vendor cards are not set up this run.");
+                return;
+            }
+
+            // Only a vendor created this run is ordered a card. Any other vendor without a row may already have one
+            // (148046 linked cards without rows), and GetVendors returns no cards to check.
+            List<AplosVendorCardOrderModel> orderedRows = [];
+            int? placedOrderId = null;
+            var vendorsNeedingCards = connectorVendors.Where(c => !rows.ContainsKey(c.Key) && createdVendorIds.Contains(c.Value.VendorId)).ToList();
+            if (vendorsNeedingCards.Count > 0)
+            {
+                try
+                {
+                    (orderedRows, placedOrderId) = await OrderVendorCards(logger, mapping, vendorsNeedingCards, vendorCardAcctIdByName, cancellationToken);
+                    foreach (var row in orderedRows)
+                    {
+                        rows[row.AplosContactId] = row;
+                    }
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogError(ex, $"Failed to order vendor cards for business {mapping.PEXBusinessAcctId}.");
+                }
+            }
+
+            // A row whose order id write failed is still linked this run, with the id in hand.
+            var unlinked = rows.Values
+                .Where(r => r.CardAcctId is null)
+                .Select(r => (Row: r, OrderId: r.CardOrderId ?? (orderedRows.Contains(r) ? placedOrderId : null)))
+                .Where(r => r.OrderId.HasValue);
+            foreach (var order in unlinked.GroupBy(r => r.OrderId.Value, r => r.Row))
+            {
+                try
+                {
+                    await LinkOrderedVendorCards(logger, mapping, order.Key, order.ToList(), connectorVendors, cancellationToken);
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogError(ex, $"Failed to link the cards of vendor card order {order.Key} for business {mapping.PEXBusinessAcctId}.");
+                }
+            }
+
+            foreach (var (contactId, vendor) in connectorVendors)
+            {
+                rows.TryGetValue(contactId, out var row);
+                if (row?.CardAcctId is not null) continue;
+
+                AddVendorSetupProblem(problems, contactId, row is { CardOrderId: null }
+                    ? $"A PEX vendor card order for {vendor.VendorName} was not confirmed. Check vendor cards in PEX and link the card to the vendor, or order one there."
+                    : $"{vendor.VendorName} has no linked PEX vendor card yet. Link one to the vendor in PEX to pay this bill by card.");
+            }
+        }
+
+        private async Task<(List<AplosVendorCardOrderModel> Rows, int? CardOrderId)> OrderVendorCards(
+            ILogger logger,
+            Pex2AplosMappingModel mapping,
+            List<KeyValuePair<int, VendorModel>> vendorsNeedingCards,
             Dictionary<string, int> vendorCardAcctIdByName,
             CancellationToken cancellationToken)
         {
-            var vendorsNeedingCards = vendorsByName.Values
-                .Where(v => newlyCreatedVendorIds.Contains(v.VendorId))
-                .ToList();
+            var cardNameByVendorId = AssignVendorCardNames(vendorsNeedingCards.Select(c => c.Value).ToList(), vendorCardAcctIdByName.Keys);
 
-            if (vendorsNeedingCards.Count == 0) return;
-
-            var cardNameByVendorId = AssignVendorCardNames(vendorsNeedingCards, vendorCardAcctIdByName.Keys);
-
+            // Read before any row is written: a row left by a failure here would block this vendor's card for good.
             var adminProfile = await _pexApiClient.GetMyAdminProfile(mapping.PEXExternalAPIToken, cancellationToken);
+
+            List<AplosVendorCardOrderModel> rows = [];
+            foreach (var (contactId, vendor) in vendorsNeedingCards)
+            {
+                var row = new AplosVendorCardOrderModel
+                {
+                    PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                    AplosContactId = contactId,
+                    PexVendorId = vendor.VendorId,
+                    CardName = cardNameByVendorId[vendor.VendorId]
+                };
+                try
+                {
+                    await _vendorCardOrderStorage.AddAsync(row, cancellationToken);
+                    rows.Add(row);
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogWarning(ex, $"Not ordering a vendor card for PEX vendor {vendor.VendorId}: its card-order row could not be written for business {mapping.PEXBusinessAcctId}.");
+                }
+            }
+
+            if (rows.Count == 0) return (rows, null);
+
             var cardOrderRequest = new VendorCardCreateOrderRequestModel
             {
-                VendorCards = vendorsNeedingCards.Select(v => new VendorCardOrderItemRequest
+                VendorCards = rows.Select(row => new VendorCardOrderItemRequest
                 {
-                    VendorName = cardNameByVendorId[v.VendorId],
+                    VendorName = row.CardName,
                     AutoActivation = true,
                     Email = adminProfile?.Admin?.Email,
                     Phone = adminProfile?.Admin?.Phone
@@ -541,31 +694,53 @@ namespace AplosConnector.Common.Services
             };
 
             logger.LogInformation($"Ordering {cardOrderRequest.VendorCards.Count} vendor cards in batch for business {mapping.PEXBusinessAcctId}.");
-            var cardOrderResult = await _pexApiClient.CreateVendorCardOrder(mapping.PEXExternalAPIToken, cardOrderRequest, cancellationToken);
-
-            var cardOrder = await _pexApiClient.GetVendorCardOrder(mapping.PEXExternalAPIToken, cardOrderResult.VendorCardOrderId, cancellationToken);
-            if (cardOrder?.Cards == null)
+            int cardOrderId;
+            try
             {
-                logger.LogWarning($"Vendor card order {cardOrderResult.VendorCardOrderId} returned no cards for business {mapping.PEXBusinessAcctId}.");
-                return;
+                cardOrderId = (await _pexApiClient.CreateVendorCardOrder(mapping.PEXExternalAPIToken, cardOrderRequest, cancellationToken)).VendorCardOrderId;
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogError(ex, $"A vendor card order may have been placed without its id being recorded for business {mapping.PEXBusinessAcctId}.");
+                return (rows, null);
             }
 
-            var cardAcctIdsByVendorName = cardOrder.Cards
-                .Where(c => c.AcctId.HasValue && !string.IsNullOrEmpty(c.VendorName))
-                .GroupBy(c => c.VendorName, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.Select(c => c.AcctId.Value).ToList(), StringComparer.OrdinalIgnoreCase);
-            var submittedNameCounts = cardNameByVendorId.Values
-                .GroupBy(name => name, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
-
-            foreach (var vendor in vendorsNeedingCards)
+            foreach (var row in rows)
             {
-                var cardName = cardNameByVendorId[vendor.VendorId];
-                if (submittedNameCounts[cardName] > 1
-                    || !cardAcctIdsByVendorName.TryGetValue(cardName, out var cardAcctIds)
-                    || cardAcctIds.Count != 1)
+                try
                 {
-                    logger.LogWarning($"No vendor card could be matched to PEX vendor {vendor.VendorId} by name '{cardName}' for business {mapping.PEXBusinessAcctId}.");
+                    await _vendorCardOrderStorage.SetOrderIdAsync(row, cardOrderId, cancellationToken);
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogError(ex, $"Failed to record vendor card order {cardOrderId} for PEX vendor {row.PexVendorId} for business {mapping.PEXBusinessAcctId}.");
+                }
+            }
+
+            return (rows, cardOrderId);
+        }
+
+        // A card that isn't provisioned yet has no AcctId, so its row stays unlinked for a later run.
+        private async Task LinkOrderedVendorCards(
+            ILogger logger,
+            Pex2AplosMappingModel mapping,
+            int cardOrderId,
+            List<AplosVendorCardOrderModel> rows,
+            Dictionary<int, VendorModel> connectorVendors,
+            CancellationToken cancellationToken)
+        {
+            var cardOrder = await _pexApiClient.GetVendorCardOrder(mapping.PEXExternalAPIToken, cardOrderId, cancellationToken);
+
+            foreach (var row in rows)
+            {
+                var vendor = connectorVendors[row.AplosContactId];
+                var cardAcctIds = (cardOrder?.Cards ?? [])
+                    .Where(c => c.AcctId is > 0 && string.Equals(c.VendorName, row.CardName, StringComparison.OrdinalIgnoreCase))
+                    .Select(c => c.AcctId.Value)
+                    .ToList();
+                if (cardAcctIds.Count != 1)
+                {
+                    logger.LogWarning($"No vendor card in order {cardOrderId} could be matched to PEX vendor {vendor.VendorId} by name '{row.CardName}' for business {mapping.PEXBusinessAcctId}.");
                     continue;
                 }
 
@@ -573,21 +748,30 @@ namespace AplosConnector.Common.Services
                 try
                 {
                     await _pexApiClient.AddVendorCard(mapping.PEXExternalAPIToken, vendor.VendorId, new AddVendorCardRequestModel { CardholderAcctId = cardAcctId }, cancellationToken);
-                    var updatedVendor = await _pexApiClient.SetDefaultVendorCard(mapping.PEXExternalAPIToken, vendor.VendorId, cardAcctId, cancellationToken);
-
-                    if (updatedVendor != null)
-                    {
-                        vendorsByName[vendor.VendorName] = updatedVendor;
-                        if (!string.IsNullOrEmpty(vendor.CustomId))
-                        {
-                            vendorsByCustomId[vendor.CustomId] = updatedVendor;
-                        }
-                    }
-                    vendorCardAcctIdByName[cardName] = cardAcctId;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
                 {
                     logger.LogWarning(ex, $"Failed to link vendor card {cardAcctId} to PEX vendor {vendor.VendorId} for business {mapping.PEXBusinessAcctId}.");
+                    continue;
+                }
+
+                // AddVendorCard already makes the card the default when the vendor has none.
+                try
+                {
+                    await _pexApiClient.SetDefaultVendorCard(mapping.PEXExternalAPIToken, vendor.VendorId, cardAcctId, cancellationToken);
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogWarning(ex, $"Failed to make vendor card {cardAcctId} the default for PEX vendor {vendor.VendorId} for business {mapping.PEXBusinessAcctId}.");
+                }
+
+                try
+                {
+                    await _vendorCardOrderStorage.MarkLinkedAsync(row, cardAcctId, DateTime.UtcNow, cancellationToken);
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogWarning(ex, $"Linked vendor card {cardAcctId} to PEX vendor {vendor.VendorId} but could not record it for business {mapping.PEXBusinessAcctId}.");
                 }
             }
         }

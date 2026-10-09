@@ -136,7 +136,7 @@
       (clrWizardPageOnCancel)="onCloseWizard()"
     [clrWizardPageNextDisabled]="!optionsForm.valid
                    || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees) && !settingsModel.aplosRegisterAccountNumber)
-                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements) && !settingsModel.earliestTransactionDateToSync)">
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements || settingsModel.syncOutstandingBills) && !settingsModel.earliestTransactionDateToSync)">
       <ng-template clrPageNavTitle>Sync Selection</ng-template>
       <ng-template clrPageTitle>Choose what to sync</ng-template>
       @if (!hasTagsAvailable) {
@@ -285,7 +285,7 @@
             </clr-tooltip>
           </label>
         </clr-toggle-wrapper>
-        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements) {
+        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements || settingsModel.syncOutstandingBills) {
           <hr />
         }
         <!-- Reimbursements don't use the PEX register account — their cash side is the
@@ -334,7 +334,7 @@
         }
         <p></p>
         <p></p>
-        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements) {
+        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements || settingsModel.syncOutstandingBills) {
           <div class="clr-row">
             <div class="clr-col">
               Please specify a start date for the sync. Transactions made prior to this date will not be imported into Aplos. All transactions after this date will be imported automatically.
@@ -721,7 +721,7 @@
     </clr-wizard-page>
   }
 
-  @if (isAuthenticated && (settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncRebates || settingsModel.syncReimbursements)) {
+  @if (isAuthenticated && (settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncRebates || settingsModel.syncReimbursements || settingsModel.syncOutstandingBills)) {
     <clr-wizard-page
       (clrWizardPageOnLoad)="updateOtherOptionsValidators()"
       (clrWizardPageOnCommit)="onDefaultCategoryCommit()"
@@ -1180,6 +1180,66 @@
                     <td class="left">
                       <div class="clr-select-wrapper">
                         <select class="clr-select select" required formControlName="reimbursementsAplosRegisterAccountNumber" aria-label="Bank account for reimbursements">
+                          <option></option>
+                          @for (aplosAccount of aplosAssetAccounts; track aplosAccount) {
+                            <option [value]="aplosAccount.id">{{aplosAccount | aplosAccount}}</option>
+                          }
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          }
+          <!-- Bill Pay -->
+          @if (settingsModel.syncOutstandingBills) {
+            <div>
+              <table class="table table-2col">
+                <caption>
+                  <h4>Bill Pay</h4>
+                </caption>
+                <thead>
+                  <tr>
+                    <th class="left">Field</th>
+                    <th class="left">Default</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="left">
+                      ACH Clearing Account
+                      <clr-tooltip>
+                        <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
+                        <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
+                          <span>Aplos has no payment method field, so bills paid by ACH in PEX are marked paid in Aplos from this account. Use a dedicated account to report on them.</span>
+                        </clr-tooltip-content>
+                      </clr-tooltip>
+                    </td>
+                    <td class="left">
+                      <div class="clr-select-wrapper">
+                        <select class="clr-select select" required formControlName="billPaymentsAchClearingAccountNumber" aria-label="ACH clearing account for bill payments">
+                          <option></option>
+                          @for (aplosAccount of aplosAssetAccounts; track aplosAccount) {
+                            <option [value]="aplosAccount.id">{{aplosAccount | aplosAccount}}</option>
+                          }
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="left">
+                      Vendor Card Clearing Account
+                      <clr-tooltip>
+                        <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
+                        <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
+                          <span>Bills paid by vendor card in PEX are marked paid in Aplos from this account. Use a different account from the ACH one to tell the two apart.</span>
+                        </clr-tooltip-content>
+                      </clr-tooltip>
+                    </td>
+                    <td class="left">
+                      <div class="clr-select-wrapper">
+                        <select class="clr-select select" required formControlName="billPaymentsCardClearingAccountNumber" aria-label="Vendor card clearing account for bill payments">
                           <option></option>
                           @for (aplosAccount of aplosAssetAccounts; track aplosAccount) {
                             <option [value]="aplosAccount.id">{{aplosAccount | aplosAccount}}</option>
