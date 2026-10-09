@@ -101,7 +101,8 @@ namespace AplosConnector.Common.Services
                     ReimbursementsAplosContactId = model.ReimbursementsAplosContactId,
                     ReimbursementsAplosRegisterAccountNumber = model.ReimbursementsAplosRegisterAccountNumber.ToString(),
 
-                    BillPaymentsAplosCashAccountNumber = model.BillPaymentsAplosCashAccountNumber.ToString(),
+                    BillPaymentsAchClearingAccountNumber = model.BillPaymentsAchClearingAccountNumber.ToString(),
+                    BillPaymentsCardClearingAccountNumber = model.BillPaymentsCardClearingAccountNumber.ToString(),
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,
@@ -180,7 +181,8 @@ namespace AplosConnector.Common.Services
                 decimal.TryParse(model.PexFeesAplosTransactionAccountNumber, out var pexFeesAplosTransactionAccountNumber);
                 decimal.TryParse(model.PexRebatesAplosTransactionAccountNumber, out var pexRebatesAplosTransactionAccountNumber);
                 decimal.TryParse(model.ReimbursementsAplosRegisterAccountNumber, out var reimbursementsAplosRegisterAccountNumber);
-                decimal.TryParse(model.BillPaymentsAplosCashAccountNumber, out var billPaymentsAplosCashAccountNumber);
+                decimal.TryParse(model.BillPaymentsAchClearingAccountNumber, out var billPaymentsAchClearingAccountNumber);
+                decimal.TryParse(model.BillPaymentsCardClearingAccountNumber, out var billPaymentsCardClearingAccountNumber);
 
                 result = new Pex2AplosMappingModel
                 {
@@ -242,7 +244,8 @@ namespace AplosConnector.Common.Services
                     ReimbursementsAplosContactId = model.ReimbursementsAplosContactId,
                     ReimbursementsAplosRegisterAccountNumber = reimbursementsAplosRegisterAccountNumber,
 
-                    BillPaymentsAplosCashAccountNumber = billPaymentsAplosCashAccountNumber,
+                    BillPaymentsAchClearingAccountNumber = billPaymentsAchClearingAccountNumber,
+                    BillPaymentsCardClearingAccountNumber = billPaymentsCardClearingAccountNumber,
 
                     PexFundsTagId = model.PexFundsTagId,
                     SyncFundsToPex = model.SyncFundsToPex,

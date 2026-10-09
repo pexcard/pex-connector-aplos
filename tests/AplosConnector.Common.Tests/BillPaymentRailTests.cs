@@ -50,7 +50,7 @@ public class BillPaymentRailTests : BillPaymentsTestBase
 
         var payment = Assert.Single(_payments);
         Assert.Equal(new DateOnly(2026, 9, 10), payment.PaidDate);
-        Assert.Equal(CashAccountNumber, payment.CashAccountNumber);
+        Assert.Equal(AchClearingAccountNumber, payment.CashAccountNumber);
 
         var row = Assert.Single(_billMappingStorage.Rows.Values);
         Assert.Equal(UtcNow, row.PaidSyncedUtc);
@@ -115,9 +115,199 @@ public class BillPaymentRailTests : BillPaymentsTestBase
 
         await RunSync(useBillPay: true);
 
-        Assert.Single(_payments);
+        Assert.Equal(CardClearingAccountNumber, Assert.Single(_payments).CashAccountNumber);
         Assert.NotNull(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
         Assert.Equal(1, Assert.Single(_historyRows).SyncedRecords);
+    }
+
+    // Rail-specific clearing accounts (148049). Aplos's pay call has no payment-method field, so the account it
+    // credits is the only reportable record of how PEX paid.
+
+    [Fact]
+    public async Task AClearingAccountMissingFromAplosFailsTheBillNamingTheAccountAndTheSetting()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.BankAccount);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+        SetupClearingAccount(null);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        var historyRow = Assert.Single(_historyRows);
+        Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
+        Assert.Contains("INV-9001", historyRow.SyncNotes);
+        Assert.Contains($"ACH clearing account {AchClearingAccountNumber} could not be found in Aplos", historyRow.SyncNotes);
+        Assert.Contains("connector settings", historyRow.SyncNotes);
+    }
+
+    // A settings problem is the customer's to fix, so it must not start the bill's 30-day retry window.
+    [Fact]
+    public async Task ABrokenClearingAccountDoesNotStartTheRetryWindow()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.BankAccount);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+        SetupClearingAccount(null);
+
+        await RunSync(useBillPay: true);
+
+        Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).FirstFailedUtc);
+    }
+
+    [Fact]
+    public async Task AClearingAccountAplosAnswersWithAServerErrorIsRetriedNotReportedMissing()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.BankAccount);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+        _mockAplosApiClient
+            .Setup(client => client.GetAccount(It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new AplosApiException(new AplosApiErrorResponse
+            {
+                Status = 500,
+                Exception = new AplosApiErrorDetail { Code = 5000, Message = "Service Exception: UNKNOWN" }
+            }));
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        var notes = Assert.Single(_historyRows).SyncNotes;
+        Assert.Contains("could not be read from Aplos; retried on the next sync", notes);
+        Assert.DoesNotContain("could not be found", notes);
+    }
+
+    // Any other failure is reported against that rail's bills, so the other rail's bills still pay.
+    [Fact]
+    public async Task AClearingAccountThatCannotBeReadFailsOnlyItsRailsBills()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.BankAccount);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+        _mockAplosApiClient
+            .Setup(client => client.GetAccount(It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TaskCanceledException("The request timed out."));
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Contains($"Bill INV-9001: the ACH clearing account {AchClearingAccountNumber} could not be read from Aplos", Assert.Single(_historyRows).SyncNotes);
+    }
+
+    [Fact]
+    public async Task ADisabledClearingAccountFailsTheBill()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.BankAccount);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+        SetupClearingAccount(new AplosApiAccountDetail { Name = "ACH Clearing", Category = "asset", IsEnabled = false });
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Contains($"ACH clearing account {AchClearingAccountNumber} (ACH Clearing) is disabled in Aplos", Assert.Single(_historyRows).SyncNotes);
+    }
+
+    [Fact]
+    public async Task AClearingAccountThatIsNoLongerAnAssetAccountFailsTheBill()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.BankAccount);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+        SetupClearingAccount(new AplosApiAccountDetail { Name = "Accounts Payable", Category = "liability", IsEnabled = true });
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Contains("is no longer an asset account in Aplos", Assert.Single(_historyRows).SyncNotes);
+    }
+
+    // Checked before the card charge is marked: a marker written for a payment that is then refused would hide the
+    // charge from the transaction sync with nothing booked in its place.
+    [Fact]
+    public async Task ABrokenCardClearingAccountLeavesTheCardChargeUnmarked()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+        SetupClearingAccount(null);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Contains($"vendor card clearing account {CardClearingAccountNumber}", Assert.Single(_historyRows).SyncNotes);
+        Assert.Empty(_cardTransactionNotes);
+        Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+    }
+
+    [Fact]
+    public async Task OnlyTheClearingAccountOfTheRailPexPaidByIsChecked()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.BankAccount);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+
+        await RunSync(useBillPay: true);
+
+        _mockAplosApiClient.Verify(client => client.GetAccount(AchClearingAccountNumber, It.IsAny<CancellationToken>()), Times.Once);
+        _mockAplosApiClient.Verify(client => client.GetAccount(CardClearingAccountNumber, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // Left open, its unmarked card charge would be booked as a purchase too, with nothing to tell the customer.
+    [Fact]
+    public async Task ABillAlreadyPaidInAplosClosesAndMarksItsChargeWhenItsClearingAccountIsBroken()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(amount: 125.50m, paid: 125.50m);
+        SetupClearingAccount(null);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        Assert.Contains(_cardTransactionNotes, note => note.Contains(AplosIntegrationService.SyncedAsBillPaymentNote));
+        Assert.DoesNotContain(_historyRows, row => row.SyncStatus != SyncStatus.Success.ToString());
+    }
+
+    [Fact]
+    public async Task APaymentMethodWithNoClearingAccountStartsTheRetryWindow()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.NonPlatform);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        _mockAplosApiClient.Verify(client => client.GetAccount(It.IsAny<decimal>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).FirstFailedUtc);
+        Assert.Contains("no Aplos clearing account", Assert.Single(_historyRows).SyncNotes);
+    }
+
+    [Fact]
+    public async Task APaymentMethodWithNoClearingAccountClosesOncePaidInAplosAfterTheRetryWindow()
+    {
+        SeedUnpaidMapping(firstFailedUtc: UtcNow.AddDays(-31));
+        SetupPaidPexBill(PayeeFundsDestinationType.NonPlatform);
+        SetupLivePayable(amount: 125.50m, paid: 125.50m);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        Assert.DoesNotContain(_historyRows, row => row.SyncStatus != SyncStatus.Success.ToString());
+    }
+
+    [Fact]
+    public async Task AnAlreadyPaidBillDoesNotCheckTheClearingAccounts()
+    {
+        SeedPaidMapping();
+        SetupPaidPexBill();
+
+        await RunSync(useBillPay: true);
+
+        _mockAplosApiClient.Verify(client => client.GetAccount(It.IsAny<decimal>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

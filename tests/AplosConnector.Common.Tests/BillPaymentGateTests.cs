@@ -43,31 +43,48 @@ public class BillPaymentGateTests : BillPaymentsTestBase
     }
 
     [Fact]
-    public async Task Gate_NoCashAccountConfigured_FailsAndNamesTheWaitingBills()
+    public async Task Gate_NoClearingAccountsConfigured_FailsAndNamesTheWaitingBills()
     {
         SeedUnpaidMapping();
         SetupPaidPexBill();
 
-        await RunSync(useBillPay: true, cashAccountNumber: 0m);
+        await RunSync(useBillPay: true, achClearingAccountNumber: 0m, cardClearingAccountNumber: 0m);
 
         VerifyNoPayCall();
         var historyRow = Assert.Single(_historyRows);
         Assert.Equal(SyncTypes.BillPayments, historyRow.SyncType);
         Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
-        Assert.Contains("not available", historyRow.SyncNotes);
+        Assert.Contains("clearing account", historyRow.SyncNotes);
         Assert.Contains("INV-9001", historyRow.SyncNotes);
     }
 
     [Fact]
-    public async Task Gate_NoCashAccountConfigured_StaysSilentWhenNoImportedBillIsWaiting()
+    public async Task Gate_NoClearingAccountsConfigured_StaysSilentWhenNoImportedBillIsWaiting()
     {
         SeedUnpaidMapping();
         _billMappingStorage.Rows.Values.Single().PaidSyncedUtc = UtcNow;
 
-        await RunSync(useBillPay: true, cashAccountNumber: 0m);
+        await RunSync(useBillPay: true, achClearingAccountNumber: 0m, cardClearingAccountNumber: 0m);
 
         Assert.Empty(_historyRows);
         VerifyNoPayCall();
+    }
+
+    [Theory]
+    [InlineData(0, 1020)]
+    [InlineData(1010, 0)]
+    public async Task Gate_OnlyOneClearingAccountConfigured_PaysNothingAndSaysWhatToSetUp(int achClearingAccountNumber, int cardClearingAccountNumber)
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill();
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+
+        await RunSync(useBillPay: true, achClearingAccountNumber: achClearingAccountNumber, cardClearingAccountNumber: cardClearingAccountNumber);
+
+        VerifyNoPayCall();
+        var historyRow = Assert.Single(_historyRows);
+        Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
+        Assert.Contains("ACH clearing account and vendor card clearing account", historyRow.SyncNotes);
     }
 
     [Fact]
@@ -107,32 +124,27 @@ public class BillPaymentGateTests : BillPaymentsTestBase
     }
 
     [Fact]
-    public void TheCashAccountSurvivesTheStorageRoundTrip()
+    public void TheClearingAccountsSurviveTheStorageAndSettingsRoundTrips()
     {
         var original = new Pex2AplosMappingModel
         {
             PEXBusinessAcctId = PexBusinessAcctId,
-            BillPaymentsAplosCashAccountNumber = CashAccountNumber,
+            BillPaymentsAchClearingAccountNumber = AchClearingAccountNumber,
+            BillPaymentsCardClearingAccountNumber = CardClearingAccountNumber,
             UseBillPayEnabled = true
         };
 
         var service = new StorageMappingService(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
         var roundTripped = service.Map(service.Map(original));
-        Assert.Equal(CashAccountNumber, roundTripped.BillPaymentsAplosCashAccountNumber);
         // Last known, for a run whose business settings refresh fails: the worker loads the mapping from storage, and
         // a false here would hand bill pay card transactions back to the transaction sync.
         Assert.True(roundTripped.UseBillPayEnabled);
+        Assert.Equal(AchClearingAccountNumber, roundTripped.BillPaymentsAchClearingAccountNumber);
+        Assert.Equal(CardClearingAccountNumber, roundTripped.BillPaymentsCardClearingAccountNumber);
 
-    }
-
-    [Fact]
-    public void ASettingsSaveLeavesTheCashAccountAlone()
-    {
-        var stored = new Pex2AplosMappingModel { PEXBusinessAcctId = PexBusinessAcctId, BillPaymentsAplosCashAccountNumber = CashAccountNumber };
-
-        stored.UpdateFromSettings(new MappingSettingsModel());
-
-        Assert.Equal(CashAccountNumber, stored.BillPaymentsAplosCashAccountNumber);
-        Assert.Null(typeof(MappingSettingsModel).GetProperty(nameof(Pex2AplosMappingModel.BillPaymentsAplosCashAccountNumber)));
+        var rebuilt = new Pex2AplosMappingModel { PEXBusinessAcctId = PexBusinessAcctId };
+        rebuilt.UpdateFromSettings(original.ToStorageModel());
+        Assert.Equal(AchClearingAccountNumber, rebuilt.BillPaymentsAchClearingAccountNumber);
+        Assert.Equal(CardClearingAccountNumber, rebuilt.BillPaymentsCardClearingAccountNumber);
     }
 }

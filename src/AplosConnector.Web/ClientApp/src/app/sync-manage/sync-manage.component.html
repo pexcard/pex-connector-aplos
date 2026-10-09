@@ -235,7 +235,7 @@
           </tr>
         </table>
       }
-      @if (settings.syncTransfers || settings.syncInvoices || settings.syncPexFees || settings.syncRebates || settings.syncReimbursements) {
+      @if (settings.syncTransfers || settings.syncInvoices || settings.syncPexFees || settings.syncRebates || settings.syncReimbursements || settings.syncOutstandingBills) {
         <table class="table table-vertical">
           <tbody>
             @if ((settings.syncTransfers || settings.syncInvoices) && transferContact) {
@@ -336,6 +336,18 @@
               <tr class="left">
                 <th>Bank account for reimbursements</th>
                 <td>{{reimbursementsBankAccount | aplosAccount}}</td>
+              </tr>
+            }
+            @if (settings.syncOutstandingBills && billPaymentsAchClearingAccount) {
+              <tr class="left">
+                <th>ACH clearing account for bill payments</th>
+                <td>{{billPaymentsAchClearingAccount | aplosAccount}}</td>
+              </tr>
+            }
+            @if (settings.syncOutstandingBills && billPaymentsCardClearingAccount) {
+              <tr class="left">
+                <th>Vendor card clearing account for bill payments</th>
+                <td>{{billPaymentsCardClearingAccount | aplosAccount}}</td>
               </tr>
             }
           </tbody>

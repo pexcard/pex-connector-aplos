@@ -44,6 +44,7 @@ namespace AplosConnector.Common.Tests
             new(MockBehavior.Loose, (TableClient)null, (IStorageMappingService)null, (ILogger)null);
 
         private readonly FakeBillMappingStorage _billMappingStorage = new();
+        private readonly FakeVendorCardOrderStorage _vendorCardOrderStorage = new();
 
         private readonly List<SyncResultModel> _historyRows = [];
         private readonly List<CreateBillInboxRequestModel> _createdBillInbox = [];
@@ -103,25 +104,6 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(SyncTypes.OutstandingBills, row.SyncType);
             Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
             Assert.Equal(1, row.SyncedRecords);
-        }
-
-        [Fact]
-        public async Task Gate_NoCashAccountConfigured_ImportsNothing()
-        {
-            SetupExistingPexVendor();
-            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
-
-            var mapping = NewMapping(syncOutstandingBills: true);
-            mapping.BillPaymentsAplosCashAccountNumber = 0m;
-            mapping.UseBillPayEnabled = true;
-
-            await GetAplosIntegrationService().SyncOutstandingBills(NullLogger.Instance, mapping, UtcNow, default);
-
-            Assert.Empty(_createdBillInbox);
-            var historyRow = Assert.Single(_historyRows);
-            Assert.Equal(SyncTypes.OutstandingBills, historyRow.SyncType);
-            Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
-            Assert.Contains("not available", historyRow.SyncNotes);
         }
 
         // The double filter: only fully unpaid payables import.
@@ -245,7 +227,7 @@ namespace AplosConnector.Common.Tests
 
             Assert.Empty(_createdBillInbox);
             var row = Assert.Single(_historyRows);
-            Assert.Contains("Could not create or approve the PEX vendor for this contact.", row.SyncNotes);
+            Assert.Contains("Could not create the PEX vendor for this contact.", row.SyncNotes);
             Assert.DoesNotContain("billing address", row.SyncNotes);
         }
 
@@ -452,6 +434,29 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public async Task Gate_ClearingAccountsNotConfigured_ImportsNothing()
+        {
+            // Importing a bill the payment stage cannot mark paid leaves it open in Aplos A/P while the PEX
+            // payment books as a fresh expense - the double-count 148050 exists to prevent.
+            SetupExistingPexVendor();
+            SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m));
+
+            var mapping = NewMapping(syncOutstandingBills: true);
+            // One rail configured is not enough: PEX decides the rail only when the bill is paid.
+            mapping.BillPaymentsCardClearingAccountNumber = 0m;
+            mapping.UseBillPayEnabled = true;
+
+            await GetAplosIntegrationService().SyncOutstandingBills(NullLogger.Instance, mapping, UtcNow, default);
+
+            Assert.Empty(_createdBillInbox);
+            // The customer turned the import on, so a skip has to say what to set up (148049 AC3).
+            var historyRow = Assert.Single(_historyRows);
+            Assert.Equal(SyncTypes.OutstandingBills, historyRow.SyncType);
+            Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
+            Assert.Contains("clearing account", historyRow.SyncNotes);
+        }
+
+        [Fact]
         public async Task ALongVendorNameIsCutToTheCardLimitAndItsCardIsStillLinked()
         {
             const string longName = "Acme Office Supplies Inc";
@@ -459,7 +464,7 @@ namespace AplosConnector.Common.Tests
             SetupPayables(NewPayable("9001", amount: 125.50m, paid: 0m, contactName: longName));
             _mockPexApiClient
                 .Setup(client => client.ApproveVendor(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VendorModel { VendorId = 11, VendorName = longName, CustomId = $"APLOS{AplosContactId}" });
+                .ReturnsAsync(new VendorModel { VendorId = 11, VendorName = longName, CustomId = $"APLOS{AplosContactId}", VendorStatus = VendorStatus.Onboarded });
             _mockPexApiClient
                 .Setup(client => client.GetVendorCardOrder(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VendorCardOrderResponseModel { CardOrderId = 99, Cards = [new VendorCardOrderItemResponse { AcctId = 321, VendorName = "Acme Office Sup" }] });
@@ -853,7 +858,9 @@ namespace AplosConnector.Common.Tests
             IsManualSync = true,
             EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
             SyncOutstandingBills = syncOutstandingBills,
-            BillPaymentsAplosCashAccountNumber = 1000m
+            // Import is gated on the payment half being configured too - see BillPayReady.
+            BillPaymentsAchClearingAccountNumber = 1010m,
+            BillPaymentsCardClearingAccountNumber = 1020m
         };
 
         private static AplosApiPayableDetail NewPayable(
@@ -913,7 +920,7 @@ namespace AplosConnector.Common.Tests
                 });
             _mockPexApiClient
                 .Setup(client => client.ApproveVendor(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((string _, int id, CancellationToken _) => new VendorModel { VendorId = id, VendorName = namesById[id] });
+                .ReturnsAsync((string _, int id, CancellationToken _) => new VendorModel { VendorId = id, VendorName = namesById[id], VendorStatus = VendorStatus.Onboarded });
         }
 
         private void SetupCardOrderResponse(params (string VendorName, int AcctId)[] cards)
@@ -943,8 +950,17 @@ namespace AplosConnector.Common.Tests
                 .Setup(client => client.GetVendors(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new VendorListResponseModel
                 {
-                    Vendors = [new VendorModel { VendorId = 7, VendorName = AplosContactName, CustomId = $"APLOS{AplosContactId}" }]
+                    Vendors = [new VendorModel { VendorId = 7, VendorName = AplosContactName, CustomId = $"APLOS{AplosContactId}", VendorStatus = VendorStatus.Onboarded }]
                 });
+            _vendorCardOrderStorage.Seed(new AplosVendorCardOrderModel
+            {
+                PEXBusinessAcctId = 6118231,
+                AplosContactId = AplosContactId,
+                PexVendorId = 7,
+                CardName = AplosContactName,
+                CardOrderId = 99,
+                CardAcctId = 321
+            });
         }
 
         private void SetupExistingBillInboxNote(string noteText, int billInboxId = 42)
@@ -996,7 +1012,7 @@ namespace AplosConnector.Common.Tests
 
             _mockPexApiClient
                 .Setup(client => client.ApproveVendor(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new VendorModel { VendorId = 11, VendorName = AplosContactName, CustomId = $"APLOS{AplosContactId}" });
+                .ReturnsAsync(new VendorModel { VendorId = 11, VendorName = AplosContactName, CustomId = $"APLOS{AplosContactId}", VendorStatus = VendorStatus.Onboarded });
 
             _mockPexApiClient
                 .Setup(client => client.GetMyAdminProfile(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -1053,7 +1069,8 @@ namespace AplosConnector.Common.Tests
                 _mockMappingStorage.Object,
                 new SyncSettingsModel(),
                 null,
-                _billMappingStorage);
+                _billMappingStorage,
+                _vendorCardOrderStorage);
         }
     }
 }

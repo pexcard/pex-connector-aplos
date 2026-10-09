@@ -70,6 +70,15 @@ namespace AplosConnector.Common.Models
         /// Whether the PEX business account has Bill Pay enabled. Read-only; ignored if sent by the client.
         /// </summary>
         public bool UseBillPayEnabled { get; set; }
+        /// <summary>
+        /// The Aplos clearing account credited when an ACH bill payment is posted back to Aplos. Aplos's pay call has
+        /// no payment-method field, so the account is what records the rail.
+        /// </summary>
+        public decimal BillPaymentsAchClearingAccountNumber { get; set; }
+        /// <summary>
+        /// The Aplos clearing account credited when a vendor card bill payment is posted back to Aplos.
+        /// </summary>
+        public decimal BillPaymentsCardClearingAccountNumber { get; set; }
 
         /// <summary>
         /// The AccountId for the register to use in Aplos. This is the account from which money will be taken from in the transaction created in Aplos.

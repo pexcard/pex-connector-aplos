@@ -35,7 +35,8 @@ public abstract class BillPaymentsTestBase
     protected const int PexBillId = 4242;
     protected const int AchPaymentId = 5001;
     protected const long MetadataRelationId = 100;
-    protected const decimal CashAccountNumber = 1000m;
+    protected const decimal AchClearingAccountNumber = 1010m;
+    protected const decimal CardClearingAccountNumber = 1020m;
     protected const decimal BillAmount = 125.50m;
     protected const long VendorCardTransactionId = 987654;
     protected static readonly DateTime UtcNow = new(2026, 9, 11, 12, 0, 0, DateTimeKind.Utc);
@@ -64,7 +65,8 @@ public abstract class BillPaymentsTestBase
 
     protected async Task<Pex2AplosMappingModel> RunSync(
         bool useBillPay,
-        decimal cashAccountNumber = CashAccountNumber,
+        decimal achClearingAccountNumber = AchClearingAccountNumber,
+        decimal cardClearingAccountNumber = CardClearingAccountNumber,
         CancellationToken cancellationToken = default)
     {
         var mapping = new Pex2AplosMappingModel
@@ -77,7 +79,8 @@ public abstract class BillPaymentsTestBase
             AplosPrivateKey = "privateKey",
             IsManualSync = true,
             EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
-            BillPaymentsAplosCashAccountNumber = cashAccountNumber,
+            BillPaymentsAchClearingAccountNumber = achClearingAccountNumber,
+            BillPaymentsCardClearingAccountNumber = cardClearingAccountNumber,
             // Set by Sync's run-level settings refresh.
             UseBillPayEnabled = useBillPay
         };
@@ -204,6 +207,26 @@ public abstract class BillPaymentsTestBase
         }
     }
 
+    // A null account is Aplos not returning one.
+    protected void SetupClearingAccount(AplosApiAccountDetail account)
+    {
+        _mockAplosApiClient
+            .Setup(client => client.GetAccount(It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((decimal accountNumber, CancellationToken _) => new AplosApiAccountResponse
+            {
+                Data = new AplosApiAccountData
+                {
+                    Account = account is null ? null : new AplosApiAccountDetail
+                    {
+                        AccountNumber = accountNumber,
+                        Name = account.Name,
+                        Category = account.Category,
+                        IsEnabled = account.IsEnabled
+                    }
+                }
+            });
+    }
+
     protected void SetupPayCallAnswers405()
     {
         _mockAplosApiClient
@@ -270,6 +293,9 @@ public abstract class BillPaymentsTestBase
                     : []
             });
 
+        // Every clearing account is found, enabled and an asset account unless a test says otherwise.
+        SetupClearingAccount(new AplosApiAccountDetail { Name = "Clearing", Category = "asset", IsEnabled = true });
+
         _mockAplosApiClientFactory
             .Setup(factory => factory.CreateClient(
                 It.IsAny<string>(),
@@ -293,7 +319,8 @@ public abstract class BillPaymentsTestBase
             _mockMappingStorage.Object,
             new SyncSettingsModel(),
             null,
-            _billMappingStorage);
+            _billMappingStorage,
+            Mock.Of<IAplosVendorCardOrderStorage>());
     }
 
     protected sealed class FakeBillMappingStorage : IAplosBillMappingStorage
@@ -331,6 +358,7 @@ public abstract class BillPaymentsTestBase
             Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].FirstFailedUtc = failedUtc;
             return Task.CompletedTask;
         }
+
 
         public Task MarkAwaitingChargeAsync(AplosBillMappingModel model, DateTime awaitingSinceUtc, CancellationToken cancellationToken)
         {

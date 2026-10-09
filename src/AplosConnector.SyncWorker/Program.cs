@@ -93,6 +93,10 @@ public class Program
         aplosBillMappingTableClient.CreateIfNotExistsAsync();
         builder.Services.AddSingleton<IAplosBillMappingStorage>(_ => new AplosBillMappingStorage(aplosBillMappingTableClient));
 
+        var aplosVendorCardOrderTableClient = tableServiceClient.GetTableClient(AplosVendorCardOrderStorage.TABLE_NAME);
+        aplosVendorCardOrderTableClient.CreateIfNotExistsAsync();
+        builder.Services.AddSingleton<IAplosVendorCardOrderStorage>(_ => new AplosVendorCardOrderStorage(aplosVendorCardOrderTableClient));
+
         var syncHistoryTableClient = tableServiceClient.GetTableClient(SyncHistoryStorage.TABLE_NAME);
         syncHistoryTableClient.CreateIfNotExistsAsync();
         builder.Services.AddSingleton(_ => new SyncHistoryStorage(syncHistoryTableClient));
@@ -136,7 +140,8 @@ public class Program
             provider.GetService<Pex2AplosMappingStorage>(),
             provider.GetService<SyncSettingsModel>(),
             provider.GetService<IVendorCardStorage>(),
-            provider.GetService<IAplosBillMappingStorage>()));
+            provider.GetService<IAplosBillMappingStorage>(),
+            provider.GetService<IAplosVendorCardOrderStorage>()));
 
         var blobServiceClient = new BlobServiceClient(
             new Uri($"https://{storageAccountName}.blob.core.windows.net"),
