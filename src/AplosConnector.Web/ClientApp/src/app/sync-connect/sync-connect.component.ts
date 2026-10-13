@@ -786,9 +786,10 @@ export class SyncConnectComponent implements OnInit {
     // fund/expense/tags come from the shared mapping page or the shared defaults above.
     this.applyRequired('reimbursementsAplosRegisterAccountNumber', s.syncReimbursements);
 
-    // Bill pay: PEX picks the rail only when a bill is paid, so both clearing accounts are needed up front.
+    // Bill pay: PEX picks the rail only when a bill is paid, so the ACH bank account is needed up front.
     this.applyRequired('billPaymentsAchClearingAccountNumber', s.syncOutstandingBills);
-    this.applyRequired('billPaymentsCardClearingAccountNumber', s.syncOutstandingBills);
+    // A credit business's PEX funds account is a liability, which Aplos can't pay a bill from (153880).
+    this.applyRequired('billPaymentsCardClearingAccountNumber', s.syncOutstandingBills && this.isCredit);
   }
 
   updateSettingsFromDefaultCategoryForm() {

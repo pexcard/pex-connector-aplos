@@ -25,6 +25,7 @@ namespace AplosConnector.Common.Entities
             PaidSyncedUtc = model.PaidSyncedUtc?.ToUniversalTime();
             FirstFailedUtc = model.FirstFailedUtc?.ToUniversalTime();
             AwaitingChargeSinceUtc = model.AwaitingChargeSinceUtc?.ToUniversalTime();
+            PaidFromClearingAccountNumber = (double?)model.PaidFromClearingAccountNumber;
             CreatedUtc = model.CreatedUtc.ToUniversalTime();
         }
 
@@ -37,6 +38,7 @@ namespace AplosConnector.Common.Entities
         public DateTime? PaidSyncedUtc { get; set; }
         public DateTime? FirstFailedUtc { get; set; }
         public DateTime? AwaitingChargeSinceUtc { get; set; }
+        public double? PaidFromClearingAccountNumber { get; set; }
         public DateTime CreatedUtc { get; set; }
 
         public AplosBillMappingModel ToModel()
@@ -52,6 +54,7 @@ namespace AplosConnector.Common.Entities
                 PaidSyncedUtc = PaidSyncedUtc,
                 FirstFailedUtc = FirstFailedUtc,
                 AwaitingChargeSinceUtc = AwaitingChargeSinceUtc,
+                PaidFromClearingAccountNumber = (decimal?)PaidFromClearingAccountNumber,
                 CreatedUtc = CreatedUtc
             };
         }

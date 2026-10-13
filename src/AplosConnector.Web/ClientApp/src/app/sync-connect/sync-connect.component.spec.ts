@@ -47,6 +47,15 @@ describe('SyncConnectComponent', () => {
     expect(component.defaultCategoryForm.get('billPaymentsCardClearingAccountNumber').value).toBe(1010);
   });
 
+  it('clears a saved vendor card clearing account the cash account list does not hold', () => {
+    spyOn(TestBed.inject(AplosService), 'getAccounts').and.returnValue(of([{ id: 1010, name: 'Checking' }]));
+    component.defaultCategoryForm.patchValue({ billPaymentsCardClearingAccountNumber: 1501 });
+
+    component.getCashAccounts();
+
+    expect(component.defaultCategoryForm.get('billPaymentsCardClearingAccountNumber').value).toBe(0);
+  });
+
   it('keeps saved bill payment accounts and reports the failure when the cash account list fails to load', () => {
     spyOn(TestBed.inject(AplosService), 'getAccounts').and.returnValue(throwError(() => new Error('503')));
     component.defaultCategoryForm.patchValue({ billPaymentsAchClearingAccountNumber: 1500 });
@@ -58,26 +67,37 @@ describe('SyncConnectComponent', () => {
     expect(component.defaultCategoryForm.get('billPaymentsAchClearingAccountNumber').value).toBe(1500);
   });
 
-  // PEX picks the rail only when a bill is paid, so importing bills needs both clearing accounts up front.
-  it('requires both bill payment clearing accounts only while Aplos bills are imported', () => {
+  // PEX picks the rail only when a bill is paid, so importing bills needs the ACH bank account up front.
+  it('requires the bill payment ACH bank account only while Aplos bills are imported', () => {
     const achControl = component.defaultCategoryForm.get('billPaymentsAchClearingAccountNumber');
-    const cardControl = component.defaultCategoryForm.get('billPaymentsCardClearingAccountNumber');
     achControl.setValue(0);
-    cardControl.setValue(0);
 
     component.settingsModel.syncOutstandingBills = false;
     component.updateOtherOptionsValidators();
     expect(achControl.valid).toBeTrue();
-    expect(cardControl.valid).toBeTrue();
 
     component.settingsModel.syncOutstandingBills = true;
     component.updateOtherOptionsValidators();
     expect(achControl.valid).toBeFalse();
-    expect(cardControl.valid).toBeFalse();
 
     achControl.setValue(1010);
-    cardControl.setValue(1020);
     expect(achControl.valid).toBeTrue();
-    expect(cardControl.valid).toBeTrue();
+  });
+
+  it('requires the vendor card clearing account only for a credit business importing bills', () => {
+    const clearingControl = component.defaultCategoryForm.get('billPaymentsCardClearingAccountNumber');
+    clearingControl.setValue(0);
+    component.settingsModel.syncOutstandingBills = true;
+
+    component.isCredit = false;
+    component.updateOtherOptionsValidators();
+    expect(clearingControl.valid).toBeTrue();
+
+    component.isCredit = true;
+    component.updateOtherOptionsValidators();
+    expect(clearingControl.valid).toBeFalse();
+
+    clearingControl.setValue(1611);
+    expect(clearingControl.valid).toBeTrue();
   });
 });

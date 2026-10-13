@@ -120,7 +120,8 @@ public abstract class VendorSetupTestBase
             SyncOutstandingBills = true,
             UseBillPayEnabled = true,
             BillPaymentsAchClearingAccountNumber = 1010m,
-            BillPaymentsCardClearingAccountNumber = 1020m
+            BillPaymentsCardClearingAccountNumber = 1020m,
+            AplosRegisterAccountNumber = 1030m
         };
 
         CreatedBillInbox.Clear();

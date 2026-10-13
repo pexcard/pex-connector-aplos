@@ -88,5 +88,32 @@ namespace AplosConnector.Common.Storage
 
             await TableClient.UpdateEntityAsync(awaitingColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
         }
+
+        public async Task MarkPaidFromClearingAsync(AplosBillMappingModel model, decimal clearingAccountNumber, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            model.PaidFromClearingAccountNumber = clearingAccountNumber;
+
+            var clearingColumn = new TableEntity(model.PEXBusinessAcctId.ToString(), model.AplosPayableId)
+            {
+                [nameof(AplosBillMappingEntity.PaidFromClearingAccountNumber)] = (double)clearingAccountNumber
+            };
+
+            await TableClient.UpdateEntityAsync(clearingColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
+        }
+
+        // A merge can't remove a column, so the row is read and replaced under its ETag.
+        public async Task ClearPaidFromClearingAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            var row = (await TableClient.GetEntityAsync<TableEntity>(model.PEXBusinessAcctId.ToString(), model.AplosPayableId, cancellationToken: cancellationToken)).Value;
+            row.Remove(nameof(AplosBillMappingEntity.PaidFromClearingAccountNumber));
+
+            await TableClient.UpdateEntityAsync(row, row.ETag, TableUpdateMode.Replace, cancellationToken);
+
+            model.PaidFromClearingAccountNumber = null;
+        }
     }
 }

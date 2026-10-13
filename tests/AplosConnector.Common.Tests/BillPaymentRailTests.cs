@@ -109,6 +109,7 @@ public class BillPaymentRailTests : BillPaymentsTestBase
     }
 
     [Fact]
+    // The default PEX funds account is a bank Register, so Aplos pays from it directly (153880).
     public async Task PayingAnImportedBillByVendorCardMarksTheAplosPayablePaid()
     {
         SeedUnpaidMapping();
@@ -117,7 +118,7 @@ public class BillPaymentRailTests : BillPaymentsTestBase
 
         await RunSync(useBillPay: true);
 
-        Assert.Equal(CardClearingAccountNumber, Assert.Single(_payments).CashAccountNumber);
+        Assert.Equal(PexFundsAccountNumber, Assert.Single(_payments).CashAccountNumber);
         Assert.NotNull(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
         Assert.Equal(1, Assert.Single(_historyRows).SyncedRecords);
     }
@@ -251,7 +252,7 @@ public class BillPaymentRailTests : BillPaymentsTestBase
     // Checked before the card charge is marked: a marker written for a payment that is then refused would hide the
     // charge from the transaction sync with nothing booked in its place.
     [Fact]
-    public async Task ABrokenCardClearingAccountLeavesTheCardChargeUnmarked()
+    public async Task ABrokenCardRailAccountLeavesTheCardChargeUnmarked()
     {
         SeedUnpaidMapping();
         SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
@@ -261,7 +262,7 @@ public class BillPaymentRailTests : BillPaymentsTestBase
         await RunSync(useBillPay: true);
 
         VerifyNoPayCall();
-        Assert.Contains($"vendor card clearing account {CardClearingAccountNumber}", Assert.Single(_historyRows).SyncNotes);
+        Assert.Contains($"the account that represents your PEX funds ({PexFundsAccountNumber}) could not be found", Assert.Single(_historyRows).SyncNotes);
         Assert.Empty(_cardTransactionNotes);
         Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
     }
@@ -307,7 +308,7 @@ public class BillPaymentRailTests : BillPaymentsTestBase
         VerifyNoPayCall();
         _mockAplosApiClient.Verify(client => client.GetAccount(It.IsAny<decimal>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).FirstFailedUtc);
-        Assert.Contains("no Aplos clearing account", Assert.Single(_historyRows).SyncNotes);
+        Assert.Contains("no Aplos account to pay it from", Assert.Single(_historyRows).SyncNotes);
     }
 
     [Fact]

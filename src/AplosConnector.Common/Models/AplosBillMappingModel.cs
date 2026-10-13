@@ -16,6 +16,9 @@ namespace AplosConnector.Common.Models
         public DateTime? FirstFailedUtc { get; set; }
         // When a card payment was first seen waiting for its charge; see AwaitingCardChargeLimit.
         public DateTime? AwaitingChargeSinceUtc { get; set; }
+        // The vendor card clearing account the bill is paid from, written before paying: the transfer out of that account
+        // is owed once the payable reads paid, even if the setting has changed since (153880).
+        public decimal? PaidFromClearingAccountNumber { get; set; }
         public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     }
 }

@@ -43,48 +43,50 @@ public class BillPaymentGateTests : BillPaymentsTestBase
     }
 
     [Fact]
-    public async Task Gate_NoClearingAccountsConfigured_FailsAndNamesTheWaitingBills()
+    public async Task Gate_NoBillPayAccountsConfigured_FailsAndNamesTheWaitingBills()
     {
         SeedUnpaidMapping();
         SetupPaidPexBill();
 
-        await RunSync(useBillPay: true, achClearingAccountNumber: 0m, cardClearingAccountNumber: 0m);
+        await RunSync(useBillPay: true, achClearingAccountNumber: 0m, pexFundsAccountNumber: 0m);
 
         VerifyNoPayCall();
         var historyRow = Assert.Single(_historyRows);
         Assert.Equal(SyncTypes.BillPayments, historyRow.SyncType);
         Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
-        Assert.Contains("clearing account", historyRow.SyncNotes);
+        Assert.Contains("ACH bank account", historyRow.SyncNotes);
         Assert.Contains("INV-9001", historyRow.SyncNotes);
     }
 
     [Fact]
-    public async Task Gate_NoClearingAccountsConfigured_StaysSilentWhenNoImportedBillIsWaiting()
+    public async Task Gate_NoBillPayAccountsConfigured_StaysSilentWhenNoImportedBillIsWaiting()
     {
         SeedUnpaidMapping();
         _billMappingStorage.Rows.Values.Single().PaidSyncedUtc = UtcNow;
 
-        await RunSync(useBillPay: true, achClearingAccountNumber: 0m, cardClearingAccountNumber: 0m);
+        await RunSync(useBillPay: true, achClearingAccountNumber: 0m, pexFundsAccountNumber: 0m);
 
         Assert.Empty(_historyRows);
         VerifyNoPayCall();
     }
 
+    // The clearing account is not part of the gate: whether card bills need it depends on the PEX funds account's type,
+    // which is read at pay time (153880).
     [Theory]
-    [InlineData(0, 1020)]
+    [InlineData(0, 1030)]
     [InlineData(1010, 0)]
-    public async Task Gate_OnlyOneClearingAccountConfigured_PaysNothingAndSaysWhatToSetUp(int achClearingAccountNumber, int cardClearingAccountNumber)
+    public async Task Gate_OnlyOneRailsAccountConfigured_PaysNothingAndSaysWhatToSetUp(int achClearingAccountNumber, int pexFundsAccountNumber)
     {
         SeedUnpaidMapping();
         SetupPaidPexBill();
         SetupLivePayable(amount: 125.50m, paid: 0m);
 
-        await RunSync(useBillPay: true, achClearingAccountNumber: achClearingAccountNumber, cardClearingAccountNumber: cardClearingAccountNumber);
+        await RunSync(useBillPay: true, achClearingAccountNumber: achClearingAccountNumber, pexFundsAccountNumber: pexFundsAccountNumber);
 
         VerifyNoPayCall();
         var historyRow = Assert.Single(_historyRows);
         Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
-        Assert.Contains("ACH bank account and vendor card clearing account", historyRow.SyncNotes);
+        Assert.Contains("ACH bank account for bill payments and the Aplos account that represents your PEX funds", historyRow.SyncNotes);
     }
 
     [Fact]

@@ -76,8 +76,8 @@ namespace AplosConnector.Common.Models
         /// </summary>
         public decimal BillPaymentsAchClearingAccountNumber { get; set; }
         /// <summary>
-        /// The Aplos clearing account credited when a vendor card bill payment is posted back to Aplos. Must be an asset
-        /// Register account.
+        /// The asset Register account an imported bill paid by vendor card is marked paid from when
+        /// <see cref="AplosRegisterAccountNumber"/> cannot take Aplos's pay call; a transfer then moves the charge from it to the PEX funds account.
         /// </summary>
         public decimal BillPaymentsCardClearingAccountNumber { get; set; }
 
