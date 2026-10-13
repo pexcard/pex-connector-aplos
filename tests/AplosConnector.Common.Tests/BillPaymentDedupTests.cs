@@ -59,7 +59,7 @@ public class BillPaymentDedupTests : BillPaymentsTestBase
         await RunSync(useBillPay: true);
 
         var payment = Assert.Single(_payments);
-        Assert.Equal(CashAccountNumber, payment.CashAccountNumber);
+        Assert.Equal(AchClearingAccountNumber, payment.CashAccountNumber);
         _mockAplosApiClient.Verify(client => client.PayPayable(
             It.IsAny<string>(), It.IsAny<AplosApiPayablePaymentModel>(), It.IsAny<CancellationToken>()), Times.Once);
 

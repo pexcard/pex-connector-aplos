@@ -76,7 +76,8 @@ namespace AplosConnector.Common.Entities
         public int ReimbursementsAplosContactId { get; set; }
         public string ReimbursementsAplosRegisterAccountNumber { get; set; }
 
-        public string BillPaymentsAplosCashAccountNumber { get; set; }
+        public string BillPaymentsAchClearingAccountNumber { get; set; }
+        public string BillPaymentsCardClearingAccountNumber { get; set; }
 
         public string ExpenseAccountMappings { get; set; }
         public string TagMappings { get; set; }

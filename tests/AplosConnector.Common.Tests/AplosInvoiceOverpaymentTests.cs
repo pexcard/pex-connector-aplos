@@ -1040,7 +1040,8 @@ namespace AplosConnector.Common.Tests
                 null,
                 new SyncSettingsModel(),
                 null,
-                Mock.Of<IAplosBillMappingStorage>());
+                Mock.Of<IAplosBillMappingStorage>(),
+                Mock.Of<IAplosVendorCardOrderStorage>());
         }
     }
 }

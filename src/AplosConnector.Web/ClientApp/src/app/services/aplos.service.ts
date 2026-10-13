@@ -102,7 +102,8 @@ export class AplosService {
   
 }
 
-export type AplosAccountCategory = "asset" | "expense" | "liability" | "income";
+// "cash" is not an Aplos category: the asset accounts a payable can be paid from.
+export type AplosAccountCategory = "asset" | "expense" | "liability" | "income" | "cash";
 
 export interface AplosObject {
   id: number;

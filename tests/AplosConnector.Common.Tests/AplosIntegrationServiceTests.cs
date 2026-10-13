@@ -1158,7 +1158,8 @@ namespace AplosConnector.Common.Tests
                 null,
                 _mockSettings,
                 null,
-                Mock.Of<IAplosBillMappingStorage>());
+                Mock.Of<IAplosBillMappingStorage>(),
+                Mock.Of<IAplosVendorCardOrderStorage>());
         }
 
         private Pex2AplosMappingModel GetMapping(

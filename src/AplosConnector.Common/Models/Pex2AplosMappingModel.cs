@@ -28,6 +28,8 @@ namespace AplosConnector.Common.Models
             SyncRebates = mapping.SyncRebates;
             SyncReimbursements = mapping.SyncReimbursements;
             SyncOutstandingBills = mapping.SyncOutstandingBills;
+            BillPaymentsAchClearingAccountNumber = mapping.BillPaymentsAchClearingAccountNumber;
+            BillPaymentsCardClearingAccountNumber = mapping.BillPaymentsCardClearingAccountNumber;
             LastSyncUtc = mapping.LastSync;
             EarliestTransactionDateToSync = mapping.EarliestTransactionDateToSync.ToUniversalTime();
             if (mapping.EndDateUtc != null)
@@ -116,6 +118,8 @@ namespace AplosConnector.Common.Models
                 SyncRebates = SyncRebates,
                 SyncReimbursements = SyncReimbursements,
                 SyncOutstandingBills = SyncOutstandingBills,
+                BillPaymentsAchClearingAccountNumber = BillPaymentsAchClearingAccountNumber,
+                BillPaymentsCardClearingAccountNumber = BillPaymentsCardClearingAccountNumber,
                 LastSync = LastSyncUtc,
                 EarliestTransactionDateToSync = EarliestTransactionDateToSync,
                 EndDateUtc = EndDateUtc,
@@ -247,8 +251,8 @@ namespace AplosConnector.Common.Models
         public int ReimbursementsAplosContactId { get; set; }
         public decimal ReimbursementsAplosRegisterAccountNumber { get; set; }
 
-        // Deliberately not in MappingSettingsModel: nothing may set it before 148049 replaces it, after 148050.
-        public decimal BillPaymentsAplosCashAccountNumber { get; set; }
+        public decimal BillPaymentsAchClearingAccountNumber { get; set; }
+        public decimal BillPaymentsCardClearingAccountNumber { get; set; }
 
         public ExpenseAccountMappingModel[] ExpenseAccountMappings { get; set; }
         public TagMappingModel[] TagMappings { get; set; }

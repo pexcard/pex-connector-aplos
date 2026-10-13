@@ -93,7 +93,7 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
         var aplosTransaction = Assert.Single(_createdAplosTransactions);
         Assert.Equal(VendorCardTransactionId.ToString(), aplosTransaction.Note);
         Assert.Single(aplosTransaction.Lines, line => line.Account.AccountNumber == RegisterAccountNumber);
-        Assert.DoesNotContain(aplosTransaction.Lines, line => line.Account.AccountNumber == CashAccountNumber);
+        Assert.DoesNotContain(aplosTransaction.Lines, line => line.Account.AccountNumber == CardClearingAccountNumber);
     }
 
     [Fact]
@@ -219,7 +219,8 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
         ExpenseAccountMappings = [],
         // Set by Sync's run-level settings refresh.
         UseBillPayEnabled = true,
-        BillPaymentsAplosCashAccountNumber = CashAccountNumber
+        BillPaymentsAchClearingAccountNumber = AchClearingAccountNumber,
+        BillPaymentsCardClearingAccountNumber = CardClearingAccountNumber
     };
 
     private void SetupPaidBill(PayeeFundsDestinationType fundsDestinationType, PaymentRequestStatusTrigger trigger = PaymentRequestStatusTrigger.Paid)
