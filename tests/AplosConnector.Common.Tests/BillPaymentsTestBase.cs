@@ -37,6 +37,7 @@ public abstract class BillPaymentsTestBase
     protected const long MetadataRelationId = 100;
     protected const decimal AchClearingAccountNumber = 1010m;
     protected const decimal CardClearingAccountNumber = 1020m;
+    protected const decimal PexFundsAccountNumber = 1030m;
     protected const decimal BillAmount = 125.50m;
     protected const long VendorCardTransactionId = 987654;
     protected static readonly DateTime UtcNow = new(2026, 9, 11, 12, 0, 0, DateTimeKind.Utc);
@@ -67,6 +68,8 @@ public abstract class BillPaymentsTestBase
         bool useBillPay,
         decimal achClearingAccountNumber = AchClearingAccountNumber,
         decimal cardClearingAccountNumber = CardClearingAccountNumber,
+        decimal pexFundsAccountNumber = PexFundsAccountNumber,
+        Action<Pex2AplosMappingModel> configure = null,
         CancellationToken cancellationToken = default)
     {
         var mapping = new Pex2AplosMappingModel
@@ -81,9 +84,11 @@ public abstract class BillPaymentsTestBase
             EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
             BillPaymentsAchClearingAccountNumber = achClearingAccountNumber,
             BillPaymentsCardClearingAccountNumber = cardClearingAccountNumber,
+            AplosRegisterAccountNumber = pexFundsAccountNumber,
             // Set by Sync's run-level settings refresh.
             UseBillPayEnabled = useBillPay
         };
+        configure?.Invoke(mapping);
 
         _mockPexApiClient
             .Setup(client => client.GetBusinessSettings(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -370,6 +375,22 @@ public abstract class BillPaymentsTestBase
             return Task.CompletedTask;
         }
 
+        public Task MarkPaidFromClearingAsync(AplosBillMappingModel model, decimal clearingAccountNumber, CancellationToken cancellationToken)
+        {
+            ThrowIfFailing();
+            model.PaidFromClearingAccountNumber = clearingAccountNumber;
+            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].PaidFromClearingAccountNumber = clearingAccountNumber;
+            return Task.CompletedTask;
+        }
+
+        public Task ClearPaidFromClearingAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
+        {
+            ThrowIfFailing();
+            model.PaidFromClearingAccountNumber = null;
+            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].PaidFromClearingAccountNumber = null;
+            return Task.CompletedTask;
+        }
+
         private void ThrowIfFailing()
         {
             if (!FailNextWrite) return;
@@ -391,6 +412,7 @@ public abstract class BillPaymentsTestBase
             PaidSyncedUtc = model.PaidSyncedUtc,
             FirstFailedUtc = model.FirstFailedUtc,
             AwaitingChargeSinceUtc = model.AwaitingChargeSinceUtc,
+            PaidFromClearingAccountNumber = model.PaidFromClearingAccountNumber,
             CreatedUtc = model.CreatedUtc
         };
     }

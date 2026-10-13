@@ -434,7 +434,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task Gate_ClearingAccountsNotConfigured_ImportsNothing()
+        public async Task Gate_BillPayAccountsNotConfigured_ImportsNothing()
         {
             // Importing a bill the payment stage cannot mark paid leaves it open in Aplos A/P while the PEX
             // payment books as a fresh expense - the double-count 148050 exists to prevent.
@@ -443,7 +443,7 @@ namespace AplosConnector.Common.Tests
 
             var mapping = NewMapping(syncOutstandingBills: true);
             // One rail configured is not enough: PEX decides the rail only when the bill is paid.
-            mapping.BillPaymentsCardClearingAccountNumber = 0m;
+            mapping.AplosRegisterAccountNumber = 0m;
             mapping.UseBillPayEnabled = true;
 
             await GetAplosIntegrationService().SyncOutstandingBills(NullLogger.Instance, mapping, UtcNow, default);
@@ -453,7 +453,7 @@ namespace AplosConnector.Common.Tests
             var historyRow = Assert.Single(_historyRows);
             Assert.Equal(SyncTypes.OutstandingBills, historyRow.SyncType);
             Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
-            Assert.Contains("clearing account", historyRow.SyncNotes);
+            Assert.Contains("the Aplos account that represents your PEX funds", historyRow.SyncNotes);
         }
 
         [Fact]
@@ -823,6 +823,22 @@ namespace AplosConnector.Common.Tests
                 return Task.CompletedTask;
             }
 
+            public Task MarkPaidFromClearingAsync(AplosBillMappingModel model, decimal clearingAccountNumber, CancellationToken cancellationToken)
+            {
+                ThrowIfFailing();
+                model.PaidFromClearingAccountNumber = clearingAccountNumber;
+                Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
+                return Task.CompletedTask;
+            }
+
+            public Task ClearPaidFromClearingAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
+            {
+                ThrowIfFailing();
+                model.PaidFromClearingAccountNumber = null;
+                Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
+                return Task.CompletedTask;
+            }
+
             private static string Key(int pexBusinessAcctId, string aplosPayableId) => $"{pexBusinessAcctId}|{aplosPayableId}";
         }
 
@@ -860,7 +876,8 @@ namespace AplosConnector.Common.Tests
             SyncOutstandingBills = syncOutstandingBills,
             // Import is gated on the payment half being configured too - see BillPayReady.
             BillPaymentsAchClearingAccountNumber = 1010m,
-            BillPaymentsCardClearingAccountNumber = 1020m
+            BillPaymentsCardClearingAccountNumber = 1020m,
+            AplosRegisterAccountNumber = 1030m
         };
 
         private static AplosApiPayableDetail NewPayable(

@@ -35,7 +35,7 @@ public partial class AplosIntegrationService
 
     private const string CardClearingAccountSetting = "vendor card clearing account";
 
-    private const string MissingClearingAccountsNote = "Set the Aplos ACH bank account and vendor card clearing account for bill payments in the connector settings; until then imported bills cannot be marked paid in Aplos.";
+    private const string MissingClearingAccountsNote = "Set the Aplos ACH bank account for bill payments and the Aplos account that represents your PEX funds in the connector settings; until then imported bills cannot be marked paid in Aplos.";
 
     internal async Task SyncBillPayments(
         ILogger logger,
@@ -55,7 +55,7 @@ public partial class AplosIntegrationService
             var waiting = billMappings.Where(row => row.PaidSyncedUtc is null).ToList();
             if (waiting.Count == 0) return;
 
-            logger.LogWarning($"Business {mapping.PEXBusinessAcctId} has {waiting.Count} imported Aplos bills waiting to be marked paid, but its bill payment clearing accounts are not configured.");
+            logger.LogWarning($"Business {mapping.PEXBusinessAcctId} has {waiting.Count} imported Aplos bills waiting to be marked paid, but its ACH bank account or PEX funds account is not configured.");
             await WriteBillPaymentsHistory(mapping, 0, 1, [$"{MissingClearingAccountsNote} Waiting: {DescribeBills(waiting)}."], cancellationToken);
             return;
         }
@@ -169,17 +169,24 @@ public partial class AplosIntegrationService
                 readyToPay.Add((paymentRequest, billMapping));
             }
 
+            CardRail cardRail = null;
+            if (readyToPay.Any(bill => IsCardPayment(bill.PaymentRequest)))
+            {
+                cardRail = await GetCardRail(logger, mapping, cancellationToken);
+            }
+
             // Checked once per account per run, before any bill is paid. Aplos posts against whatever the number means
             // now, so an account deleted, merged or disabled since it was chosen fails its bills by name, with no
             // fallback. A settings problem, so it does not start a bill's retry window.
-            List<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping, decimal ClearingAccountNumber)> toPay = [];
-            foreach (var rail in readyToPay.GroupBy(bill => GetBillPaymentClearingAccount(mapping, bill.PaymentRequest)))
+            List<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping, decimal CashAccountNumber, bool TransferOwed)> toPay = [];
+            foreach (var rail in readyToPay.GroupBy(bill => GetBillPaymentCashAccount(mapping, bill.PaymentRequest, cardRail)))
             {
-                var (clearingAccountNumber, settingName) = rail.Key;
+                var (cashAccountNumber, checkedSettingName) = rail.Key;
+                var isCardRail = rail.Any(bill => IsCardPayment(bill.PaymentRequest));
 
                 // No setting can fix this one, so it takes the retry window, and the stopped-bill check closes it once
                 // it is paid in Aplos.
-                if (settingName is null)
+                if (cashAccountNumber <= 0m)
                 {
                     foreach (var (_, billMapping) in rail)
                     {
@@ -190,26 +197,29 @@ public partial class AplosIntegrationService
                         }
 
                         var reportedUntil = ((billMapping.FirstFailedUtc ?? utcNow) + BillPaymentRetryWindow).ToEstCalendarDate();
-                        failureNotes.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: not marked paid, because the PEX payment method has no Aplos clearing account. Mark it paid in Aplos by hand; it is reported until {reportedUntil:yyyy-MM-dd}.");
+                        failureNotes.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: not marked paid, because the PEX payment method has no Aplos account to pay it from. Mark it paid in Aplos by hand; it is reported until {reportedUntil:yyyy-MM-dd}.");
                     }
 
                     continue;
                 }
 
-                string railError;
-                try
+                var railError = isCardRail ? cardRail.Error : null;
+                if (railError is null && checkedSettingName is not null)
                 {
-                    railError = await CheckClearingAccount(mapping, clearingAccountNumber, settingName, cancellationToken);
-                }
-                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
-                {
-                    logger.LogWarning(ex, $"Failed to read the {settingName} {clearingAccountNumber} from Aplos for business {mapping.PEXBusinessAcctId}.");
-                    railError = $"the {settingName} {clearingAccountNumber} could not be read from Aplos; retried on the next sync.";
+                    try
+                    {
+                        railError = await CheckClearingAccount(mapping, cashAccountNumber, checkedSettingName, cancellationToken);
+                    }
+                    catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        logger.LogWarning(ex, $"Failed to read the {checkedSettingName} {cashAccountNumber} from Aplos for business {mapping.PEXBusinessAcctId}.");
+                        railError = $"the {checkedSettingName} {cashAccountNumber} could not be read from Aplos; retried on the next sync.";
+                    }
                 }
 
                 if (railError is null)
                 {
-                    toPay.AddRange(rail.Select(bill => (bill.PaymentRequest, bill.BillMapping, clearingAccountNumber)));
+                    toPay.AddRange(rail.Select(bill => (bill.PaymentRequest, bill.BillMapping, cashAccountNumber, isCardRail && cardRail.TransferOwed)));
                     continue;
                 }
 
@@ -231,11 +241,11 @@ public partial class AplosIntegrationService
                 logger.LogWarning($"Business {mapping.PEXBusinessAcctId} has {bills.Count} Aplos bills not marked paid: {railError}");
             }
 
-            foreach (var (paymentRequest, billMapping, clearingAccountNumber) in toPay)
+            foreach (var (paymentRequest, billMapping, cashAccountNumber, transferOwed) in toPay)
             {
                 try
                 {
-                    if (await MarkAplosPayablePaid(logger, mapping, billMapping, paymentRequest, clearingAccountNumber, utcNow, cancellationToken))
+                    if (await MarkAplosPayablePaid(logger, mapping, billMapping, paymentRequest, cashAccountNumber, transferOwed, utcNow, cancellationToken))
                     {
                         syncCount++;
                     }
@@ -251,7 +261,11 @@ public partial class AplosIntegrationService
                     }
 
                     var retryUntil = ((billMapping.FirstFailedUtc ?? utcNow) + BillPaymentRetryWindow).ToEstCalendarDate();
-                    failureNotes.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: {DescribeFailure(ex)} Retried until {retryUntil:yyyy-MM-dd}, then it must be marked paid in Aplos by hand.");
+                    var byHand = transferOwed
+                        ? $"mark it paid in Aplos by hand from clearing account {cashAccountNumber} and post {paymentRequest.Amount:0.00} as debit {cashAccountNumber} / credit {mapping.AplosRegisterAccountNumber}"
+                        : "it must be marked paid in Aplos by hand";
+                    var retry = ex is CardChargeTransferException ? "" : $" Retried until {retryUntil:yyyy-MM-dd}, then {byHand}.";
+                    failureNotes.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: {DescribeFailure(ex)}{retry}");
                 }
             }
         }
@@ -275,6 +289,7 @@ public partial class AplosIntegrationService
         AplosBillMappingModel billMapping,
         BillPaymentRequestModel paymentRequest,
         decimal clearingAccountNumber,
+        bool transferOwed,
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
@@ -302,11 +317,13 @@ public partial class AplosIntegrationService
         if (action == AplosPayableAction.SkipAlreadyPaid)
         {
             logger.LogInformation($"Skipping Aplos payable {billMapping.AplosPayableId} for PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId}. It is already paid in Aplos.");
-            // Also heals a paid marker lost after an earlier pay call.
-            await CloseHealedBill(logger, mapping, billMapping, paymentRequest, cardTransactionId, utcNow, cancellationToken);
+            // Also heals a paid marker lost after an earlier pay call, and a transfer that failed after it.
+            await CloseHealedBill(logger, mapping, billMapping, paymentRequest, payable, cardTransactionId, utcNow, cancellationToken);
 
             return false;
         }
+
+        await TryClearPaidFromClearing(logger, mapping, billMapping, cancellationToken);
 
         if (action == AplosPayableAction.SkipPartiallyPaid)
         {
@@ -348,6 +365,25 @@ public partial class AplosIntegrationService
             }
         }
 
+        // Recorded before paying: the payable alone can't tell a payment from the clearing account apart from one made
+        // by hand, and only the first owes the transfer.
+        if (transferOwed && GetCardChargeFundAmounts(payable) is null)
+        {
+            throw new InvalidOperationException($"its lines in Aplos don't add up to the bill amount of {AplosPayableFilter.NormalizeAmount(payable.Amount):0.00} by fund, so the card charge could not be moved to your PEX funds account and the payable was not marked paid.");
+        }
+
+        if (transferOwed && billMapping.PaidFromClearingAccountNumber is null)
+        {
+            try
+            {
+                await _billMappingStorage.MarkPaidFromClearingAsync(billMapping, clearingAccountNumber, cancellationToken);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new InvalidOperationException("the connector could not record that it pays this bill from the vendor card clearing account, so it was not marked paid. It is retried on the next sync.", ex);
+            }
+        }
+
         var payerName = GetBillPaymentPayerName(paymentRequest);
         var paidDate = GetBillPaymentPaidDate(paymentRequest);
         var aplosApiClient = MakeAplosApiClient(mapping);
@@ -367,26 +403,30 @@ public partial class AplosIntegrationService
             var current = (await GetAplosPayable(mapping, billMapping.AplosPayableId, cancellationToken))?.Data?.Payable;
             if (current is null || AplosPayableFilter.DetermineAction(current) != AplosPayableAction.SkipAlreadyPaid)
             {
+                if (current is not null) await TryClearPaidFromClearing(logger, mapping, billMapping, cancellationToken);
                 throw new InvalidOperationException($"Aplos refused to mark payable {billMapping.AplosPayableId} paid ({DescribeFailure(ex)}). Mark it paid in Aplos.", ex);
             }
 
             logger.LogInformation(ex, $"Skipping Aplos payable {billMapping.AplosPayableId} for PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId}. Aplos reports it is no longer payable.");
-            await CloseHealedBill(logger, mapping, billMapping, paymentRequest, cardTransactionId, utcNow, cancellationToken);
+            await CloseHealedBill(logger, mapping, billMapping, paymentRequest, current, cardTransactionId, utcNow, cancellationToken);
 
             return false;
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            await TryClearPaidFromClearingIfUnpaid(logger, mapping, billMapping, cancellationToken);
+            throw;
         }
 
         // paid == amount is the only confirmation Aplos gives.
         var paidPayable = response?.Data?.Payable;
         if (paidPayable is null || AplosPayableFilter.NormalizeAmount(paidPayable.PaidAmount) != AplosPayableFilter.NormalizeAmount(paidPayable.Amount))
         {
+            await TryClearPaidFromClearingIfUnpaid(logger, mapping, billMapping, cancellationToken);
             throw new InvalidOperationException($"Aplos payable {billMapping.AplosPayableId} did not come back fully paid after the pay call.");
         }
 
         logger.LogInformation($"Marked Aplos payable {billMapping.AplosPayableId} paid for PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId}.");
-
-        // Safe to lose: the next run's live re-read sees the payable paid and records it then.
-        await TryMarkBillMappingPaid(logger, mapping, billMapping, utcNow, cancellationToken);
 
         if (paymentRequest.MetadataRelationId.HasValue)
         {
@@ -401,7 +441,58 @@ public partial class AplosIntegrationService
             }
         }
 
+        // The row stays open until the transfer is in, so a failed one is retried through the paid-payable path.
+        if (transferOwed)
+        {
+            await PostCardChargeTransfer(logger, mapping, billMapping, paymentRequest, payable, cancellationToken);
+        }
+
+        // Safe to lose: the next run's live re-read sees the payable paid and records it then.
+        await TryMarkBillMappingPaid(logger, mapping, billMapping, utcNow, cancellationToken);
+
         return true;
+    }
+
+    // After a failed pay call only a re-read can say whether it went through; an unreadable payable keeps the marker.
+    private async Task TryClearPaidFromClearingIfUnpaid(
+        ILogger logger,
+        Pex2AplosMappingModel mapping,
+        AplosBillMappingModel billMapping,
+        CancellationToken cancellationToken)
+    {
+        if (billMapping.PaidFromClearingAccountNumber is null) return;
+
+        try
+        {
+            var current = (await GetAplosPayable(mapping, billMapping.AplosPayableId, cancellationToken))?.Data?.Payable;
+            if (current is null || AplosPayableFilter.DetermineAction(current) == AplosPayableAction.SkipAlreadyPaid) return;
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, $"Failed to re-read Aplos payable {billMapping.AplosPayableId} after its pay call failed for business {mapping.PEXBusinessAcctId}.");
+            return;
+        }
+
+        await TryClearPaidFromClearing(logger, mapping, billMapping, cancellationToken);
+    }
+
+    // Aplos shows the bill unpaid, so no clearing payment happened, and one the customer now makes by hand owes no transfer.
+    private async Task TryClearPaidFromClearing(
+        ILogger logger,
+        Pex2AplosMappingModel mapping,
+        AplosBillMappingModel billMapping,
+        CancellationToken cancellationToken)
+    {
+        if (billMapping.PaidFromClearingAccountNumber is null) return;
+
+        try
+        {
+            await _billMappingStorage.ClearPaidFromClearingAsync(billMapping, cancellationToken);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, $"Failed to clear the vendor card clearing payment of Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}.");
+        }
     }
 
     private async Task TryMarkBillMappingPaid(
@@ -466,10 +557,15 @@ public partial class AplosIntegrationService
         try
         {
             var payable = (await GetAplosPayable(mapping, billMapping.AplosPayableId, cancellationToken))?.Data?.Payable;
-            if (payable is null || AplosPayableFilter.DetermineAction(payable) != AplosPayableAction.SkipAlreadyPaid) return false;
+            if (payable is null) return false;
+            if (AplosPayableFilter.DetermineAction(payable) != AplosPayableAction.SkipAlreadyPaid)
+            {
+                await TryClearPaidFromClearing(logger, mapping, billMapping, cancellationToken);
+                return false;
+            }
 
             var cardTransactionId = IsCardPayment(paymentRequest) ? GetSettlementTransactionId(paymentRequest) : null;
-            await CloseHealedBill(logger, mapping, billMapping, paymentRequest, cardTransactionId, utcNow, cancellationToken);
+            await CloseHealedBill(logger, mapping, billMapping, paymentRequest, payable, cardTransactionId, utcNow, cancellationToken);
             return true;
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
@@ -541,16 +637,58 @@ public partial class AplosIntegrationService
             ? aplosException.AplosApiError.Exception.Message
             : ex.Message;
 
-    // Aplos's pay call has no payment-method field, so the account it credits is what records the rail. A null setting
-    // name means the rail has no clearing account.
-    private static (decimal AccountNumber, string SettingName) GetBillPaymentClearingAccount(Pex2AplosMappingModel mapping, BillPaymentRequestModel paymentRequest)
+    // Aplos's pay call has no payment-method field, so the account it credits is what records the rail. A zero
+    // account means the rail has none.
+    private static (decimal AccountNumber, string CheckedSettingName) GetBillPaymentCashAccount(Pex2AplosMappingModel mapping, BillPaymentRequestModel paymentRequest, CardRail cardRail)
     {
         if (paymentRequest.PayeeFundsDestinationType == PayeeFundsDestinationType.BankAccount)
         {
             return (mapping.BillPaymentsAchClearingAccountNumber, AchBankAccountSetting);
         }
 
-        return IsCardPayment(paymentRequest) ? (mapping.BillPaymentsCardClearingAccountNumber, CardClearingAccountSetting) : (0m, null);
+        return IsCardPayment(paymentRequest) ? (cardRail.AccountNumber, cardRail.CheckedSettingName) : (0m, null);
+    }
+
+    private sealed record CardRail(decimal AccountNumber, string CheckedSettingName, bool TransferOwed, string Error);
+
+    // Aplos pays a payable only from an asset Register account (spikes S10b, S12). A credit business's PEX funds account
+    // is a liability, so its card bills are paid from the clearing account and the charge moved by a transfer (153880).
+    private async Task<CardRail> GetCardRail(ILogger logger, Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+    {
+        var pexFundsAccountNumber = mapping.AplosRegisterAccountNumber;
+
+        AplosApiAccountDetail pexFundsAccount;
+        try
+        {
+            pexFundsAccount = (await MakeAplosApiClient(mapping).GetAccount(pexFundsAccountNumber, cancellationToken))?.Data?.Account;
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, $"Failed to read the PEX funds account {pexFundsAccountNumber} from Aplos for business {mapping.PEXBusinessAcctId}.");
+            return new CardRail(pexFundsAccountNumber, null, false, $"the account that represents your PEX funds ({pexFundsAccountNumber}) could not be read from Aplos; retried on the next sync.");
+        }
+
+        if (pexFundsAccount is null)
+        {
+            return new CardRail(pexFundsAccountNumber, null, false, $"the account that represents your PEX funds ({pexFundsAccountNumber}) could not be found in Aplos. Choose it again in the connector settings.");
+        }
+
+        if (!pexFundsAccount.IsEnabled)
+        {
+            return new CardRail(pexFundsAccountNumber, null, false, $"the account that represents your PEX funds ({pexFundsAccountNumber}, {pexFundsAccount.Name}) is disabled in Aplos. Enable it in Aplos or choose another account in the connector settings.");
+        }
+
+        if (IsCashAccount(pexFundsAccount))
+        {
+            return new CardRail(pexFundsAccountNumber, null, false, null);
+        }
+
+        if (mapping.BillPaymentsCardClearingAccountNumber <= 0m)
+        {
+            return new CardRail(pexFundsAccountNumber, null, false, $"Aplos can't mark bills paid from your PEX funds account {pexFundsAccountNumber} ({pexFundsAccount.Name}). Set the Aplos vendor card clearing account for bill payments in the connector settings.");
+        }
+
+        return new CardRail(mapping.BillPaymentsCardClearingAccountNumber, CardClearingAccountSetting, true, null);
     }
 
     // Null when the account can take the payment, otherwise what the customer has to fix.
@@ -616,6 +754,7 @@ public partial class AplosIntegrationService
         Pex2AplosMappingModel mapping,
         AplosBillMappingModel billMapping,
         BillPaymentRequestModel paymentRequest,
+        AplosApiPayableDetail payable,
         long? cardTransactionId,
         DateTime utcNow,
         CancellationToken cancellationToken)
@@ -652,6 +791,11 @@ public partial class AplosIntegrationService
             {
                 throw new InvalidOperationException($"Aplos shows this bill paid, but the bill payment note could not be written on its card charge (PEX transaction {cardTransactionId}). It is retried on the next sync.", ex);
             }
+        }
+
+        if (billMapping.PaidFromClearingAccountNumber is not null)
+        {
+            await PostCardChargeTransfer(logger, mapping, billMapping, paymentRequest, payable, cancellationToken);
         }
 
         await TryMarkBillMappingPaid(logger, mapping, billMapping, utcNow, cancellationToken);
@@ -698,9 +842,10 @@ public partial class AplosIntegrationService
     }
 
     // Read by both stages: importing a bill the payment stage can't mark paid double-counts it in Aplos. Both rails
-    // need an account, because PEX picks the rail only when the bill is paid.
+    // need an account, because PEX picks the rail only when the bill is paid. Whether card bills also need the clearing
+    // account depends on the PEX funds account's type in Aplos, so that is checked at pay time (153880).
     internal static bool BillPayReady(Pex2AplosMappingModel mapping)
-        => mapping.UseBillPayEnabled && mapping.BillPaymentsAchClearingAccountNumber > 0m && mapping.BillPaymentsCardClearingAccountNumber > 0m;
+        => mapping.UseBillPayEnabled && mapping.BillPaymentsAchClearingAccountNumber > 0m && mapping.AplosRegisterAccountNumber > 0m;
 
     // Aplos reads paid_date as a local calendar day.
     internal static DateOnly GetBillPaymentPaidDate(BillPaymentRequestModel paymentRequest)

@@ -1237,14 +1237,14 @@
                       <clr-tooltip>
                         <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
                         <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
-                          <span>Bills paid by vendor card in PEX are marked paid in Aplos from this account. Use a different account from the ACH one to tell the two apart.</span>
+                          <span>Technical asset account used by the connector to close Aplos bills paid by PEX vendor card. The connector clears it on every bill. Required only when your PEX funds account is a liability (credit card) account.</span>
                         </clr-tooltip-content>
                       </clr-tooltip>
                     </td>
                     <td class="left">
                       <div class="clr-select-wrapper">
-                        <select class="clr-select select" required formControlName="billPaymentsCardClearingAccountNumber" aria-label="Vendor card clearing account for bill payments">
-                          <option></option>
+                        <select class="clr-select select" formControlName="billPaymentsCardClearingAccountNumber" aria-label="Vendor card clearing account for bill payments">
+                          <option [value]="0"></option>
                           @for (aplosAccount of aplosCashAccounts; track aplosAccount) {
                             <option [value]="aplosAccount.id">{{aplosAccount | aplosAccount}}</option>
                           }

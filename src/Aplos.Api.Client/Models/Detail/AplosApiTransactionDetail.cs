@@ -25,5 +25,7 @@ namespace Aplos.Api.Client.Models.Detail
         public decimal PaidAmount { get; set; }
         [JsonProperty("liability_account")]
         public LiabilityAccountDetail LiabilityAccount { get; set; }
+        [JsonProperty("lines")]
+        public AplosApiTransactionLineDetail[] Lines { get; set; }
     }
 }
