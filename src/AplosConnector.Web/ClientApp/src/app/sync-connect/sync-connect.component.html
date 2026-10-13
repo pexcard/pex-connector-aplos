@@ -1195,6 +1195,10 @@
           <!-- Bill Pay -->
           @if (settingsModel.syncOutstandingBills) {
             <div>
+              <app-loading-placeholder
+                [loadingState]="loadingCashAccounts"
+                [errorState]="errorLoadingCashAccounts"
+                (retry)="getCashAccounts()"></app-loading-placeholder>
               <table class="table table-2col">
                 <caption>
                   <h4>Bill Pay</h4>

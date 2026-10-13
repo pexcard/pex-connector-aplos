@@ -344,12 +344,39 @@ export class SyncConnectComponent implements OnInit {
     });
   }
 
+  loadingCashAccounts = false;
+  errorLoadingCashAccounts = false;
+  cashAccountsLoaded = false;
   getCashAccounts() {
+    this.loadingCashAccounts = true;
+    this.errorLoadingCashAccounts = false;
+
     return this.aplos.getAccounts(this.sessionId, "cash").subscribe(
       cashAccounts => {
         this.aplosCashAccounts = [...cashAccounts];
+        this.loadingCashAccounts = false;
+        this.cashAccountsLoaded = true;
+        this.clearUnlistedBillPaymentAccounts();
+      },
+      () => {
+        this.loadingCashAccounts = false;
+        this.errorLoadingCashAccounts = true;
       }
     )
+  }
+
+  // A saved account Aplos can't pay from would show blank yet be saved again; clearing it makes the required check ask
+  // for a new one. Only a list that loaded can say an account is missing from it.
+  clearUnlistedBillPaymentAccounts() {
+    if (!this.cashAccountsLoaded) { return; }
+
+    for (const controlName of ['billPaymentsAchClearingAccountNumber', 'billPaymentsCardClearingAccountNumber']) {
+      const control = this.defaultCategoryForm.get(controlName);
+      const accountNumber = Number(control?.value);
+      if (accountNumber > 0 && !this.aplosCashAccounts.some(account => Number(account.id) === accountNumber)) {
+        control.setValue(0);
+      }
+    }
   }
 
   loadingAplosAccounts = false;
@@ -698,6 +725,7 @@ export class SyncConnectComponent implements OnInit {
       billPaymentsCardClearingAccountNumber: settings.billPaymentsCardClearingAccountNumber
     });
 
+    this.clearUnlistedBillPaymentAccounts();
     this.updateOtherOptionsValidators();
   }
 
