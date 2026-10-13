@@ -33,6 +33,10 @@ namespace Aplos.Api.Client
         public const string APLOS_ACCOUNT_CATEGORY_EXPENSE = "expense";
         public const string APLOS_ACCOUNT_CATEGORY_LIABILITY = "liability";
         public const string APLOS_ACCOUNT_CATEGORY_INCOME = "income";
+        // Not an Aplos category: the asset Register accounts with cash activity, the only ones a payable can be paid from.
+        public const string APLOS_ACCOUNT_CATEGORY_CASH = "cash";
+        public const string APLOS_ACCOUNT_ACTIVITY_CASH = "cash";
+        public const string APLOS_ACCOUNT_TYPE_REGISTER = "Register";
         private static readonly ImmutableHashSet<string> _validAplosAccountCategories = new HashSet<string>
         {
             APLOS_ACCOUNT_CATEGORY_ASSET,

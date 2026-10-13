@@ -44,6 +44,7 @@ namespace AplosConnector.Common.Services
         private readonly SyncSettingsModel _syncSettings;
         private readonly IVendorCardStorage _vendorCardStorage;
         private readonly IAplosBillMappingStorage _billMappingStorage;
+        private readonly IAplosVendorCardOrderStorage _vendorCardOrderStorage;
 
         public AplosIntegrationService(
             ILogger<AplosIntegrationService> logger,
@@ -55,7 +56,8 @@ namespace AplosConnector.Common.Services
             Pex2AplosMappingStorage mappingStorage,
             SyncSettingsModel syncSettings,
             IVendorCardStorage vendorCardStorage,
-            IAplosBillMappingStorage billMappingStorage)
+            IAplosBillMappingStorage billMappingStorage,
+            IAplosVendorCardOrderStorage vendorCardOrderStorage)
         {
             _appSettings = appSettings?.Value;
             _logger = logger;
@@ -67,6 +69,7 @@ namespace AplosConnector.Common.Services
             _syncSettings = syncSettings;
             _vendorCardStorage = vendorCardStorage;
             _billMappingStorage = billMappingStorage;
+            _vendorCardOrderStorage = vendorCardOrderStorage;
         }
 
         public async Task<Pex2AplosMappingModel> EnsureMappingInstalled(PexOAuthSessionModel session, CancellationToken cancellationToken)
@@ -265,9 +268,11 @@ namespace AplosConnector.Common.Services
         public async Task<IEnumerable<PexAplosApiObject>> GetAplosAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null, CancellationToken cancellationToken = default)
         {
             var aplosApiClient = MakeAplosApiClient(mapping);
-            var aplosApiResponse = await aplosApiClient.GetAccounts(aplosAccountCategory, cancellationToken);
+            var cashOnly = aplosAccountCategory == AplosApiClient.APLOS_ACCOUNT_CATEGORY_CASH;
+            var aplosApiResponse = await aplosApiClient.GetAccounts(cashOnly ? AplosApiClient.APLOS_ACCOUNT_CATEGORY_ASSET : aplosAccountCategory, cancellationToken);
+            IEnumerable<AplosApiAccountDetail> accounts = cashOnly ? aplosApiResponse?.Where(IsCashAccount) : aplosApiResponse;
 
-            var mappedAccounts = _aplosIntegrationMappingService.Map(aplosApiResponse);
+            var mappedAccounts = _aplosIntegrationMappingService.Map(accounts);
             return DedupeAplosAccounts(mappedAccounts);
         }
 
