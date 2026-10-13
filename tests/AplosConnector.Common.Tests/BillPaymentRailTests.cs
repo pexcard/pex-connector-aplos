@@ -1,4 +1,5 @@
 ﻿using Aplos.Api.Client.Abstractions;
+using Aplos.Api.Client;
 using Aplos.Api.Client.Exceptions;
 using Aplos.Api.Client.Models;
 using Aplos.Api.Client.Models.Detail;
@@ -7,6 +8,7 @@ using Aplos.Api.Client.Models.Single;
 using AplosConnector.Common.Const;
 using AplosConnector.Common.Enums;
 using AplosConnector.Common.Models;
+using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services;
 using AplosConnector.Common.Services.Abstractions;
@@ -138,7 +140,7 @@ public class BillPaymentRailTests : BillPaymentsTestBase
         var historyRow = Assert.Single(_historyRows);
         Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
         Assert.Contains("INV-9001", historyRow.SyncNotes);
-        Assert.Contains($"ACH clearing account {AchClearingAccountNumber} could not be found in Aplos", historyRow.SyncNotes);
+        Assert.Contains($"ACH bank account {AchClearingAccountNumber} could not be found in Aplos", historyRow.SyncNotes);
         Assert.Contains("connector settings", historyRow.SyncNotes);
     }
 
@@ -192,7 +194,7 @@ public class BillPaymentRailTests : BillPaymentsTestBase
         await RunSync(useBillPay: true);
 
         VerifyNoPayCall();
-        Assert.Contains($"Bill INV-9001: the ACH clearing account {AchClearingAccountNumber} could not be read from Aplos", Assert.Single(_historyRows).SyncNotes);
+        Assert.Contains($"Bill INV-9001: the ACH bank account {AchClearingAccountNumber} could not be read from Aplos", Assert.Single(_historyRows).SyncNotes);
     }
 
     [Fact]
@@ -201,26 +203,49 @@ public class BillPaymentRailTests : BillPaymentsTestBase
         SeedUnpaidMapping();
         SetupPaidPexBill(PayeeFundsDestinationType.BankAccount);
         SetupLivePayable(amount: 125.50m, paid: 0m);
-        SetupClearingAccount(new AplosApiAccountDetail { Name = "ACH Clearing", Category = "asset", IsEnabled = false });
+        SetupClearingAccount(new AplosApiAccountDetail { Name = "ACH Bank", Category = "asset", Type = "Register", Activity = "cash", IsEnabled = false });
 
         await RunSync(useBillPay: true);
 
         VerifyNoPayCall();
-        Assert.Contains($"ACH clearing account {AchClearingAccountNumber} (ACH Clearing) is disabled in Aplos", Assert.Single(_historyRows).SyncNotes);
+        Assert.Contains($"ACH bank account {AchClearingAccountNumber} (ACH Bank) is disabled in Aplos", Assert.Single(_historyRows).SyncNotes);
     }
 
-    [Fact]
-    public async Task AClearingAccountThatIsNoLongerAnAssetAccountFailsTheBill()
+    // Aplos's pay call answers 422 for anything but an asset Register account (spikes S10b, S12).
+    [Theory]
+    [InlineData("liability", "Register", "operating")]
+    [InlineData("asset", null, "operating")]
+    [InlineData("asset", null, "cash")]
+    public async Task AnAchBankAccountThatIsNotARegisterCashAccountFailsTheBill(string category, string type, string activity)
     {
         SeedUnpaidMapping();
         SetupPaidPexBill(PayeeFundsDestinationType.BankAccount);
         SetupLivePayable(amount: 125.50m, paid: 0m);
-        SetupClearingAccount(new AplosApiAccountDetail { Name = "Accounts Payable", Category = "liability", IsEnabled = true });
+        SetupClearingAccount(new AplosApiAccountDetail { Name = "Equipment", Category = category, Type = type, Activity = activity, IsEnabled = true });
 
         await RunSync(useBillPay: true);
 
         VerifyNoPayCall();
-        Assert.Contains("is no longer an asset account in Aplos", Assert.Single(_historyRows).SyncNotes);
+        Assert.Contains($"ACH bank account {AchClearingAccountNumber} (Equipment) is not a bank or cash register account in Aplos", Assert.Single(_historyRows).SyncNotes);
+    }
+
+    [Fact]
+    public async Task TheCashAccountListHoldsOnlyAssetRegisterAccountsWithCashActivity()
+    {
+        _mockAplosApiClient
+            .Setup(client => client.GetAccounts(AplosApiClient.APLOS_ACCOUNT_CATEGORY_ASSET, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new AplosApiAccountDetail { AccountNumber = 1010m, Name = "Checking", Category = "asset", Type = "Register", Activity = "cash" },
+                new AplosApiAccountDetail { AccountNumber = 1500m, Name = "Buildings", Category = "asset", Activity = "operating" },
+                new AplosApiAccountDetail { AccountNumber = 1501m, Name = "Equipment", Category = "asset", Activity = "cash" }
+            ]);
+        _mockAplosIntegrationMappingService
+            .Setup(service => service.Map(It.IsAny<IEnumerable<AplosApiAccountDetail>>()))
+            .Returns((IEnumerable<AplosApiAccountDetail> accounts) => accounts.Select(account => new PexAplosApiObject { Id = account.AccountNumber.ToString(), Name = account.Name }));
+
+        var accounts = await GetAplosIntegrationService().GetAplosAccounts(new Pex2AplosMappingModel { AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication, AplosAccountId = "accountId", AplosClientId = "clientId", AplosPrivateKey = "privateKey" }, AplosApiClient.APLOS_ACCOUNT_CATEGORY_CASH);
+
+        Assert.Equal("1010", Assert.Single(accounts).Id);
     }
 
     // Checked before the card charge is marked: a marker written for a payment that is then refused would hide the

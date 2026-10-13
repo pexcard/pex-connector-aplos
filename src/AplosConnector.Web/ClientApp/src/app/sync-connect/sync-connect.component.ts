@@ -122,6 +122,7 @@ export class SyncConnectComponent implements OnInit {
   savingProjects = false;
   aplosContacts: AplosObject[] = [];
   aplosAssetAccounts: AplosAccount[] = [];
+  aplosCashAccounts: AplosAccount[] = [];
   aplosIncomeAccounts: AplosAccount[] = [];
   aplosExpenseAccounts: AplosAccount[] = [];
   aplosLiabilityAccounts: AplosAccount[] = [];
@@ -341,6 +342,14 @@ export class SyncConnectComponent implements OnInit {
        this.pexAdminEmailAccount = 
                     result.email === '' || result.email === undefined || result.email === null ? 'unknown' : result.email; 
     });
+  }
+
+  getCashAccounts() {
+    return this.aplos.getAccounts(this.sessionId, "cash").subscribe(
+      cashAccounts => {
+        this.aplosCashAccounts = [...cashAccounts];
+      }
+    )
   }
 
   loadingAplosAccounts = false;
@@ -603,6 +612,7 @@ export class SyncConnectComponent implements OnInit {
 
       this.getContacts();
       this.getAssetAccounts();
+      this.getCashAccounts();
       this.getExpenseAccounts();
       this.getIncomeAccounts();
       

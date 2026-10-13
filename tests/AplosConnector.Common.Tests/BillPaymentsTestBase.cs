@@ -221,6 +221,8 @@ public abstract class BillPaymentsTestBase
                         AccountNumber = accountNumber,
                         Name = account.Name,
                         Category = account.Category,
+                        Type = account.Type,
+                        Activity = account.Activity,
                         IsEnabled = account.IsEnabled
                     }
                 }
@@ -294,7 +296,7 @@ public abstract class BillPaymentsTestBase
             });
 
         // Every clearing account is found, enabled and an asset account unless a test says otherwise.
-        SetupClearingAccount(new AplosApiAccountDetail { Name = "Clearing", Category = "asset", IsEnabled = true });
+        SetupClearingAccount(new AplosApiAccountDetail { Name = "Clearing", Category = "asset", Type = "Register", Activity = "cash", IsEnabled = true });
 
         _mockAplosApiClientFactory
             .Setup(factory => factory.CreateClient(

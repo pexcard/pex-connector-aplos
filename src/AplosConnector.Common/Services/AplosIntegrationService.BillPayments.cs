@@ -31,11 +31,11 @@ public partial class AplosIntegrationService
 
     internal const string SyncedAsBillPaymentNote = "Synced to Aplos as a bill payment";
 
-    private const string AchClearingAccountSetting = "ACH clearing account";
+    private const string AchBankAccountSetting = "ACH bank account";
 
     private const string CardClearingAccountSetting = "vendor card clearing account";
 
-    private const string MissingClearingAccountsNote = "Set the Aplos ACH clearing account and vendor card clearing account for bill payments in the connector settings; until then imported bills cannot be marked paid in Aplos.";
+    private const string MissingClearingAccountsNote = "Set the Aplos ACH bank account and vendor card clearing account for bill payments in the connector settings; until then imported bills cannot be marked paid in Aplos.";
 
     internal async Task SyncBillPayments(
         ILogger logger,
@@ -547,7 +547,7 @@ public partial class AplosIntegrationService
     {
         if (paymentRequest.PayeeFundsDestinationType == PayeeFundsDestinationType.BankAccount)
         {
-            return (mapping.BillPaymentsAchClearingAccountNumber, AchClearingAccountSetting);
+            return (mapping.BillPaymentsAchClearingAccountNumber, AchBankAccountSetting);
         }
 
         return IsCardPayment(paymentRequest) ? (mapping.BillPaymentsCardClearingAccountNumber, CardClearingAccountSetting) : (0m, null);
@@ -569,13 +569,20 @@ public partial class AplosIntegrationService
             return $"the {settingName} {accountNumber} ({account.Name}) is disabled in Aplos. Enable it in Aplos or choose another {settingName} in the connector settings.";
         }
 
-        if (!string.Equals(account.Category, AplosApiClient.APLOS_ACCOUNT_CATEGORY_ASSET, StringComparison.OrdinalIgnoreCase))
+        // Aplos's pay call refuses everything but an asset Register account: liabilities, and other assets such as
+        // Buildings or Equipment (spikes S10b, S12).
+        if (!IsCashAccount(account))
         {
-            return $"the {settingName} {accountNumber} ({account.Name}) is no longer an asset account in Aplos. Choose an asset account as the {settingName} in the connector settings.";
+            return $"the {settingName} {accountNumber} ({account.Name}) is not a bank or cash register account in Aplos. Choose a bank or cash account as the {settingName} in the connector settings.";
         }
 
         return null;
     }
+
+    internal static bool IsCashAccount(AplosApiAccountDetail account)
+        => string.Equals(account.Category, AplosApiClient.APLOS_ACCOUNT_CATEGORY_ASSET, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(account.Type, AplosApiClient.APLOS_ACCOUNT_TYPE_REGISTER, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(account.Activity, AplosApiClient.APLOS_ACCOUNT_ACTIVITY_CASH, StringComparison.OrdinalIgnoreCase);
 
     private static string DescribeBills(IReadOnlyCollection<AplosBillMappingModel> bills)
     {

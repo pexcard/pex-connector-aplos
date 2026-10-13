@@ -1208,19 +1208,19 @@
                 <tbody>
                   <tr>
                     <td class="left">
-                      ACH Clearing Account
+                      ACH Bank Account
                       <clr-tooltip>
                         <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
                         <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
-                          <span>Aplos has no payment method field, so bills paid by ACH in PEX are marked paid in Aplos from this account. Use a dedicated account to report on them.</span>
+                          <span>Bills paid by ACH in PEX are marked paid in Aplos from this bank account.</span>
                         </clr-tooltip-content>
                       </clr-tooltip>
                     </td>
                     <td class="left">
                       <div class="clr-select-wrapper">
-                        <select class="clr-select select" required formControlName="billPaymentsAchClearingAccountNumber" aria-label="ACH clearing account for bill payments">
+                        <select class="clr-select select" required formControlName="billPaymentsAchClearingAccountNumber" aria-label="ACH bank account for bill payments">
                           <option></option>
-                          @for (aplosAccount of aplosAssetAccounts; track aplosAccount) {
+                          @for (aplosAccount of aplosCashAccounts; track aplosAccount) {
                             <option [value]="aplosAccount.id">{{aplosAccount | aplosAccount}}</option>
                           }
                         </select>
@@ -1241,7 +1241,7 @@
                       <div class="clr-select-wrapper">
                         <select class="clr-select select" required formControlName="billPaymentsCardClearingAccountNumber" aria-label="Vendor card clearing account for bill payments">
                           <option></option>
-                          @for (aplosAccount of aplosAssetAccounts; track aplosAccount) {
+                          @for (aplosAccount of aplosCashAccounts; track aplosAccount) {
                             <option [value]="aplosAccount.id">{{aplosAccount | aplosAccount}}</option>
                           }
                         </select>

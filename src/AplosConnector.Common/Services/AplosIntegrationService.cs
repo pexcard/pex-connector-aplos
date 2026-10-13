@@ -268,9 +268,11 @@ namespace AplosConnector.Common.Services
         public async Task<IEnumerable<PexAplosApiObject>> GetAplosAccounts(Pex2AplosMappingModel mapping, string aplosAccountCategory = null, CancellationToken cancellationToken = default)
         {
             var aplosApiClient = MakeAplosApiClient(mapping);
-            var aplosApiResponse = await aplosApiClient.GetAccounts(aplosAccountCategory, cancellationToken);
+            var cashOnly = aplosAccountCategory == AplosApiClient.APLOS_ACCOUNT_CATEGORY_CASH;
+            var aplosApiResponse = await aplosApiClient.GetAccounts(cashOnly ? AplosApiClient.APLOS_ACCOUNT_CATEGORY_ASSET : aplosAccountCategory, cancellationToken);
+            IEnumerable<AplosApiAccountDetail> accounts = cashOnly ? aplosApiResponse?.Where(IsCashAccount) : aplosApiResponse;
 
-            var mappedAccounts = _aplosIntegrationMappingService.Map(aplosApiResponse);
+            var mappedAccounts = _aplosIntegrationMappingService.Map(accounts);
             return DedupeAplosAccounts(mappedAccounts);
         }
 

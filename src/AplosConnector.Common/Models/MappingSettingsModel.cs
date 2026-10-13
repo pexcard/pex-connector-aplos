@@ -71,12 +71,13 @@ namespace AplosConnector.Common.Models
         /// </summary>
         public bool UseBillPayEnabled { get; set; }
         /// <summary>
-        /// The Aplos clearing account credited when an ACH bill payment is posted back to Aplos. Aplos's pay call has
-        /// no payment-method field, so the account is what records the rail.
+        /// The Aplos ACH bank account credited when an ACH bill payment is posted back to Aplos. Aplos's pay call has
+        /// no payment-method field, so the account is what records the rail. Must be an asset Register account.
         /// </summary>
         public decimal BillPaymentsAchClearingAccountNumber { get; set; }
         /// <summary>
-        /// The Aplos clearing account credited when a vendor card bill payment is posted back to Aplos.
+        /// The Aplos clearing account credited when a vendor card bill payment is posted back to Aplos. Must be an asset
+        /// Register account.
         /// </summary>
         public decimal BillPaymentsCardClearingAccountNumber { get; set; }
 

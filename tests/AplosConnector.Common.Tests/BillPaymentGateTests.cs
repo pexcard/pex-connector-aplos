@@ -84,7 +84,7 @@ public class BillPaymentGateTests : BillPaymentsTestBase
         VerifyNoPayCall();
         var historyRow = Assert.Single(_historyRows);
         Assert.Equal(SyncStatus.Failed.ToString(), historyRow.SyncStatus);
-        Assert.Contains("ACH clearing account and vendor card clearing account", historyRow.SyncNotes);
+        Assert.Contains("ACH bank account and vendor card clearing account", historyRow.SyncNotes);
     }
 
     [Fact]
