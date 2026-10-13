@@ -11,6 +11,7 @@ namespace Aplos.Api.Client.Models.Detail
         public string Street2 { get; set; }
         public string City { get; set; }
         public string State { get; set; }
+        [JsonProperty("postal_code")]
         public string PostalCode { get; set; }
     }
 }
