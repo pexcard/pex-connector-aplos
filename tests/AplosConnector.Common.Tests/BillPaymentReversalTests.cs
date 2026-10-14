@@ -28,12 +28,10 @@ using Xunit;
 namespace AplosConnector.Common.Tests;
 
 // The connector posts nothing to Aplos on a reversal: it records it on the mapping row and tells the customer,
-// on the PEX bill, to delete the payment in Aplos (work item 148051).
+// on the PEX bill, to delete the payment in Aplos.
 public class BillPaymentReversalTests : BillPaymentReversalTestBase
 {
-    // The structural half of "never hard-delete an Aplos transaction": every Aplos call the connector can
-    // make goes through IAplosApiClient, and the interface has no member that could delete anything. A bill
-    // pay code path cannot issue a delete because no delete exists to issue.
+    // Every Aplos call goes through IAplosApiClient, so with no delete on it no code path can issue one.
     [Fact]
     public void TheAplosApiClientExposesNoWayToDeleteAnything()
     {
@@ -57,8 +55,6 @@ public class BillPaymentReversalTests : BillPaymentReversalTestBase
 
         await RunBillPaymentsSync();
 
-        // MVP decision 2026-09-18: the customer deletes the payment in Aplos. Posting an offsetting entry as
-        // well would leave that mirror orphaned the moment they do.
         Assert.Empty(_createdAplosTransactions);
         Assert.Empty(_payments);
         _mockAplosApiClient.Verify(client => client.UpdatePayable(It.IsAny<string>(), It.IsAny<JObject>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -72,8 +68,6 @@ public class BillPaymentReversalTests : BillPaymentReversalTestBase
 
         await RunBillPaymentsSync();
 
-        // The only trace is on the PEX side, and it has to be actionable: deleting the Aplos payment is the
-        // one thing that clears paid.
         Assert.Equal("Reversed in PEX. This bill still shows paid in Aplos: delete its payment there.", Assert.Single(_relationshipNotes));
     }
 
@@ -91,7 +85,6 @@ public class BillPaymentReversalTests : BillPaymentReversalTestBase
             Assert.Single(_relationshipNotes));
     }
 
-    // The whole point of the story, end to end.
     [Fact]
     public async Task PayThenReverseThenDeleteInAplosThenPayAgainGoesBackThroughTheOrdinaryPayPath()
     {
@@ -104,7 +97,6 @@ public class BillPaymentReversalTests : BillPaymentReversalTestBase
         Assert.NotNull(Row().PaidSyncedUtc);
         _payablePaidAmount = BillAmount;
 
-        // Reverse. Nothing reaches Aplos.
         SetupPexBill(PaymentRequestStatus.PaymentException, PaymentRequestStatusTrigger.PaymentFailed);
         await RunBillPaymentsSync();
 
@@ -112,27 +104,45 @@ public class BillPaymentReversalTests : BillPaymentReversalTestBase
         Assert.Single(_payments);
         Assert.NotNull(Row().ReversedUtc);
 
-        // Until the customer deletes the Aplos payment the live re-read still reports it paid, so a second
-        // payment is skipped rather than double-posted.
+        // Until the customer deletes the payment, Aplos still shows it paid, so a second payment is skipped.
         SetupPexBill(PaymentRequestStatus.Closed, PaymentRequestStatusTrigger.Paid);
         await RunBillPaymentsSync();
         Assert.Single(_payments);
 
-        // They delete it, which clears paid and puts payables/{id}/pay back in service.
         _payablePaidAmount = 0m;
 
         SetupPexBill(PaymentRequestStatus.Closed, PaymentRequestStatusTrigger.Paid);
         await RunBillPaymentsSync();
 
-        // Ordinary payment path, no hand-built ledger entry anywhere in the cycle.
         Assert.Equal(2, _payments.Count);
         Assert.Empty(_createdAplosTransactions);
         Assert.NotNull(Row().PaidSyncedUtc);
+        Assert.Null(Row().ReversedUtc);
     }
 
-    // The mapping-row invariant: still not importable. The row surviving the reversal is the
-    // only thing standing between a reversed bill and a duplicate PEX bill inbox item, so the live payable
-    // here deliberately reads unpaid - the weaker of the two guards is the one under test.
+    [Fact]
+    public async Task ARePayAfterTheReversedPaymentWasDeletedStillHealsALostPaidMarker()
+    {
+        SeedPaidMapping();
+        SetupPexBill(PaymentRequestStatus.PaymentException, PaymentRequestStatusTrigger.PaymentFailed);
+        await RunBillPaymentsSync();
+
+        _payablePaidAmount = 0m;
+        _billMappingStorage.FailNext = nameof(FakeBillMappingStorage.MarkPaidAsync);
+        SetupPexBill(PaymentRequestStatus.Closed, PaymentRequestStatusTrigger.Paid);
+        await RunBillPaymentsSync();
+
+        Assert.Single(_payments);
+        Assert.Null(Row().PaidSyncedUtc);
+
+        _payablePaidAmount = BillAmount;
+        await RunBillPaymentsSync();
+
+        Assert.Single(_payments);
+        Assert.Equal(UtcNow, Row().PaidSyncedUtc);
+    }
+
+    // The live payable reads unpaid on purpose: the surviving row is then the only guard against a second PEX bill.
     [Fact]
     public async Task AfterAReversalThePayableIsNotReImportedAsANewBill()
     {
@@ -159,14 +169,10 @@ public class BillPaymentReversalTests : BillPaymentReversalTestBase
         await RunBillPaymentsSync();
         await RunBillPaymentsSync();
 
-        // The second run finds PaidSyncedUtc already cleared, so it has nothing to reverse and writes no
-        // second note onto the PEX bill.
         Assert.Single(_relationshipNotes);
         Assert.Empty(_createdAplosTransactions);
     }
 
-    // A bill PEX raised itself has no payable to settle, but it must still never book an expense once its
-    // payment has failed.
     [Fact]
     public async Task AReversedPexOriginatedBillPaymentIsNeverBookedAsAnExpense()
     {
@@ -178,8 +184,6 @@ public class BillPaymentReversalTests : BillPaymentReversalTestBase
         Assert.Empty(_payments);
     }
 
-    // The note is the customer's only instruction, so it is written before the gate closes: a note repeated
-    // on a retry is harmless, a lost one is not.
     [Fact]
     public async Task WhenTheReversalNoteCannotBeWrittenTheRowIsNotMarkedAndTheNextRunWritesIt()
     {
@@ -204,6 +208,26 @@ public class BillPaymentReversalTests : BillPaymentReversalTestBase
 
         Assert.Contains("delete its payment there", Assert.Single(_relationshipNotes));
         Assert.Null(Row().PaidSyncedUtc);
+        Assert.Equal(UtcNow, Row().ReversedUtc);
+    }
+
+    // The other order: a repeated note is the price of never losing one.
+    [Fact]
+    public async Task WhenTheRowCannotBeMarkedAfterTheNoteTheNextRunRecordsTheReversal()
+    {
+        SeedPaidMapping();
+        SetupPexBill(PaymentRequestStatus.PaymentException, PaymentRequestStatusTrigger.PaymentFailed);
+        _billMappingStorage.FailNext = nameof(FakeBillMappingStorage.MarkReversedAsync);
+
+        await RunBillPaymentsSync();
+
+        Assert.Single(_relationshipNotes);
+        Assert.NotNull(Row().PaidSyncedUtc);
+        Assert.Null(Row().ReversedUtc);
+
+        await RunBillPaymentsSync();
+
+        Assert.Equal(2, _relationshipNotes.Count);
         Assert.Equal(UtcNow, Row().ReversedUtc);
     }
 }

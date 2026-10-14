@@ -90,7 +90,7 @@ public abstract class BillPaymentReversalTestBase
         AplosPrivateKey = "privateKey",
         IsManualSync = true,
         EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
-        // Sync refreshes business settings once per run before any stage; the stage no longer does.
+        // Set by Sync's run-level settings refresh.
         UseBillPayEnabled = true,
         BillPaymentsAchClearingAccountNumber = CashAccountNumber,
         AplosRegisterAccountNumber = CashAccountNumber
@@ -234,7 +234,6 @@ public abstract class BillPaymentReversalTestBase
         _mockAplosApiClient
             .Setup(client => client.PayPayable(It.IsAny<string>(), It.IsAny<AplosApiPayablePaymentModel>(), It.IsAny<CancellationToken>()))
             .Callback<string, AplosApiPayablePaymentModel, CancellationToken>((_, payment, _) => _payments.Add(payment))
-            // Aplos answers the pay call with the payable, fully paid - never a transaction.
             .ReturnsAsync(() => new AplosApiPayableResponse
             {
                 Data = new AplosApiPayableData { Payable = NewPayable(BillAmount) }
@@ -282,6 +281,9 @@ public abstract class BillPaymentReversalTestBase
     {
         public readonly Dictionary<string, AplosBillMappingModel> Rows = new(StringComparer.OrdinalIgnoreCase);
 
+        // The name of the next write to fail, once.
+        public string FailNext { get; set; }
+
         public void Seed(AplosBillMappingModel model) => Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
 
         public Task<List<AplosBillMappingModel>> GetByBusinessAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
@@ -297,6 +299,7 @@ public abstract class BillPaymentReversalTestBase
 
         public Task MarkPaidAsync(AplosBillMappingModel model, DateTime paidUtc, CancellationToken cancellationToken)
         {
+            ThrowIfFailing(nameof(MarkPaidAsync));
             model.PaidSyncedUtc = paidUtc;
             return UpsertAsync(model, cancellationToken);
         }
@@ -309,9 +312,17 @@ public abstract class BillPaymentReversalTestBase
 
         public Task MarkReversedAsync(AplosBillMappingModel model, DateTime reversedUtc, CancellationToken cancellationToken)
         {
+            ThrowIfFailing(nameof(MarkReversedAsync));
             model.ReversedUtc = reversedUtc;
             model.PaidSyncedUtc = null;
             model.FirstFailedUtc = null;
+            return UpsertAsync(model, cancellationToken);
+        }
+
+        public Task ClearReversedAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
+        {
+            ThrowIfFailing(nameof(ClearReversedAsync));
+            model.ReversedUtc = null;
             return UpsertAsync(model, cancellationToken);
         }
 
@@ -331,6 +342,14 @@ public abstract class BillPaymentReversalTestBase
         {
             model.PaidFromClearingAccountNumber = null;
             return UpsertAsync(model, cancellationToken);
+        }
+
+        private void ThrowIfFailing(string write)
+        {
+            if (FailNext != write) return;
+
+            FailNext = null;
+            throw new InvalidOperationException("Table storage is unavailable.");
         }
 
         private static string Key(int pexBusinessAcctId, string aplosPayableId) => $"{pexBusinessAcctId}|{aplosPayableId}";

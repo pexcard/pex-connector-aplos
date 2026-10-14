@@ -14,15 +14,8 @@ namespace AplosConnector.Common.Services;
 
 public partial class AplosIntegrationService
 {
-    // MVP reversal (work item 148051, decision 2026-09-18): the connector posts NOTHING to the Aplos ledger.
-    //
-    // Aplos has no un-pay. An offsetting transaction leaves the payable reading paid forever - verified live
-    // 2026-09-17 - and deleting the payment is the only thing that clears it. So the customer is asked to
-    // delete the payment in Aplos, which clears paid and makes payables/{id}/pay available again; posting an
-    // offsetting entry here as well would leave that mirror orphaned once they do.
-    //
-    // A later epic may automate this. Until then the connector records the reversal on its own side and says
-    // what to do on the PEX bill.
+    // A reversal posts nothing to Aplos: it has no un-pay, an offsetting entry leaves the payable paid, and only
+    // deleting the payment clears it. So the PEX bill tells the customer to delete it.
     internal static bool IsBillPaymentReversed(BillPaymentRequestModel paymentRequest)
     {
         if (paymentRequest is null) return false;
@@ -38,15 +31,13 @@ public partial class AplosIntegrationService
             or PaymentRequestStatusTrigger.Rejected;
     }
 
-    // Sits on the PEX bill, so it names nothing the customer can't see from there. A card bill also has the
-    // clearing-to-funds transfer, which the customer finds by its note.
+    // A card bill also has the clearing-to-funds transfer, which the customer finds by its note.
     internal static string GetBillPaymentReversalActionNote(AplosBillMappingModel billMapping)
         => billMapping.PaidFromClearingAccountNumber is null
             ? "Reversed in PEX. This bill still shows paid in Aplos: delete its payment there."
             : $"Reversed in PEX. This bill still shows paid in Aplos: delete its payment there, and review the transaction \"{GetCardChargeTransferNotePrefix(billMapping.AplosPayableId).TrimEnd(',')}\".";
 
-    // Returns true when the reversal was recorded.
-    private async Task<bool> RecordAplosBillPaymentReversal(
+    private async Task RecordAplosBillPaymentReversal(
         ILogger logger,
         Pex2AplosMappingModel mapping,
         AplosBillMappingModel billMapping,
@@ -62,10 +53,6 @@ public partial class AplosIntegrationService
             await _pexApiClient.AddTransactionRelationshipNote(mapping.PEXExternalAPIToken, paymentRequest.MetadataRelationId.Value, GetBillPaymentReversalActionNote(billMapping), cancellationToken);
         }
 
-        // The row stays. Clearing the paid marker is what makes the payable payable again once the customer
-        // has deleted the Aplos payment; keeping the row is what stops SyncOutstandingBills importing it twice.
         await _billMappingStorage.MarkReversedAsync(billMapping, utcNow, cancellationToken);
-
-        return true;
     }
 }

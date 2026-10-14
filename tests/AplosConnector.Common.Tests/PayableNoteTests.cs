@@ -13,7 +13,7 @@ using Xunit;
 
 namespace AplosConnector.Common.Tests;
 
-// Aplos's pay call drops note and memo, so the payment type goes on the payable's note, which the payment copies (148051).
+// Aplos's pay call drops note and memo, so the payment type goes on the payable's note, which the payment copies.
 public class PayableNoteTests : BillPaymentsTestBase
 {
     [Fact]

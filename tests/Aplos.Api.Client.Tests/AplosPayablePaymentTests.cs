@@ -101,7 +101,7 @@ public class AplosPayablePaymentTests
         Assert.Equal((int)HttpStatusCode.UnprocessableEntity, exception.AplosApiError.Status);
     }
 
-    // Shape of a payable read on 2026-10-14 (S13, spike-out/s13-20261014); term is a field the typed model lacks.
+    // A payable as Aplos returns it; term is a field the typed model lacks.
     private const string RawPayable =
         "{\"id\":4323771,\"bill_date\":\"2026-10-14\",\"modified\":\"2026-10-14T02:50:06.808-0700\",\"reference_num\":\"PEXBP-S13-A\","
       + "\"note\":\"S13 probe\",\"amount\":1.01,\"term\":15,\"contact\":{\"id\":16181656},"
@@ -148,7 +148,6 @@ public class AplosPayablePaymentTests
         Assert.Contains("\"modified\":\"2026-10-14T02:50:06.808-0700\"", put.body);
         Assert.Contains("\"amount\":0.51", put.body);
 
-        // The caller's copy keeps its amount.
         Assert.Equal(1.01m, payable["amount"].Value<decimal>());
     }
 

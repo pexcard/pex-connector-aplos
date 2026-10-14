@@ -108,8 +108,7 @@ public partial class AplosIntegrationService
 
                 if (IsBillPaymentReversed(paymentRequest))
                 {
-                    // Dormant: PEX's Closed has no exits, so a payment that reached Aplos is never reversed today. Only a
-                    // bill whose payment reached Aplos has a reversal to record; a reversed payment must never book an expense.
+                    // Dormant while PEX's Closed has no exits. A reversed payment never books an expense.
                     if (billMapping?.PaidSyncedUtc is not null)
                     {
                         reversed.Add((paymentRequest, billMapping));
@@ -137,15 +136,12 @@ public partial class AplosIntegrationService
 
             logger.LogInformation($"Business {mapping.PEXBusinessAcctId} has {aplosOriginated.Count} paid Aplos-originated bills and {reversed.Count} reversed bill payments in {fetchFrom:yyyy-MM-dd}..{endDate:yyyy-MM-dd}.");
 
-            // Reversals run first so a bill reversed and paid again inside one window lands in that order.
             foreach (var (paymentRequest, billMapping) in reversed)
             {
                 try
                 {
-                    if (await RecordAplosBillPaymentReversal(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken))
-                    {
-                        syncCount++;
-                    }
+                    await RecordAplosBillPaymentReversal(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken);
+                    syncCount++;
                 }
                 catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
                 {
@@ -359,6 +355,20 @@ public partial class AplosIntegrationService
         if (action == AplosPayableAction.SkipPartiallyPaid)
         {
             throw new InvalidOperationException($"Aplos shows this bill partly paid ({AplosPayableFilter.NormalizeAmount(payable.PaidAmount):0.00} of {AplosPayableFilter.NormalizeAmount(payable.Amount):0.00}), so the PEX payment of {paymentRequest.Amount:0.00} was not recorded. Record it on the bill in Aplos.");
+        }
+
+        // Unpaid again means the customer deleted the reversed payment. Cleared before paying, so a paid marker lost
+        // after this payment still heals.
+        if (billMapping.ReversedUtc is not null)
+        {
+            try
+            {
+                await _billMappingStorage.ClearReversedAsync(billMapping, cancellationToken);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new InvalidOperationException("the connector could not record that the reversed payment was deleted in Aplos, so the payable was not marked paid. It is retried on the next sync.", ex);
+            }
         }
 
         // Aplos's pay call ignores any amount and settles the whole balance, so a partial PEX amount would understate A/P.
@@ -793,8 +803,7 @@ public partial class AplosIntegrationService
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        // A reversal cleared the paid marker so the payment runs again once the customer deletes it in Aplos; healing
-        // the row here would undo that.
+        // Aplos still shows the reversed payment until the customer deletes it; healing the row here would undo the reversal.
         if (billMapping.ReversedUtc is not null) return;
 
         if (IsCardPayment(paymentRequest))

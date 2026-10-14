@@ -15,7 +15,10 @@ namespace AplosConnector.Common.Storage
         Task MarkPaidAsync(AplosBillMappingModel model, DateTime paidUtc, CancellationToken cancellationToken);
 
         Task MarkFailedAsync(AplosBillMappingModel model, DateTime failedUtc, CancellationToken cancellationToken);
+
         Task MarkReversedAsync(AplosBillMappingModel model, DateTime reversedUtc, CancellationToken cancellationToken);
+
+        Task ClearReversedAsync(AplosBillMappingModel model, CancellationToken cancellationToken);
 
         Task MarkAwaitingChargeAsync(AplosBillMappingModel model, DateTime awaitingSinceUtc, CancellationToken cancellationToken);
 
