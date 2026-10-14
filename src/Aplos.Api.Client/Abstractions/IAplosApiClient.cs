@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Aplos.Api.Client.Models;
 using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
+using Newtonsoft.Json.Linq;
 
 namespace Aplos.Api.Client.Abstractions
 {
@@ -31,6 +32,8 @@ namespace Aplos.Api.Client.Abstractions
         Task<AplosApiTransactionListResponse> GetTransactions(DateTime startDate, int pageSize, int pageNum, CancellationToken cancellationToken = default);
         Task<List<AplosApiPayableDetail>> GetPayables(DateOnly rangeStart, CancellationToken cancellationToken = default);
         Task<AplosApiPayableResponse> GetPayable(string aplosPayableId, CancellationToken cancellationToken = default);
+        Task<JObject> GetPayableForUpdate(string aplosPayableId, CancellationToken cancellationToken = default);
+        Task UpdatePayable(string aplosPayableId, JObject payable, CancellationToken cancellationToken = default);
         Task<AplosApiPayableResponse> PayPayable(string aplosPayableId, AplosApiPayablePaymentModel payment, CancellationToken cancellationToken = default);
         Task<bool> IsHealthy(CancellationToken cancellationToken = default);
         Task<AplosApiPartnerVerificationResponse> GetPartnerVerification(CancellationToken cancellationToken = default);

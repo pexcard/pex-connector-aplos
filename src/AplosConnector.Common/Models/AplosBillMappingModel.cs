@@ -14,6 +14,9 @@ namespace AplosConnector.Common.Models
         public DateTime? PaidSyncedUtc { get; set; }
         // Start of the retry window; see BillPaymentRetryWindow.
         public DateTime? FirstFailedUtc { get; set; }
+        // Set by a reversal and never cleared: the record that PEX reversed a payment the customer has to
+        // delete in Aplos by hand (work item 148051).
+        public DateTime? ReversedUtc { get; set; }
         // When a card payment was first seen waiting for its charge; see AwaitingCardChargeLimit.
         public DateTime? AwaitingChargeSinceUtc { get; set; }
         // The vendor card clearing account the bill is paid from, written before paying: the transfer out of that account

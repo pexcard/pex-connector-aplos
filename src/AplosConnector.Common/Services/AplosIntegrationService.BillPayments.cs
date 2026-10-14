@@ -95,6 +95,7 @@ public partial class AplosIntegrationService
             failureCount += unreadable.Count;
             failureNotes.AddRange(unreadable);
 
+            List<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping)> reversed = [];
             List<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping)> aplosOriginated = [];
 
             foreach (var paymentRequest in requests)
@@ -103,6 +104,18 @@ public partial class AplosIntegrationService
                 if (paymentRequest.MetadataRelationId.HasValue)
                 {
                     billMappingsByMetadataId.TryGetValue(paymentRequest.MetadataRelationId.Value, out billMapping);
+                }
+
+                if (IsBillPaymentReversed(paymentRequest))
+                {
+                    // Dormant: PEX's Closed has no exits, so a payment that reached Aplos is never reversed today. Only a
+                    // bill whose payment reached Aplos has a reversal to record; a reversed payment must never book an expense.
+                    if (billMapping?.PaidSyncedUtc is not null)
+                    {
+                        reversed.Add((paymentRequest, billMapping));
+                    }
+
+                    continue;
                 }
 
                 // Aplos cannot void a pay made before PEX settles.
@@ -122,7 +135,25 @@ public partial class AplosIntegrationService
                 // A bill created in PEX isn't this stage's; the transaction sync owns its card charge.
             }
 
-            logger.LogInformation($"Business {mapping.PEXBusinessAcctId} has {aplosOriginated.Count} paid Aplos-originated bills in {fetchFrom:yyyy-MM-dd}..{endDate:yyyy-MM-dd}.");
+            logger.LogInformation($"Business {mapping.PEXBusinessAcctId} has {aplosOriginated.Count} paid Aplos-originated bills and {reversed.Count} reversed bill payments in {fetchFrom:yyyy-MM-dd}..{endDate:yyyy-MM-dd}.");
+
+            // Reversals run first so a bill reversed and paid again inside one window lands in that order.
+            foreach (var (paymentRequest, billMapping) in reversed)
+            {
+                try
+                {
+                    if (await RecordAplosBillPaymentReversal(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken))
+                    {
+                        syncCount++;
+                    }
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    failureCount++;
+                    failureNotes.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: {DescribeFailure(ex)}");
+                    logger.LogError(ex, $"Failed to record the reversal of Aplos payable {billMapping.AplosPayableId} for PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId}.");
+                }
+            }
 
             Dictionary<int, PaymentStatusTrigger> achPaymentTriggers = null;
             List<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping)> readyToPay = [];
@@ -387,6 +418,9 @@ public partial class AplosIntegrationService
         var payerName = GetBillPaymentPayerName(paymentRequest);
         var paidDate = GetBillPaymentPaidDate(paymentRequest);
         var aplosApiClient = MakeAplosApiClient(mapping);
+
+        // Before paying: a paid payable is locked for good.
+        await TryWritePaymentTypeOnPayable(logger, aplosApiClient, mapping, billMapping, paymentRequest, cancellationToken);
 
         AplosApiPayableResponse response;
         try
@@ -759,6 +793,10 @@ public partial class AplosIntegrationService
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
+        // A reversal cleared the paid marker so the payment runs again once the customer deletes it in Aplos; healing
+        // the row here would undo that.
+        if (billMapping.ReversedUtc is not null) return;
+
         if (IsCardPayment(paymentRequest))
         {
             if (cardTransactionId is null)
@@ -901,7 +939,7 @@ public partial class AplosIntegrationService
         {
             CreatedDateFrom = startDate,
             CreatedDateTo = endDate,
-            PaymentRequestStatuses = [PaymentRequestStatus.Closed]
+            PaymentRequestStatuses = [PaymentRequestStatus.Closed, PaymentRequestStatus.PaymentException]
         };
 
         var page = 1;
@@ -940,8 +978,9 @@ public partial class AplosIntegrationService
 
             if (paymentRequest is null) continue;
 
-            // PayoutDate is the one paid signal both rails set; the status trigger differs between them.
-            if (paymentRequest.PayoutDate is null && !IsAwaitingCardCharge(paymentRequest)) continue;
+            // PayoutDate is the one paid signal both rails set; the status trigger differs between them. A payment that
+            // failed after payout keeps its payout date, so a reversal is recognised from the status instead.
+            if (paymentRequest.PayoutDate is null && !IsBillPaymentReversed(paymentRequest) && !IsAwaitingCardCharge(paymentRequest)) continue;
 
             requests.Add(paymentRequest);
         }

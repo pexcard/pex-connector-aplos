@@ -101,6 +101,57 @@ public class AplosPayablePaymentTests
         Assert.Equal((int)HttpStatusCode.UnprocessableEntity, exception.AplosApiError.Status);
     }
 
+    // Shape of a payable read on 2026-10-14 (S13, spike-out/s13-20261014); term is a field the typed model lacks.
+    private const string RawPayable =
+        "{\"id\":4323771,\"bill_date\":\"2026-10-14\",\"modified\":\"2026-10-14T02:50:06.808-0700\",\"reference_num\":\"PEXBP-S13-A\","
+      + "\"note\":\"S13 probe\",\"amount\":1.01,\"term\":15,\"contact\":{\"id\":16181656},"
+      + "\"lines\":[{\"id\":19427579,\"amount\":0.51,\"fund\":{\"id\":249047},\"tags\":[{\"id\":120728},{\"id\":184294}]},"
+      + "{\"id\":19427581,\"amount\":0.50,\"fund\":{\"id\":225755},\"tags\":[{\"id\":201040}]}]}";
+
+    [Fact]
+    public async Task GetPayableForUpdate_ReturnsThePayableAsAplosWroteIt_AndAsksForAllTags()
+    {
+        var handler = new RecordingHttpMessageHandler();
+        handler.Respond("/auth/clientid", HttpStatusCode.OK, File.ReadAllText("Samples/Response/GET_auth.json"));
+        handler.Respond("/payables/4323771", HttpStatusCode.OK, $"{{\"version\":\"v2_0_1\",\"status\":200,\"data\":{{\"payable\":{RawPayable}}}}}");
+
+        var payable = await NewClient(handler).GetPayableForUpdate("4323771");
+
+        Assert.True(JToken.DeepEquals(ParseRaw(RawPayable), payable));
+        Assert.Equal(JTokenType.String, payable["modified"].Type);
+        Assert.Equal("2026-10-14T02:50:06.808-0700", payable["modified"].Value<string>());
+
+        var uri = Assert.Single(handler.RequestUris, u => u.AbsolutePath == "/payables/4323771");
+        Assert.Contains("allTags=y", uri.Query);
+    }
+
+    [Fact]
+    public async Task UpdatePayable_PutsThePayableBackUnchanged_ExceptAmount()
+    {
+        var handler = new RecordingHttpMessageHandler();
+        handler.Respond("/auth/clientid", HttpStatusCode.OK, File.ReadAllText("Samples/Response/GET_auth.json"));
+        handler.Respond("/payables/4323771", HttpStatusCode.OK, $"{{\"version\":\"v2_0_1\",\"status\":200,\"data\":{{\"payable\":{RawPayable}}}}}");
+        var client = NewClient(handler);
+
+        var payable = await client.GetPayableForUpdate("4323771");
+        payable["note"] = "S13 probe | [PEXBP:4323771] | Paid via ACH";
+        await client.UpdatePayable("4323771", payable);
+
+        var put = handler.Requests.Single(request => request.method == HttpMethod.Put);
+        Assert.Equal("/payables/4323771", put.uri.AbsolutePath);
+
+        var expected = ParseRaw(RawPayable);
+        expected.Remove("amount");
+        expected["note"] = "S13 probe | [PEXBP:4323771] | Paid via ACH";
+        var sent = ParseRaw(put.body);
+        Assert.True(JToken.DeepEquals(expected, sent), put.body);
+        Assert.Contains("\"modified\":\"2026-10-14T02:50:06.808-0700\"", put.body);
+        Assert.Contains("\"amount\":0.51", put.body);
+
+        // The caller's copy keeps its amount.
+        Assert.Equal(1.01m, payable["amount"].Value<decimal>());
+    }
+
     private AplosApiClient NewClient(HttpMessageHandler handler)
     {
         _mockHttpClientFactory.Setup(factory => factory.CreateClient("")).Returns(() => new HttpClient(handler, disposeHandler: false));
@@ -115,6 +166,12 @@ public class AplosPayablePaymentTests
             _mockLogger.Object,
             null,
             null);
+    }
+
+    private static JObject ParseRaw(string json)
+    {
+        using var reader = new JsonTextReader(new StringReader(json)) { DateParseHandling = DateParseHandling.None, FloatParseHandling = FloatParseHandling.Decimal };
+        return JObject.Load(reader);
     }
 
     private static string PaidPayableResponse()

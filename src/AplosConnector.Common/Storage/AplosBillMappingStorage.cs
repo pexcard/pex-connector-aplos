@@ -75,6 +75,21 @@ namespace AplosConnector.Common.Storage
             await TableClient.UpdateEntityAsync(failedColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
         }
 
+        // Replace rather than merge: a merge drops null columns, so it could not clear the paid marker.
+        public async Task MarkReversedAsync(AplosBillMappingModel model, DateTime reversedUtc, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            // The row survives the reversal - deleting it would let the outstanding-bill import treat the
+            // payable as new and raise a second PEX bill. Clearing the paid marker is what makes it payable again.
+            model.ReversedUtc = reversedUtc.ToUniversalTime();
+            model.PaidSyncedUtc = null;
+            // A reversed bill is payable again, so an old failure must not count against its retry window.
+            model.FirstFailedUtc = null;
+
+            await TableClient.UpdateEntityAsync(new AplosBillMappingEntity(model), ETag.All, TableUpdateMode.Replace, cancellationToken);
+        }
+
         public async Task MarkAwaitingChargeAsync(AplosBillMappingModel model, DateTime awaitingSinceUtc, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(model);

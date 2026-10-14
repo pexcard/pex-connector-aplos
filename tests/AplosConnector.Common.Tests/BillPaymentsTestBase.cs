@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using Newtonsoft.Json.Linq;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Enums;
 using PexCard.Api.Client.Core.Models;
@@ -58,6 +59,11 @@ public abstract class BillPaymentsTestBase
     protected readonly List<string> _relationshipNotes = [];
     protected readonly List<AplosApiPayablePaymentModel> _payments = [];
     protected readonly List<string> _cardTransactionNotes = [];
+    protected readonly List<JObject> _payableUpdates = [];
+    protected readonly List<string> _aplosWrites = [];
+
+    // The raw payable as Aplos stores it; the note write reads and replaces it.
+    protected JObject _payableForUpdate = PayableForUpdate("Customer memo");
 
     protected BillPaymentsTestBase()
     {
@@ -245,6 +251,21 @@ public abstract class BillPaymentsTestBase
             }));
     }
 
+    // A null note is Aplos leaving the key out.
+    protected static JObject PayableForUpdate(string note)
+    {
+        var payable = new JObject
+        {
+            ["id"] = 9001,
+            ["reference_num"] = "INV-9001",
+            ["modified"] = "2026-09-02T05:00:00.000-0700",
+            ["amount"] = 125.50m,
+            ["lines"] = new JArray(new JObject { ["id"] = 1, ["amount"] = 125.50m, ["tags"] = new JArray(new JObject { ["id"] = 120728 }) })
+        };
+        if (note is not null) payable["note"] = note;
+        return payable;
+    }
+
     protected void VerifyNoPayCall()
     {
         Assert.Empty(_payments);
@@ -276,11 +297,29 @@ public abstract class BillPaymentsTestBase
 
         _mockAplosApiClient
             .Setup(client => client.PayPayable(It.IsAny<string>(), It.IsAny<AplosApiPayablePaymentModel>(), It.IsAny<CancellationToken>()))
-            .Callback<string, AplosApiPayablePaymentModel, CancellationToken>((_, payment, _) => _payments.Add(payment))
+            .Callback<string, AplosApiPayablePaymentModel, CancellationToken>((_, payment, _) =>
+            {
+                _payments.Add(payment);
+                _aplosWrites.Add("pay");
+            })
             .ReturnsAsync(() => new AplosApiPayableResponse
             {
                 Data = new AplosApiPayableData { Payable = new AplosApiPayableDetail { Id = AplosPayableId, Amount = 125.50m, PaidAmount = 125.50m } }
             });
+
+        _mockAplosApiClient
+            .Setup(client => client.GetPayableForUpdate(AplosPayableId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => (JObject)_payableForUpdate?.DeepClone());
+
+        _mockAplosApiClient
+            .Setup(client => client.UpdatePayable(AplosPayableId, It.IsAny<JObject>(), It.IsAny<CancellationToken>()))
+            .Callback<string, JObject, CancellationToken>((_, payable, _) =>
+            {
+                _payableUpdates.Add((JObject)payable.DeepClone());
+                _payableForUpdate = (JObject)payable.DeepClone();
+                _aplosWrites.Add("note");
+            })
+            .Returns(Task.CompletedTask);
 
         _mockPexApiClient
             .Setup(client => client.AddTransactionNote(It.IsAny<string>(), It.IsAny<TransactionModel>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
@@ -366,6 +405,16 @@ public abstract class BillPaymentsTestBase
             return Task.CompletedTask;
         }
 
+        // Mirrors AplosBillMappingStorage: a full replace that clears the paid marker and the retry clock.
+        public Task MarkReversedAsync(AplosBillMappingModel model, DateTime reversedUtc, CancellationToken cancellationToken)
+        {
+            ThrowIfFailing();
+            model.ReversedUtc = reversedUtc;
+            model.PaidSyncedUtc = null;
+            model.FirstFailedUtc = null;
+            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = Copy(model);
+            return Task.CompletedTask;
+        }
 
         public Task MarkAwaitingChargeAsync(AplosBillMappingModel model, DateTime awaitingSinceUtc, CancellationToken cancellationToken)
         {
@@ -411,6 +460,7 @@ public abstract class BillPaymentsTestBase
             Amount = model.Amount,
             PaidSyncedUtc = model.PaidSyncedUtc,
             FirstFailedUtc = model.FirstFailedUtc,
+            ReversedUtc = model.ReversedUtc,
             AwaitingChargeSinceUtc = model.AwaitingChargeSinceUtc,
             PaidFromClearingAccountNumber = model.PaidFromClearingAccountNumber,
             CreatedUtc = model.CreatedUtc
