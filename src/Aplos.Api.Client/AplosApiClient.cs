@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Collections.Immutable;
 using Aplos.Api.Client.Abstractions;
 using Aplos.Api.Client.Exceptions;
@@ -44,6 +45,13 @@ namespace Aplos.Api.Client
             APLOS_ACCOUNT_CATEGORY_LIABILITY,
             APLOS_ACCOUNT_CATEGORY_INCOME
         }.ToImmutableHashSet();
+
+        // Dates and amounts stay as Aplos wrote them, so a raw payable goes back unchanged.
+        private static readonly JsonSerializerSettings RawJsonSettings = new()
+        {
+            DateParseHandling = DateParseHandling.None,
+            FloatParseHandling = FloatParseHandling.Decimal
+        };
 
         private readonly string _aplosAccountId;
         private readonly string _aplosClientId;
@@ -107,7 +115,8 @@ namespace Aplos.Api.Client
             HttpContent httpRequestContent,
             HttpMethod httpMethod,
             string endpoint,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            JsonSerializerSettings responseSettings = null)
         {
             var httpRequest = new HttpRequestMessage(httpMethod, endpoint);
 
@@ -136,7 +145,7 @@ namespace Aplos.Api.Client
                 throw aplosApiException;
             }
 
-            return JsonConvert.DeserializeObject<TResponseContent>(responseBody);
+            return JsonConvert.DeserializeObject<TResponseContent>(responseBody, responseSettings);
         }
 
         private async Task<TResponseContent> InvokeAplosApi<TResponseContent>(
@@ -596,6 +605,36 @@ namespace Aplos.Api.Client
             return await InvokeAplosApiWithAccessToken<AplosApiPayableResponse>(
                 HttpMethod.Get,
                 $"{APLOS_ENDPOINT_PAYABLES}{aplosPayableId}?allTags=y",
+                cancellationToken: cancellationToken);
+        }
+
+        // Raw and with allTags: PUT payables/{id} replaces the whole payable, so a field the typed model lacks or a tag the
+        // read left out would be deleted.
+        public async Task<JObject> GetPayableForUpdate(string aplosPayableId, CancellationToken cancellationToken = default)
+        {
+            var response = await InvokeAplosApi<JObject>(
+                await MakeAuthenticatedAplosHttpClient(true),
+                null,
+                HttpMethod.Get,
+                $"{APLOS_ENDPOINT_PAYABLES}{aplosPayableId}?allTags=y",
+                cancellationToken,
+                RawJsonSettings);
+
+            return response?["data"]?["payable"] as JObject;
+        }
+
+        public async Task UpdatePayable(string aplosPayableId, JObject payable, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(payable);
+
+            // Aplos rejects a top-level amount with a misleading 422 "Lines must sum"; it is derived from the lines.
+            var body = (JObject)payable.DeepClone();
+            body.Remove("amount");
+
+            await InvokeAplosApiWithAccessToken<JObject, JObject>(
+                HttpMethod.Put,
+                $"{APLOS_ENDPOINT_PAYABLES}{aplosPayableId}",
+                body,
                 cancellationToken: cancellationToken);
         }
 

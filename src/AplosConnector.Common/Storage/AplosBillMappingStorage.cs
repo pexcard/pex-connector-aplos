@@ -75,6 +75,39 @@ namespace AplosConnector.Common.Storage
             await TableClient.UpdateEntityAsync(failedColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
         }
 
+        // The row survives the reversal: deleting it would let the import raise a second PEX bill. Clearing the paid
+        // marker makes it payable again, and the old payment's failure and card wait must not count against the next
+        // one. A merge can't remove a column, so the row is read and replaced under its ETag.
+        public async Task MarkReversedAsync(AplosBillMappingModel model, DateTime reversedUtc, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            var row = (await TableClient.GetEntityAsync<TableEntity>(model.PEXBusinessAcctId.ToString(), model.AplosPayableId, cancellationToken: cancellationToken)).Value;
+            row[nameof(AplosBillMappingEntity.ReversedUtc)] = reversedUtc.ToUniversalTime();
+            row.Remove(nameof(AplosBillMappingEntity.PaidSyncedUtc));
+            row.Remove(nameof(AplosBillMappingEntity.FirstFailedUtc));
+            row.Remove(nameof(AplosBillMappingEntity.AwaitingChargeSinceUtc));
+
+            await TableClient.UpdateEntityAsync(row, row.ETag, TableUpdateMode.Replace, cancellationToken);
+
+            model.ReversedUtc = reversedUtc.ToUniversalTime();
+            model.PaidSyncedUtc = null;
+            model.FirstFailedUtc = null;
+            model.AwaitingChargeSinceUtc = null;
+        }
+
+        public async Task ClearReversedAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            var row = (await TableClient.GetEntityAsync<TableEntity>(model.PEXBusinessAcctId.ToString(), model.AplosPayableId, cancellationToken: cancellationToken)).Value;
+            row.Remove(nameof(AplosBillMappingEntity.ReversedUtc));
+
+            await TableClient.UpdateEntityAsync(row, row.ETag, TableUpdateMode.Replace, cancellationToken);
+
+            model.ReversedUtc = null;
+        }
+
         public async Task MarkAwaitingChargeAsync(AplosBillMappingModel model, DateTime awaitingSinceUtc, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(model);

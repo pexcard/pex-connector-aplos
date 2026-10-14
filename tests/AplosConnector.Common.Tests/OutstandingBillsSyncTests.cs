@@ -815,6 +815,26 @@ namespace AplosConnector.Common.Tests
                 return Task.CompletedTask;
             }
 
+            public Task MarkReversedAsync(AplosBillMappingModel model, DateTime reversedUtc, CancellationToken cancellationToken)
+            {
+                ThrowIfFailing();
+                model.ReversedUtc = reversedUtc;
+                model.PaidSyncedUtc = null;
+                model.FirstFailedUtc = null;
+                model.AwaitingChargeSinceUtc = null;
+                model.AwaitingChargeSinceUtc = null;
+                Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
+                return Task.CompletedTask;
+            }
+
+            public Task ClearReversedAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
+            {
+                ThrowIfFailing();
+                model.ReversedUtc = null;
+                Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
+                return Task.CompletedTask;
+            }
+
             public Task MarkAwaitingChargeAsync(AplosBillMappingModel model, DateTime awaitingSinceUtc, CancellationToken cancellationToken)
             {
                 ThrowIfFailing();

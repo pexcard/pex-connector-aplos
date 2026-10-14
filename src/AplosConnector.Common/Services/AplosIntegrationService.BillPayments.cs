@@ -95,6 +95,7 @@ public partial class AplosIntegrationService
             failureCount += unreadable.Count;
             failureNotes.AddRange(unreadable);
 
+            List<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping)> reversed = [];
             List<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping)> aplosOriginated = [];
 
             foreach (var paymentRequest in requests)
@@ -103,6 +104,17 @@ public partial class AplosIntegrationService
                 if (paymentRequest.MetadataRelationId.HasValue)
                 {
                     billMappingsByMetadataId.TryGetValue(paymentRequest.MetadataRelationId.Value, out billMapping);
+                }
+
+                if (IsBillPaymentReversed(paymentRequest))
+                {
+                    // Dormant while PEX's Closed has no exits. A reversed payment never books an expense.
+                    if (billMapping?.PaidSyncedUtc is not null)
+                    {
+                        reversed.Add((paymentRequest, billMapping));
+                    }
+
+                    continue;
                 }
 
                 // Aplos cannot void a pay made before PEX settles.
@@ -122,7 +134,22 @@ public partial class AplosIntegrationService
                 // A bill created in PEX isn't this stage's; the transaction sync owns its card charge.
             }
 
-            logger.LogInformation($"Business {mapping.PEXBusinessAcctId} has {aplosOriginated.Count} paid Aplos-originated bills in {fetchFrom:yyyy-MM-dd}..{endDate:yyyy-MM-dd}.");
+            logger.LogInformation($"Business {mapping.PEXBusinessAcctId} has {aplosOriginated.Count} paid Aplos-originated bills and {reversed.Count} reversed bill payments in {fetchFrom:yyyy-MM-dd}..{endDate:yyyy-MM-dd}.");
+
+            foreach (var (paymentRequest, billMapping) in reversed)
+            {
+                try
+                {
+                    await RecordAplosBillPaymentReversal(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken);
+                    syncCount++;
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    failureCount++;
+                    failureNotes.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: {DescribeFailure(ex)}");
+                    logger.LogError(ex, $"Failed to record the reversal of Aplos payable {billMapping.AplosPayableId} for PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId}.");
+                }
+            }
 
             Dictionary<int, PaymentStatusTrigger> achPaymentTriggers = null;
             List<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping)> readyToPay = [];
@@ -330,6 +357,20 @@ public partial class AplosIntegrationService
             throw new InvalidOperationException($"Aplos shows this bill partly paid ({AplosPayableFilter.NormalizeAmount(payable.PaidAmount):0.00} of {AplosPayableFilter.NormalizeAmount(payable.Amount):0.00}), so the PEX payment of {paymentRequest.Amount:0.00} was not recorded. Record it on the bill in Aplos.");
         }
 
+        // Unpaid again means the customer deleted the reversed payment. Cleared before paying, so a paid marker lost
+        // after this payment still heals.
+        if (billMapping.ReversedUtc is not null)
+        {
+            try
+            {
+                await _billMappingStorage.ClearReversedAsync(billMapping, cancellationToken);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new InvalidOperationException("the connector could not record that the reversed payment was deleted in Aplos, so the payable was not marked paid. It is retried on the next sync.", ex);
+            }
+        }
+
         // Aplos's pay call ignores any amount and settles the whole balance, so a partial PEX amount would understate A/P.
         var outstanding = AplosPayableFilter.NormalizeAmount(payable.Amount) - AplosPayableFilter.NormalizeAmount(payable.PaidAmount);
         if (paymentRequest.Amount != outstanding)
@@ -387,6 +428,9 @@ public partial class AplosIntegrationService
         var payerName = GetBillPaymentPayerName(paymentRequest);
         var paidDate = GetBillPaymentPaidDate(paymentRequest);
         var aplosApiClient = MakeAplosApiClient(mapping);
+
+        // Before paying: a paid payable is locked for good.
+        await TryWritePaymentTypeOnPayable(logger, aplosApiClient, mapping, billMapping, paymentRequest, cancellationToken);
 
         AplosApiPayableResponse response;
         try
@@ -759,6 +803,9 @@ public partial class AplosIntegrationService
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
+        // Aplos still shows the reversed payment until the customer deletes it; healing the row here would undo the reversal.
+        if (billMapping.ReversedUtc is not null) return;
+
         if (IsCardPayment(paymentRequest))
         {
             if (cardTransactionId is null)
@@ -901,7 +948,7 @@ public partial class AplosIntegrationService
         {
             CreatedDateFrom = startDate,
             CreatedDateTo = endDate,
-            PaymentRequestStatuses = [PaymentRequestStatus.Closed]
+            PaymentRequestStatuses = [PaymentRequestStatus.Closed, PaymentRequestStatus.PaymentException]
         };
 
         var page = 1;
@@ -940,8 +987,9 @@ public partial class AplosIntegrationService
 
             if (paymentRequest is null) continue;
 
-            // PayoutDate is the one paid signal both rails set; the status trigger differs between them.
-            if (paymentRequest.PayoutDate is null && !IsAwaitingCardCharge(paymentRequest)) continue;
+            // PayoutDate is the one paid signal both rails set; the status trigger differs between them. A payment that
+            // failed after payout keeps its payout date, so a reversal is recognised from the status instead.
+            if (paymentRequest.PayoutDate is null && !IsBillPaymentReversed(paymentRequest) && !IsAwaitingCardCharge(paymentRequest)) continue;
 
             requests.Add(paymentRequest);
         }
