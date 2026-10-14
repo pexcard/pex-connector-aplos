@@ -412,6 +412,7 @@ public abstract class BillPaymentsTestBase
             model.ReversedUtc = reversedUtc;
             model.PaidSyncedUtc = null;
             model.FirstFailedUtc = null;
+            model.AwaitingChargeSinceUtc = null;
             Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = Copy(model);
             return Task.CompletedTask;
         }

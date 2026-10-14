@@ -821,6 +821,8 @@ namespace AplosConnector.Common.Tests
                 model.ReversedUtc = reversedUtc;
                 model.PaidSyncedUtc = null;
                 model.FirstFailedUtc = null;
+                model.AwaitingChargeSinceUtc = null;
+                model.AwaitingChargeSinceUtc = null;
                 Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
                 return Task.CompletedTask;
             }

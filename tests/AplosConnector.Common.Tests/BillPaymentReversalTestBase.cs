@@ -316,6 +316,8 @@ public abstract class BillPaymentReversalTestBase
             model.ReversedUtc = reversedUtc;
             model.PaidSyncedUtc = null;
             model.FirstFailedUtc = null;
+            model.AwaitingChargeSinceUtc = null;
+            model.AwaitingChargeSinceUtc = null;
             return UpsertAsync(model, cancellationToken);
         }
 

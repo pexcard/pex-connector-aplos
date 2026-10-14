@@ -76,8 +76,8 @@ namespace AplosConnector.Common.Storage
         }
 
         // The row survives the reversal: deleting it would let the import raise a second PEX bill. Clearing the paid
-        // marker makes it payable again, and an old failure must not count against its new retry window. A merge can't
-        // remove a column, so the row is read and replaced under its ETag.
+        // marker makes it payable again, and the old payment's failure and card wait must not count against the next
+        // one. A merge can't remove a column, so the row is read and replaced under its ETag.
         public async Task MarkReversedAsync(AplosBillMappingModel model, DateTime reversedUtc, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(model);
@@ -86,12 +86,14 @@ namespace AplosConnector.Common.Storage
             row[nameof(AplosBillMappingEntity.ReversedUtc)] = reversedUtc.ToUniversalTime();
             row.Remove(nameof(AplosBillMappingEntity.PaidSyncedUtc));
             row.Remove(nameof(AplosBillMappingEntity.FirstFailedUtc));
+            row.Remove(nameof(AplosBillMappingEntity.AwaitingChargeSinceUtc));
 
             await TableClient.UpdateEntityAsync(row, row.ETag, TableUpdateMode.Replace, cancellationToken);
 
             model.ReversedUtc = reversedUtc.ToUniversalTime();
             model.PaidSyncedUtc = null;
             model.FirstFailedUtc = null;
+            model.AwaitingChargeSinceUtc = null;
         }
 
         public async Task ClearReversedAsync(AplosBillMappingModel model, CancellationToken cancellationToken)

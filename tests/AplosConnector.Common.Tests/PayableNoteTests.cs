@@ -95,11 +95,13 @@ public class PayableNoteTests : BillPaymentsTestBase
         Assert.Equal("Customer memo | [PEXBP:9001] | Paid via ACH", _payableForUpdate.Value<string>("note"));
     }
 
-    // A failed ACH payment re-issued by card: the connector's part is replaced, the customer's is kept.
-    [Fact]
-    public void ARetryOnAnotherRailReplacesOnlyTheConnectorsPart()
+    // The customer can edit the note after a failed pay or a reversal, and typing at the end lands after the token.
+    [Theory]
+    [InlineData(PayeeFundsDestinationType.SingleUseVendorVirtualCard, "Memo | [PEXBP:9001] | Paid via Card | hold until Friday")]
+    [InlineData(PayeeFundsDestinationType.BankAccount, "Memo | [PEXBP:9001] | Paid via ACH | hold until Friday")]
+    public void ARetryReplacesOnlyTheConnectorsSegment(PayeeFundsDestinationType rail, string expected)
         => Assert.Equal(
-            "Memo | [PEXBP:9001] | Paid via Card",
+            expected,
             AplosIntegrationService.AppendPaymentTypeToPayableNote(
-                "Memo | [PEXBP:9001] | Paid via ACH", "9001", new BillPaymentRequestModel { PayeeFundsDestinationType = PayeeFundsDestinationType.SingleUseVendorVirtualCard }));
+                "Memo | [PEXBP:9001] | Paid via ACH | hold until Friday", "9001", new BillPaymentRequestModel { PayeeFundsDestinationType = rail }));
 }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using PexCard.Api.Client.Core.Models;
 using System;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,21 +18,19 @@ public partial class AplosIntegrationService
     // f_note is a substring match; the closing bracket ends the id, so bill 12 never matches the payment of bill 123.
     internal static string GetPayablePaymentToken(string aplosPayableId) => $"[PEXBP:{aplosPayableId}]";
 
-    // Everything from the token on is the connector's, so a retry on another rail replaces it rather than adding a second.
+    // A retry replaces only the connector's own segment, so text the customer added on either side of it survives.
     internal static string AppendPaymentTypeToPayableNote(string note, string aplosPayableId, BillPaymentRequestModel paymentRequest)
     {
         var token = GetPayablePaymentToken(aplosPayableId);
-        var customerNote = note ?? "";
-
-        var tokenAt = customerNote.IndexOf(token, StringComparison.Ordinal);
-        if (tokenAt >= 0)
-        {
-            customerNote = customerNote[..tokenAt];
-            if (customerNote.EndsWith(PayableNoteSeparator, StringComparison.Ordinal)) customerNote = customerNote[..^PayableNoteSeparator.Length];
-        }
-
         var paymentNote = $"{token}{PayableNoteSeparator}{GetPaymentTypeNote(paymentRequest)}";
-        return customerNote.Length == 0 ? paymentNote : $"{customerNote}{PayableNoteSeparator}{paymentNote}";
+        if (string.IsNullOrEmpty(note)) return paymentNote;
+
+        var ownSegment = new Regex($@"{Regex.Escape(token)}(?:{Regex.Escape(PayableNoteSeparator)}Paid via (?:ACH|Card|Non Platform))?");
+        var match = ownSegment.Match(note);
+
+        return match.Success
+            ? $"{note[..match.Index]}{paymentNote}{note[(match.Index + match.Length)..]}"
+            : $"{note}{PayableNoteSeparator}{paymentNote}";
     }
 
     // Aplos's pay call drops note and memo, but copies the payable's note onto the payment, so it goes there first. Best
