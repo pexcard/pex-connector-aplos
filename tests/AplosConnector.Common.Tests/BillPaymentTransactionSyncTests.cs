@@ -37,8 +37,14 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
     private const int FundId = 1;
 
     private readonly List<AplosApiTransactionDetail> _createdAplosTransactions = [];
+    private const long RefundTransactionId = 987700;
+    private const decimal RefundAmount = 20m;
+
     private readonly List<bool> _includeVendorBillPayArgs = [];
     private bool _paidByCard;
+    // Stands in for includeVendorBillPay=false (154868): PEX leaves vendor card charges out but keeps their credits.
+    private bool _feedDropsVendorCardCharges;
+    private bool _refundInFeed;
 
     public BillPaymentTransactionSyncTests()
     {
@@ -120,7 +126,7 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
     }
 
     [Fact]
-    public async Task TurningTheImportOffStillClosesBillsAlreadyImported()
+    public async Task WithTheImportOffAnImportedBillsChargeIsClaimedAndNothingIsWrittenToAplos()
     {
         SeedUnpaidMapping();
         SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
@@ -128,9 +134,46 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
 
         await RunBothSyncs(mapping => mapping.SyncOutstandingBills = false);
 
+        Assert.Empty(_payments);
+        Assert.Empty(_createdAplosTransactions);
+        var row = Assert.Single(_billMappingStorage.Rows.Values);
+        Assert.Equal(VendorCardTransactionId, row.CardTransactionId);
+        Assert.Null(row.PaidSyncedUtc);
+        Assert.Contains(AplosIntegrationService.SyncedAsBillPaymentNote, Assert.Single(_cardTransactionNotes));
+        Assert.DoesNotContain(_historyRows, historyRow => historyRow.SyncType == SyncTypes.BillPayments);
+    }
+
+    [Fact]
+    public async Task TurningTheImportBackOnMarksTheClaimedBillPaid()
+    {
+        SeedUnpaidMapping();
+        SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(BillAmount, paid: 0m);
+        await RunBothSyncs(mapping => mapping.SyncOutstandingBills = false);
+
+        await RunBothSyncs(mapping => mapping.SyncOutstandingBills = true);
+
         Assert.Single(_payments);
         Assert.Empty(_createdAplosTransactions);
-        Assert.Contains(_cardTransactionNotes, note => note.Contains(AplosIntegrationService.SyncedAsBillPaymentNote));
+        Assert.NotNull(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+    }
+
+    [Fact]
+    public async Task WithTheImportOffAChargeThatCannotBeClaimedIsReported()
+    {
+        SeedUnpaidMapping();
+        SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(BillAmount, paid: 0m);
+        _billMappingStorage.FailNextWrite = true;
+        _mockPexApiClient
+            .Setup(client => client.AddTransactionNote(It.IsAny<string>(), It.IsAny<TransactionModel>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("PEX is unavailable."));
+
+        await RunBothSyncs(mapping => mapping.SyncOutstandingBills = false);
+
+        Assert.Empty(_payments);
+        var historyRow = Assert.Single(_historyRows, row => row.SyncType == SyncTypes.BillPayments);
+        Assert.Contains("could not be held back", historyRow.SyncNotes);
     }
 
     [Fact]
@@ -188,6 +231,85 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
         Assert.Empty(_createdAplosTransactions);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AnImportedBillsCardChargeIsBookedOnceAsTheBillPaymentAndItsRefundOnceAsAPurchase(bool feedDropsVendorCardCharges)
+    {
+        _feedDropsVendorCardCharges = feedDropsVendorCardCharges;
+        _refundInFeed = true;
+        SeedUnpaidMapping();
+        SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(BillAmount, paid: 0m);
+
+        await RunBothSyncs();
+
+        Assert.Single(_payments);
+        var refund = Assert.Single(_createdAplosTransactions);
+        Assert.Equal(RefundAmount, refund.Amount);
+    }
+
+    [Fact]
+    public async Task AClaimedChargeWhoseNoteWasDeletedInPexIsStillNotBooked()
+    {
+        SeedPaidMapping();
+        _billMappingStorage.Rows.Values.Single().CardTransactionId = VendorCardTransactionId;
+        SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(BillAmount, paid: BillAmount);
+
+        await RunBothSyncs();
+
+        Assert.Empty(_createdAplosTransactions);
+    }
+
+    [Fact]
+    public async Task ALinkedChargeIsClaimedWhileBillPaymentsAreNotSetUp()
+    {
+        SeedUnpaidMapping();
+        SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(BillAmount, paid: 0m);
+
+        await RunBothSyncs(mapping => mapping.BillPaymentsAchClearingAccountNumber = 0m);
+
+        Assert.Empty(_payments);
+        Assert.Empty(_createdAplosTransactions);
+        Assert.Equal(VendorCardTransactionId, Assert.Single(_billMappingStorage.Rows.Values).CardTransactionId);
+        Assert.Contains("ACH bank account for bill payments", Assert.Single(_historyRows, row => row.SyncType == SyncTypes.BillPayments).SyncNotes);
+    }
+
+    [Fact]
+    public async Task AFailedClaimWriteStillNotesTheChargeAndIsRetriedNextRun()
+    {
+        SeedUnpaidMapping();
+        SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(BillAmount, paid: 0m);
+        _billMappingStorage.FailNextWrite = true;
+
+        await RunBothSyncs(mapping => mapping.BillPaymentsAchClearingAccountNumber = 0m);
+
+        Assert.Empty(_createdAplosTransactions);
+        Assert.Contains(AplosIntegrationService.SyncedAsBillPaymentNote, Assert.Single(_cardTransactionNotes));
+        Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).CardTransactionId);
+
+        await RunBothSyncs(mapping => mapping.BillPaymentsAchClearingAccountNumber = 0m);
+
+        Assert.Equal(VendorCardTransactionId, Assert.Single(_billMappingStorage.Rows.Values).CardTransactionId);
+        Assert.Single(_cardTransactionNotes);
+    }
+
+    [Fact]
+    public async Task AnUnreadableClaimTableStopsTheTransactionSyncInsteadOfBookingBillCharges()
+    {
+        SeedUnpaidMapping();
+        SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        _billMappingStorage.FailNextRead = true;
+
+        await Assert.ThrowsAnyAsync<Exception>(() =>
+            GetAplosIntegrationService().SyncTransactions(NullLogger.Instance, NewSyncMapping(), UtcNow, default));
+
+        Assert.Empty(_createdAplosTransactions);
+    }
+
     private async Task<Pex2AplosMappingModel> RunBothSyncs(Action<Pex2AplosMappingModel> configureMapping = null)
     {
         var mapping = NewSyncMapping();
@@ -219,6 +341,7 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
         ExpenseAccountMappings = [],
         // Set by Sync's run-level settings refresh.
         UseBillPayEnabled = true,
+        SyncOutstandingBills = true,
         BillPaymentsAchClearingAccountNumber = AchClearingAccountNumber,
         BillPaymentsCardClearingAccountNumber = CardClearingAccountNumber
     };
@@ -254,7 +377,10 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
                 _includeVendorBillPayArgs.Add(includeVendorBillPay);
 
                 var inBatch = startDate <= PayoutDate.UtcDateTime && PayoutDate.UtcDateTime <= endDate;
-                return new CardholderTransactions(includeVendorBillPay && inBatch && _paidByCard ? [VendorCardBillPayTransaction()] : []);
+                List<TransactionModel> transactions = [];
+                if (includeVendorBillPay && inBatch && _paidByCard && !_feedDropsVendorCardCharges) transactions.Add(VendorCardBillPayTransaction());
+                if (inBatch && _refundInFeed) transactions.Add(VendorCardRefund());
+                return new CardholderTransactions(transactions);
             });
 
         _mockAplosApiClient
@@ -301,4 +427,17 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
             TransactionType = TransactionType.Network
         };
     }
+
+    private static TransactionModel VendorCardRefund() => new()
+    {
+        TransactionId = RefundTransactionId,
+        AcctId = VendorCardAcctId,
+        TransactionAmount = RefundAmount,
+        TransactionTime = PayoutDate.UtcDateTime,
+        SettlementTime = PayoutDate.UtcDateTime,
+        MerchantName = "Acme Supplies",
+        TransactionNotes = [],
+        TransactionTags = new TransactionTagsModel(),
+        TransactionType = TransactionType.Network
+    };
 }

@@ -148,5 +148,19 @@ namespace AplosConnector.Common.Storage
 
             model.PaidFromClearingAccountNumber = null;
         }
+
+        public async Task MarkCardChargeClaimedAsync(AplosBillMappingModel model, long cardTransactionId, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            var claimColumn = new TableEntity(model.PEXBusinessAcctId.ToString(), model.AplosPayableId)
+            {
+                [nameof(AplosBillMappingEntity.CardTransactionId)] = cardTransactionId
+            };
+
+            await TableClient.UpdateEntityAsync(claimColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
+
+            model.CardTransactionId = cardTransactionId;
+        }
     }
 }

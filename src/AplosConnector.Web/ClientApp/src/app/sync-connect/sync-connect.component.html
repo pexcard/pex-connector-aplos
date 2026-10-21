@@ -135,7 +135,7 @@
       (clrWizardPageOnCommit)="onSettingsCommit()"
       (clrWizardPageOnCancel)="onCloseWizard()"
     [clrWizardPageNextDisabled]="!optionsForm.valid
-                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees) && !settingsModel.aplosRegisterAccountNumber)
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncOutstandingBills) && !settingsModel.aplosRegisterAccountNumber)
                    || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements || settingsModel.syncOutstandingBills) && !settingsModel.earliestTransactionDateToSync)">
       <ng-template clrPageNavTitle>Sync Selection</ng-template>
       <ng-template clrPageTitle>Choose what to sync</ng-template>
@@ -268,6 +268,16 @@
             <label>Automatically import Reimbursements into Aplos. <span class="badge-new">New</span></label>
           </clr-toggle-wrapper>
         }
+        @if (settingsModel.useBillPayEnabled) {
+          <clr-toggle-wrapper>
+            <input
+              type="checkbox"
+              clrToggle
+              name="syncOutstandingBills"
+              [(ngModel)]="settingsModel.syncOutstandingBills" />
+            <label>Sync outstanding bills: import unpaid Aplos bills into PEX, and mark them paid in Aplos once paid in PEX. <span class="badge-new">New</span></label>
+          </clr-toggle-wrapper>
+        }
         <hr />
         <clr-toggle-wrapper>
           <input
@@ -290,7 +300,7 @@
         }
         <!-- Reimbursements don't use the PEX register account — their cash side is the
         reimbursements Bank Account on Other Options. -->
-        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees) {
+        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncOutstandingBills) {
           <div class="card">
             <div class="card-block">
               <app-loading-placeholder
@@ -1216,7 +1226,7 @@
                       <clr-tooltip>
                         <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
                         <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
-                          <span>Bills paid by ACH in PEX are marked paid in Aplos from this bank account.</span>
+                          <span>Aplos bills imported into PEX and paid there by ACH are marked paid in Aplos from this bank account.</span>
                         </clr-tooltip-content>
                       </clr-tooltip>
                     </td>

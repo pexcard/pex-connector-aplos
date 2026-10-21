@@ -25,7 +25,8 @@ public class VendorCardRetryTests : VendorSetupTestBase
 
         Assert.Empty(CardOrders);
         Assert.Single(CreatedBillInbox);
-        AssertReported("has no linked PEX vendor card yet");
+        AssertReported($"The connector created the PEX vendor {ContactName} but could not record it");
+        Assert.DoesNotContain("has no linked PEX vendor card yet", Assert.Single(HistoryRows).SyncNotes);
     }
 
     // The order may have gone through, so its card is never ordered again; the customer resolves it in PEX.
@@ -173,16 +174,22 @@ public class VendorCardRetryTests : VendorSetupTestBase
     }
 
     [Fact]
-    public async Task AFailedTableReadReportsTheCardCheckFailedAndOrdersNothing()
+    public async Task AFailedTableReadCreatesNoVendorAndImportsTheBillNextRun()
     {
         CardOrderStorage.FailRead = true;
 
         await RunSync();
 
-        Assert.Single(CreatedBillInbox);
+        Assert.Empty(CreatedBillInbox);
         Assert.Empty(CardOrders);
-        AssertReported("could not be checked this run");
-        Assert.DoesNotContain("has no linked PEX vendor card", Assert.Single(HistoryRows).SyncNotes);
+        PexApiClient.Verify(c => c.CreateVendor(It.IsAny<string>(), It.IsAny<CreateVendorRequestModel>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Contains("Bill INV-9001: The connector's PEX vendors could not be checked this run", Assert.Single(HistoryRows).SyncNotes);
+
+        CardOrderStorage.FailRead = false;
+        HistoryRows.Clear();
+        await RunSync();
+
+        Assert.Single(CreatedBillInbox);
     }
 
     [Fact]

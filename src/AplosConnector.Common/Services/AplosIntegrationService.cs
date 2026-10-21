@@ -1051,6 +1051,12 @@ namespace AplosConnector.Common.Services
             var syncCount = 0;
             var failureCount = 0;
 
+            // Unreadable means not synced this run: without the claims a bill's card charge would be booked twice.
+            var claimedCardCharges = (await _billMappingStorage.GetByBusinessAsync(mapping.PEXBusinessAcctId, cancellationToken) ?? [])
+                .Where(row => row.CardTransactionId is not null)
+                .Select(row => row.CardTransactionId.Value)
+                .ToHashSet();
+
             var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
             var aplosAccountCategory = GetAplosAccountCategory();
             var aplosExpenseAccounts = (await GetAplosAccounts(mapping, aplosAccountCategory, cancellationToken)).ToList();
@@ -1106,7 +1112,7 @@ namespace AplosConnector.Common.Services
 
                 var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, includeVendorBillPay: true, cancelToken: cancellationToken);
                 allCardholderTransactions.AddRange(cardholderTransactions);
-                var transactions = FilterCardholderTransactions(mapping, cardholderTransactions).ToList();
+                var transactions = FilterCardholderTransactions(mapping, cardholderTransactions, claimedCardCharges).ToList();
 
                 _logger.LogInformation($"Syncing {transactions.Count} filtered transactions for business: {mapping.PEXBusinessAcctId}");
 
@@ -1389,10 +1395,15 @@ namespace AplosConnector.Common.Services
             return AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE;
         }
 
-        private static IEnumerable<TransactionModel> FilterCardholderTransactions(Pex2AplosMappingModel mapping, CardholderTransactions transactions)
+        private static IEnumerable<TransactionModel> FilterCardholderTransactions(Pex2AplosMappingModel mapping, CardholderTransactions transactions, IReadOnlySet<long> claimedCardCharges)
         {
             foreach (var transaction in transactions.SelectTransactionsToSync(mapping.SyncApprovedOnly))
             {
+                if (claimedCardCharges.Contains(transaction.TransactionId))
+                {
+                    continue;
+                }
+
                 if (transaction.TransactionNotes.Any(x => x.NoteText.Contains(PexCardConst.OLD_SyncedWithAplosNote)))
                 {
                     continue;

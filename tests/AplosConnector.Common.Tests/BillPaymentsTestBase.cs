@@ -92,7 +92,8 @@ public abstract class BillPaymentsTestBase
             BillPaymentsCardClearingAccountNumber = cardClearingAccountNumber,
             AplosRegisterAccountNumber = pexFundsAccountNumber,
             // Set by Sync's run-level settings refresh.
-            UseBillPayEnabled = useBillPay
+            UseBillPayEnabled = useBillPay,
+            SyncOutstandingBills = useBillPay
         };
         configure?.Invoke(mapping);
 
@@ -330,7 +331,7 @@ public abstract class BillPaymentsTestBase
             .Returns(Task.CompletedTask);
 
         _mockPexApiClient
-            .Setup(client => client.GetCardholderTransaction(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .Setup(client => client.GetCardholderPurchase(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((string _, long transactionId, CancellationToken _) => new TransactionResultModel
             {
                 TransactionId = transactionId,
@@ -375,11 +376,21 @@ public abstract class BillPaymentsTestBase
 
         public bool FailNextWrite { get; set; }
 
+        public bool FailNextRead { get; set; }
+
         public void Seed(AplosBillMappingModel model) => Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = Copy(model);
 
         // Copies in and out, like a table: a model the service mutates is not the stored row until it is written.
         public Task<List<AplosBillMappingModel>> GetByBusinessAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
-            => Task.FromResult(Rows.Values.Where(row => row.PEXBusinessAcctId == pexBusinessAcctId).Select(Copy).ToList());
+        {
+            if (FailNextRead)
+            {
+                FailNextRead = false;
+                return Task.FromException<List<AplosBillMappingModel>>(new InvalidOperationException("Table storage is unavailable."));
+            }
+
+            return Task.FromResult(Rows.Values.Where(row => row.PEXBusinessAcctId == pexBusinessAcctId).Select(Copy).ToList());
+        }
 
         public Task AddAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
         {
@@ -449,6 +460,14 @@ public abstract class BillPaymentsTestBase
             return Task.CompletedTask;
         }
 
+        public Task MarkCardChargeClaimedAsync(AplosBillMappingModel model, long cardTransactionId, CancellationToken cancellationToken)
+        {
+            ThrowIfFailing();
+            model.CardTransactionId = cardTransactionId;
+            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].CardTransactionId = cardTransactionId;
+            return Task.CompletedTask;
+        }
+
         private void ThrowIfFailing()
         {
             if (!FailNextWrite) return;
@@ -472,6 +491,7 @@ public abstract class BillPaymentsTestBase
             ReversedUtc = model.ReversedUtc,
             AwaitingChargeSinceUtc = model.AwaitingChargeSinceUtc,
             PaidFromClearingAccountNumber = model.PaidFromClearingAccountNumber,
+            CardTransactionId = model.CardTransactionId,
             CreatedUtc = model.CreatedUtc
         };
     }
