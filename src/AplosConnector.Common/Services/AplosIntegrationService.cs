@@ -116,14 +116,14 @@ namespace AplosConnector.Common.Services
             string partnerBusinessId = null;
             try
             {
-                partnerBusinessId = (await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken, cancellationToken))?.PartnerBusinessId;
+                partnerBusinessId = (await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken, cancellationToken))?.PartnerBusinessId?.Trim();
             }
             catch (Exception ex) when (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && !cancellationToken.IsCancellationRequested)
             {
                 _logger.LogWarning(ex, $"Failed to refresh partner info for business {mapping.PEXBusinessAcctId}. Using the stored {nameof(mapping.AplosAccountId)}.");
             }
 
-            if (!string.IsNullOrWhiteSpace(partnerBusinessId) && partnerBusinessId != mapping.AplosAccountId)
+            if (!string.IsNullOrWhiteSpace(partnerBusinessId) && !string.Equals(partnerBusinessId, mapping.AplosAccountId?.Trim(), StringComparison.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
                 {
@@ -138,11 +138,9 @@ namespace AplosConnector.Common.Services
                 {
                     _logger.LogWarning($"Aplos partner ID mismatch for business {mapping.PEXBusinessAcctId}: stored '{mapping.AplosAccountId}', PEX '{partnerBusinessId}'. Applied; partner verification reset.");
 
-                    // Re-verify against the new org.
+                    // Re-verify against the new org; the cached token isn't org-specific.
                     mapping.AplosAccountId = partnerBusinessId;
                     mapping.AplosPartnerVerified = false;
-                    mapping.AplosAccessToken = null;
-                    mapping.AplosAccessTokenExpiresAt = null;
                     isChanged = true;
                 }
             }

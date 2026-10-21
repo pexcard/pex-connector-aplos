@@ -993,6 +993,21 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public void Pex2AplosMappingModel_UpdateFromSettings_KeepsServerOwnedPartnerFields()
+        {
+            //Arrange
+            var mapping = new Pex2AplosMappingModel { AplosAccountId = "newAccountId", AplosPartnerVerified = false };
+            var settings = new Pex2AplosMappingModel { AplosAccountId = "oldAccountId", AplosPartnerVerified = true }.ToStorageModel();
+
+            //Act
+            mapping.UpdateFromSettings(settings);
+
+            //Assert
+            Assert.Equal("newAccountId", mapping.AplosAccountId);
+            Assert.False(mapping.AplosPartnerVerified);
+        }
+
+        [Fact]
         public void Pex2AplosMappingModel_SyncReimbursements_ContactNotRequired_WhenCreateContactEnabled()
         {
             //Arrange
@@ -1157,7 +1172,7 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task EnsurePartnerInfoPopulated_ResetsVerificationAndToken_WhenPartnerBusinessIdChanged()
+        public async Task EnsurePartnerInfoPopulated_ResetsVerification_WhenPartnerBusinessIdChanged()
         {
             //Arrange
             var mapping = GetVerifiedMapping();
@@ -1171,8 +1186,8 @@ namespace AplosConnector.Common.Tests
             //Assert
             Assert.Equal("newAccountId", mapping.AplosAccountId);
             Assert.False(mapping.AplosPartnerVerified);
-            Assert.Null(mapping.AplosAccessToken);
-            Assert.Null(mapping.AplosAccessTokenExpiresAt);
+            Assert.Equal("cachedToken", mapping.AplosAccessToken);
+            Assert.NotNull(mapping.AplosAccessTokenExpiresAt);
             _mockAplosApiClientFactory.Verify(factory => factory.CreateClient(
                 "newAccountId",
                 It.IsAny<string>(),
@@ -1182,6 +1197,42 @@ namespace AplosConnector.Common.Tests
                 It.IsAny<Func<AplosAuthModel, ILogger, CancellationToken, Task>>()), Times.Once);
             _mockMappingStorage.Verify(storage => storage.UpdateAsync(mapping, It.IsAny<CancellationToken>()), Times.Once);
             VerifyWarningLogged("Aplos partner ID mismatch for business 123: stored 'accountId', PEX 'newAccountId'", Times.Once());
+        }
+
+        [Theory]
+        [InlineData("ACCOUNTID")]
+        [InlineData(" accountId ")]
+        [InlineData("accountId\t")]
+        public async Task EnsurePartnerInfoPopulated_KeepsVerification_WhenPartnerBusinessIdDiffersOnlyByCaseOrWhitespace(string partnerBusinessId)
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            SetupGetPartner(mapping, partnerBusinessId);
+            AplosIntegrationService service = GetPartnerInfoService(applyPartnerBusinessIdChanges: true);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            AssertMappingUnchanged(mapping);
+            VerifyWarningLogged("Aplos partner ID mismatch", Times.Never());
+        }
+
+        [Fact]
+        public async Task EnsurePartnerInfoPopulated_StoresTrimmedPartnerBusinessId_WhenChangeApplied()
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            SetupGetPartner(mapping, " newAccountId ");
+            SetupUnauthorizedPartnerVerification();
+            AplosIntegrationService service = GetPartnerInfoService(applyPartnerBusinessIdChanges: true);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            Assert.Equal("newAccountId", mapping.AplosAccountId);
+            VerifyWarningLogged("PEX 'newAccountId'", Times.Once());
         }
 
         [Fact]
