@@ -136,11 +136,11 @@ public partial class AplosIntegrationService
 
             // Before any check that can stop a bill: a charge left unclaimed is booked as a purchase by the transaction sync.
             var claimFailures = await ClaimCardCharges(logger, mapping, aplosOriginated, cancellationToken);
+            failureCount += claimFailures.Count;
+            failureNotes.AddRange(claimFailures);
 
             if (claimOnly)
             {
-                failureCount += claimFailures.Count;
-                failureNotes.AddRange(claimFailures);
                 if (failureCount > 0) await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, cancellationToken);
                 return;
             }
@@ -829,7 +829,7 @@ public partial class AplosIntegrationService
 
     // The row is what the transaction sync trusts, so it is written first; the note marks the charge in PEX too. An
     // unreadable charge is noted anyway: an earlier purchase sync is still caught at pay time.
-    // Returns a note per charge that ended up with neither the row claim nor the note; only the import-off run reports them.
+    // Returns a note per charge that ended up with neither the row claim nor the note.
     private async Task<List<string>> ClaimCardCharges(
         ILogger logger,
         Pex2AplosMappingModel mapping,
@@ -871,7 +871,7 @@ public partial class AplosIntegrationService
 
             if (!rowClaimed && !noteClaimed)
             {
-                unclaimed.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: its card charge could not be held back while Sync outstanding bills is off, so it may be booked in Aplos as a purchase.");
+                unclaimed.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: its card charge could not be held back, so it may be booked in Aplos as a purchase.");
             }
         }
 

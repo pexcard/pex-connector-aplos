@@ -297,6 +297,27 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
         Assert.Single(_cardTransactionNotes);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AChargeThatCannotBeClaimedIsReportedWithTheImportOn(bool billPaymentsNotSetUp)
+    {
+        SeedUnpaidMapping();
+        SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(BillAmount, paid: 0m);
+        _billMappingStorage.FailNextWrite = true;
+        _mockPexApiClient
+            .Setup(client => client.AddTransactionNote(It.IsAny<string>(), It.IsAny<TransactionModel>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("PEX is unavailable."));
+
+        await RunBothSyncs(mapping =>
+        {
+            if (billPaymentsNotSetUp) mapping.BillPaymentsAchClearingAccountNumber = 0m;
+        });
+
+        Assert.Contains("could not be held back", Assert.Single(_historyRows, row => row.SyncType == SyncTypes.BillPayments).SyncNotes);
+    }
+
     [Fact]
     public async Task AnUnreadableClaimTableStopsTheTransactionSyncInsteadOfBookingBillCharges()
     {
