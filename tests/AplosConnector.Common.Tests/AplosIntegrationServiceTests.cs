@@ -9,6 +9,7 @@ using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services;
 using AplosConnector.Common.Storage;
 using AplosConnector.Common.Services.Abstractions;
+using Azure.Data.Tables;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -1135,7 +1136,153 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(FundingSource.Prepaid, result.PEXFundingSource);
         }
 
-        private AplosIntegrationService GetAplosIntegrationService()
+        [Fact]
+        public async Task EnsurePartnerInfoPopulated_KeepsVerification_WhenPartnerBusinessIdUnchanged()
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            _mockPexApiClient
+                .Setup(client => client.GetPartner(mapping.PEXExternalAPIToken, default))
+                .ReturnsAsync(new PartnerModel { PartnerBusinessId = "accountId" });
+
+            var mappingStorage = GetMockMappingStorage();
+            AplosIntegrationService service = GetAplosIntegrationService(mappingStorage.Object);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            Assert.Equal("accountId", mapping.AplosAccountId);
+            Assert.True(mapping.AplosPartnerVerified);
+            Assert.Equal("cachedToken", mapping.AplosAccessToken);
+            Assert.NotNull(mapping.AplosAccessTokenExpiresAt);
+            _mockPexApiClient.Verify(client => client.GetPartner(mapping.PEXExternalAPIToken, default), Times.Once);
+            _mockAplosApiClient.Verify(client => client.GetPartnerVerification(It.IsAny<CancellationToken>()), Times.Never);
+            mappingStorage.Verify(storage => storage.UpdateAsync(It.IsAny<Pex2AplosMappingModel>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task EnsurePartnerInfoPopulated_ResetsVerificationAndToken_WhenPartnerBusinessIdChanged()
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            _mockPexApiClient
+                .Setup(client => client.GetPartner(mapping.PEXExternalAPIToken, default))
+                .ReturnsAsync(new PartnerModel { PartnerBusinessId = "newAccountId" });
+            _mockAplosApiClient
+                .Setup(client => client.GetPartnerVerification(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AplosApiPartnerVerificationResponse
+                {
+                    Data = new AplosApiPartnerVerificationData { PartnerVerification = new AplosApiPartnerVerificationDetails { Authorized = false } }
+                });
+
+            var mappingStorage = GetMockMappingStorage();
+            AplosIntegrationService service = GetAplosIntegrationService(mappingStorage.Object);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            Assert.Equal("newAccountId", mapping.AplosAccountId);
+            Assert.False(mapping.AplosPartnerVerified);
+            Assert.Null(mapping.AplosAccessToken);
+            Assert.Null(mapping.AplosAccessTokenExpiresAt);
+            _mockAplosApiClientFactory.Verify(factory => factory.CreateClient(
+                "newAccountId",
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Uri>(),
+                It.IsAny<Func<ILogger, AplosAuthModel>>(),
+                It.IsAny<Func<AplosAuthModel, ILogger, CancellationToken, Task>>()), Times.Once);
+            mappingStorage.Verify(storage => storage.UpdateAsync(
+                It.Is<Pex2AplosMappingModel>(m => m.AplosAccountId == "newAccountId" && !m.AplosPartnerVerified && m.AplosAccessToken == null),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" ")]
+        public async Task EnsurePartnerInfoPopulated_KeepsStoredId_WhenPartnerBusinessIdBlank(string partnerBusinessId)
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            _mockPexApiClient
+                .Setup(client => client.GetPartner(mapping.PEXExternalAPIToken, default))
+                .ReturnsAsync(new PartnerModel { PartnerBusinessId = partnerBusinessId });
+
+            var mappingStorage = GetMockMappingStorage();
+            AplosIntegrationService service = GetAplosIntegrationService(mappingStorage.Object);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            Assert.Equal("accountId", mapping.AplosAccountId);
+            Assert.True(mapping.AplosPartnerVerified);
+            Assert.Equal("cachedToken", mapping.AplosAccessToken);
+            mappingStorage.Verify(storage => storage.UpdateAsync(It.IsAny<Pex2AplosMappingModel>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task EnsurePartnerInfoPopulated_KeepsStoredId_WhenGetPartnerThrows()
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            _mockPexApiClient
+                .Setup(client => client.GetPartner(mapping.PEXExternalAPIToken, default))
+                .ThrowsAsync(new Exception("PEX API unavailable"));
+
+            var mappingStorage = GetMockMappingStorage();
+            AplosIntegrationService service = GetAplosIntegrationService(mappingStorage.Object);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            Assert.Equal("accountId", mapping.AplosAccountId);
+            Assert.True(mapping.AplosPartnerVerified);
+            Assert.Equal("cachedToken", mapping.AplosAccessToken);
+            mappingStorage.Verify(storage => storage.UpdateAsync(It.IsAny<Pex2AplosMappingModel>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task EnsurePartnerInfoPopulated_Throws_WhenGetPartnerThrowsWithoutStoredId()
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            mapping.AplosAccountId = null;
+            _mockPexApiClient
+                .Setup(client => client.GetPartner(mapping.PEXExternalAPIToken, default))
+                .ThrowsAsync(new Exception("PEX API unavailable"));
+
+            AplosIntegrationService service = GetAplosIntegrationService(GetMockMappingStorage().Object);
+
+            //Act / Assert
+            await Assert.ThrowsAsync<Exception>(() => service.EnsurePartnerInfoPopulated(mapping, default));
+        }
+
+        private Pex2AplosMappingModel GetVerifiedMapping()
+        {
+            var mapping = GetMapping();
+            mapping.PEXBusinessAcctId = 123;
+            mapping.PEXExternalAPIToken = "pexToken";
+            mapping.AplosPartnerVerified = true;
+            mapping.AplosAccessToken = "cachedToken";
+            mapping.AplosAccessTokenExpiresAt = DateTime.UtcNow.AddHours(1);
+            return mapping;
+        }
+
+        private static Mock<Pex2AplosMappingStorage> GetMockMappingStorage()
+        {
+            var mappingStorage = new Mock<Pex2AplosMappingStorage>(MockBehavior.Loose, (TableClient)null, (IStorageMappingService)null, (ILogger)null);
+            mappingStorage
+                .Setup(storage => storage.UpdateAsync(It.IsAny<Pex2AplosMappingModel>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            return mappingStorage;
+        }
+
+        private AplosIntegrationService GetAplosIntegrationService(Pex2AplosMappingStorage mappingStorage = null)
         {
             _mockOptions.Setup(mockOptions => mockOptions.Value).Returns(new AppSettingsModel());
             _mockAplosApiClientFactory
@@ -1155,7 +1302,7 @@ namespace AplosConnector.Common.Tests
                 _mockAplosIntegrationMappingService.Object,
                 _mockPexApiClient.Object,
                 null,
-                null,
+                mappingStorage,
                 _mockSettings,
                 null,
                 Mock.Of<IAplosBillMappingStorage>(),
