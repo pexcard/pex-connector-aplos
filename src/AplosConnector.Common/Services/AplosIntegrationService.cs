@@ -126,17 +126,26 @@ namespace AplosConnector.Common.Services
             var partnerBusinessId = partnerInfo?.PartnerBusinessId;
             if (!string.IsNullOrWhiteSpace(partnerBusinessId) && partnerBusinessId != mapping.AplosAccountId)
             {
-                if (!string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+                if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
                 {
-                    // Partner Business ID changed in PEX; re-verify against the new org.
+                    mapping.AplosAccountId = partnerBusinessId;
+                    isChanged = true;
+                }
+                else if (!_appSettings.ApplyPartnerBusinessIdChanges)
+                {
+                    _logger.LogWarning($"Aplos partner ID mismatch (dry run) for business {mapping.PEXBusinessAcctId}: stored '{mapping.AplosAccountId}', PEX '{partnerBusinessId}'. Not applied because {nameof(_appSettings.ApplyPartnerBusinessIdChanges)} is false.");
+                }
+                else
+                {
+                    _logger.LogWarning($"Aplos partner ID mismatch for business {mapping.PEXBusinessAcctId}: stored '{mapping.AplosAccountId}', PEX '{partnerBusinessId}'. Applied; partner verification reset.");
+
+                    // Re-verify against the new org.
+                    mapping.AplosAccountId = partnerBusinessId;
                     mapping.AplosPartnerVerified = false;
                     mapping.AplosAccessToken = null;
                     mapping.AplosAccessTokenExpiresAt = null;
-                    _logger.LogInformation($"{nameof(mapping.AplosAccountId)} changed in PEX for business {mapping.PEXBusinessAcctId}. Partner verification reset.");
+                    isChanged = true;
                 }
-
-                mapping.AplosAccountId = partnerBusinessId;
-                isChanged = true;
             }
 
             if (_appSettings.EnforceAplosPartnerVerification && mapping.AplosAuthenticationMode == AplosAuthenticationMode.ClientAuthentication)

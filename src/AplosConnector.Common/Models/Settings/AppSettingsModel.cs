@@ -24,6 +24,7 @@ namespace AplosConnector.Common.Models.Settings
 
         public bool EnforceAplosPartnerVerification { get; set; }
         public Uri AplosPartnerVerificationUrl { get; set; }
+        public bool ApplyPartnerBusinessIdChanges { get; set; }
 
         public string AzureServiceBusUrl { get; set; }
         public string AzureServiceBusTopicName { get; set; }
