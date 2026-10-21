@@ -113,17 +113,16 @@ namespace AplosConnector.Common.Services
         {
             var isChanged = false;
 
-            PartnerModel partnerInfo = null;
+            string partnerBusinessId = null;
             try
             {
-                partnerInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken, cancellationToken);
+                partnerBusinessId = (await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken, cancellationToken))?.PartnerBusinessId;
             }
             catch (Exception ex) when (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && !cancellationToken.IsCancellationRequested)
             {
                 _logger.LogWarning(ex, $"Failed to refresh partner info for business {mapping.PEXBusinessAcctId}. Using the stored {nameof(mapping.AplosAccountId)}.");
             }
 
-            var partnerBusinessId = partnerInfo?.PartnerBusinessId;
             if (!string.IsNullOrWhiteSpace(partnerBusinessId) && partnerBusinessId != mapping.AplosAccountId)
             {
                 if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
