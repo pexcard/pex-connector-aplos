@@ -26,12 +26,12 @@ public class VendorCardRetryTests : VendorSetupTestBase
         Assert.Empty(CardOrders);
         Assert.Single(CreatedBillInbox);
         AssertReported($"The connector created the PEX vendor {ContactName} but could not record it");
-        Assert.DoesNotContain("has no linked PEX vendor card yet", Assert.Single(HistoryRows).SyncNotes);
+        Assert.DoesNotContain("The PEX vendor card for", Assert.Single(HistoryRows).SyncNotes);
     }
 
-    // The order may have gone through, so its card is never ordered again; the customer resolves it in PEX.
+    // The order may have gone through, so its card is never ordered again; the customer resolves it in PEX, told once.
     [Fact]
-    public async Task AnOrderThatMayHaveBeenPlacedIsReportedAndNeverReordered()
+    public async Task AnOrderThatMayHaveBeenPlacedIsReportedOnceAndNeverReordered()
     {
         PexApiClient
             .Setup(c => c.CreateVendorCardOrder(It.IsAny<string>(), It.IsAny<VendorCardCreateOrderRequestModel>(), It.IsAny<CancellationToken>()))
@@ -45,7 +45,7 @@ public class VendorCardRetryTests : VendorSetupTestBase
         await RunSync();
 
         Assert.Single(CardOrders);
-        AssertReported("vendor card order for Acme Supplies was not confirmed");
+        AssertSucceeded();
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class VendorCardRetryTests : VendorSetupTestBase
         SetupProvisionedCard(acctId: null);
 
         await RunSync();
-        AssertReported("has no linked PEX vendor card yet");
+        AssertReported("The PEX vendor card for Acme Supplies isn't ready yet; the connector finishes setting it up when the next bill for Acme Supplies is imported.");
         VerifyCardLinked(Times.Never());
 
         SetupProvisionedCard(CardAcctId);
@@ -98,6 +98,19 @@ public class VendorCardRetryTests : VendorSetupTestBase
     }
 
     [Fact]
+    public async Task AnOrderedCardStillUnlinkedAfterThreeDaysAsksTheCustomerToLinkIt()
+    {
+        SetupPexVendors(ConnectorVendor());
+        SeedCardOrder(cardAcctId: null, createdUtc: UtcNow.AddDays(-4));
+        SetupProvisionedCard(acctId: null);
+
+        await RunSync();
+
+        Assert.Empty(CardOrders);
+        AssertReported("A PEX vendor card ordered for Acme Supplies has not been linked. Check vendor cards in PEX and link it to the vendor.");
+    }
+
+    [Fact]
     public async Task AFailedLinkIsRetriedThroughTheStoredOrderId()
     {
         PexApiClient
@@ -106,7 +119,7 @@ public class VendorCardRetryTests : VendorSetupTestBase
             .ReturnsAsync(new VendorModel());
 
         await RunSync();
-        AssertReported("has no linked PEX vendor card yet");
+        AssertReported("The PEX vendor card for Acme Supplies isn't ready yet");
 
         SetupPexVendors(ConnectorVendor());
         await RunSync();
@@ -132,14 +145,14 @@ public class VendorCardRetryTests : VendorSetupTestBase
 
     // 148046 ordered and linked cards without writing rows, and GetVendors can't show whether a vendor has one.
     [Fact]
-    public async Task AnExistingConnectorVendorWithoutARowIsReportedAndNeverOrderedACard()
+    public async Task AnExistingConnectorVendorWithoutARowIsNeverOrderedACardOrReported()
     {
         SetupPexVendors(ConnectorVendor());
 
         await RunSync();
 
         Assert.Empty(CardOrders);
-        AssertReported("has no linked PEX vendor card yet");
+        AssertSucceeded();
     }
 
     [Fact]
@@ -152,7 +165,7 @@ public class VendorCardRetryTests : VendorSetupTestBase
 
         Assert.Empty(CardOrders);
         PexApiClient.Verify(c => c.AddVendorCard(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<AddVendorCardRequestModel>(), It.IsAny<CancellationToken>()), Times.Never);
-        AssertReported("has no linked PEX vendor card yet");
+        AssertSucceeded();
     }
 
     [Fact]
@@ -207,7 +220,7 @@ public class VendorCardRetryTests : VendorSetupTestBase
         await RunSync();
 
         VerifyCardLinked(Times.Once(), OtherVendorId, 322);
-        AssertReported("Acme Supplies has no linked PEX vendor card yet");
+        AssertReported("The PEX vendor card for Acme Supplies isn't ready yet");
     }
 
     [Fact]
@@ -224,7 +237,26 @@ public class VendorCardRetryTests : VendorSetupTestBase
         VerifyCardLinked(Times.Once());
         VerifyCardLinked(Times.Once(), OtherVendorId, 322);
         Assert.Equal(322, CardOrderStorage.Rows[(OtherContactId, OtherVendorId)].CardAcctId);
-        AssertReported("Acme Supplies has no linked PEX vendor card yet");
+        AssertReported("The PEX vendor card for Acme Supplies isn't ready yet");
+    }
+
+    [Fact]
+    public async Task AFailedReadOfANewOrderIsReadAgainAndTheCardLinkedThisRun()
+    {
+        PexApiClient
+            .SetupSequence(c => c.GetVendorCardOrder(It.IsAny<string>(), CardOrderId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("PEX unavailable"))
+            .ReturnsAsync(new VendorCardOrderResponseModel
+            {
+                CardOrderId = CardOrderId,
+                Cards = [new VendorCardOrderItemResponse { AcctId = CardAcctId, VendorName = ContactName }]
+            });
+
+        await RunSync();
+
+        VerifyCardLinked(Times.Once());
+        Assert.Equal(CardAcctId, CardOrderStorage.Rows[(ContactId, VendorId)].CardAcctId);
+        AssertSucceeded();
     }
 
     [Fact]

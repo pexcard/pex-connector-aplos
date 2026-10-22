@@ -319,16 +319,18 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
     }
 
     [Fact]
-    public async Task AnUnreadableClaimTableStopsTheTransactionSyncInsteadOfBookingBillCharges()
+    public async Task AnUnreadableClaimTableSyncsNoPurchasesAndSaysWhy()
     {
         SeedUnpaidMapping();
         SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
         _billMappingStorage.FailNextRead = true;
 
-        await Assert.ThrowsAnyAsync<Exception>(() =>
-            GetAplosIntegrationService().SyncTransactions(NullLogger.Instance, NewSyncMapping(), UtcNow, default));
+        await GetAplosIntegrationService().SyncTransactions(NullLogger.Instance, NewSyncMapping(), UtcNow, default);
 
         Assert.Empty(_createdAplosTransactions);
+        var historyRow = Assert.Single(_historyRows);
+        Assert.Equal((SyncTypes.Transactions, SyncStatus.Failed.ToString()), (historyRow.SyncType, historyRow.SyncStatus));
+        Assert.Contains("could not read its bill payment records", historyRow.SyncNotes);
     }
 
     private async Task<Pex2AplosMappingModel> RunBothSyncs(Action<Pex2AplosMappingModel> configureMapping = null)

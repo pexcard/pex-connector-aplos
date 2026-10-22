@@ -179,7 +179,7 @@ public abstract class VendorSetupTestBase
                 Cards = [new VendorCardOrderItemResponse { AcctId = acctId, VendorName = ContactName }, .. moreCards.Select(c => new VendorCardOrderItemResponse { AcctId = c.AcctId, VendorName = c.Name })]
             });
 
-    protected void SeedCardOrder(int? cardAcctId, int? orderId = CardOrderId, int contactId = ContactId, int vendorId = VendorId, string cardName = ContactName) =>
+    protected void SeedCardOrder(int? cardAcctId, int? orderId = CardOrderId, int contactId = ContactId, int vendorId = VendorId, string cardName = ContactName, DateTime? createdUtc = null) =>
         CardOrderStorage.Seed(new AplosVendorCardOrderModel
         {
             PEXBusinessAcctId = BusinessId,
@@ -188,7 +188,8 @@ public abstract class VendorSetupTestBase
             CardName = cardName,
             CardOrderId = orderId,
             CardAcctId = cardAcctId,
-            LinkedUtc = cardAcctId.HasValue ? UtcNow : null
+            LinkedUtc = cardAcctId.HasValue ? UtcNow : null,
+            CreatedUtc = createdUtc ?? UtcNow
         });
 
     protected void VerifyCardLinked(Times times, int vendorId = VendorId, int cardAcctId = CardAcctId) =>

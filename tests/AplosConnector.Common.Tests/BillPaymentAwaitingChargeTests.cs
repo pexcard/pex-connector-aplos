@@ -75,6 +75,26 @@ public class BillPaymentAwaitingChargeTests : BillPaymentsTestBase
         Assert.Contains("mark the bill paid in Aplos", history.SyncNotes);
     }
 
+    [Theory]
+    [InlineData("asset", "cash", false)]
+    [InlineData("liability", "operating", true)]
+    public async Task ALongWaitGivesTheFixForTheRailTheConnectorPaysWith(string category, string activity, bool transferOwed)
+    {
+        SeedUnpaidMapping(awaitingChargeSinceUtc: UtcNow.AddDays(-31));
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, hasPayoutDate: false, linkedCardCharge: false);
+        SetupLivePayable(BillAmount, paid: 0m);
+        _mockAplosApiClient
+            .Setup(client => client.GetAccount(PexFundsAccountNumber, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AplosApiAccountResponse
+            {
+                Data = new AplosApiAccountData { Account = new AplosApiAccountDetail { Name = "PEX", Category = category, Type = "Register", Activity = activity, IsEnabled = true } }
+            });
+
+        await RunSync(useBillPay: true, configure: mapping => mapping.PEXFundingSource = FundingSource.Credit);
+
+        Assert.Equal(transferOwed, Assert.Single(_historyRows).SyncNotes.Contains($"from clearing account {CardClearingAccountNumber}"));
+    }
+
     [Fact]
     public async Task ALongWaitIsNotReportedOnceTheBillIsPaidInAplos()
     {

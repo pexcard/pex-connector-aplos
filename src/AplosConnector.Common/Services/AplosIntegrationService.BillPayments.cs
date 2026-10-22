@@ -57,6 +57,19 @@ public partial class AplosIntegrationService
         var waiting = billMappings.Where(row => row.PaidSyncedUtc is null).ToList();
         var notReadyNote = $"{MissingClearingAccountsNote} Waiting: {DescribeBills(waiting)}.";
 
+        var syncCount = 0;
+        var failureCount = 0;
+        List<string> failureNotes = [];
+
+        // Claiming needs neither account, so an import-off run never asks for them.
+        void AddNotReadyNote()
+        {
+            if (claimOnly || ready || waiting.Count == 0 || failureNotes.Contains(notReadyNote)) return;
+
+            failureCount++;
+            failureNotes.Add(notReadyNote);
+        }
+
         var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
         var endDateUtc = GetEndDateUtc(mapping.EndDateUtc, utcNow);
         var (startDate, endDate) = GetEstDayWindow(startDateUtc, endDateUtc);
@@ -64,13 +77,10 @@ public partial class AplosIntegrationService
         if (startDate.Date >= endDate.Date)
         {
             logger.LogInformation($"Skipping sync bill payments for business {mapping.PEXBusinessAcctId}. Empty sync window {startDate:yyyy-MM-dd}..{endDate:yyyy-MM-dd}.");
-            if (!claimOnly && !ready && waiting.Count > 0) await WriteBillPaymentsHistory(mapping, 0, 1, [notReadyNote], cancellationToken);
+            AddNotReadyNote();
+            if (failureCount > 0) await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, cancellationToken);
             return;
         }
-
-        var syncCount = 0;
-        var failureCount = 0;
-        List<string> failureNotes = [];
 
         try
         {
@@ -152,10 +162,9 @@ public partial class AplosIntegrationService
                 if (waiting.Count > 0)
                 {
                     logger.LogWarning($"Business {mapping.PEXBusinessAcctId} has {waiting.Count} imported Aplos bills waiting to be marked paid, but its ACH bank account or PEX funds account is not configured.");
-                    failureCount++;
-                    failureNotes.Add(notReadyNote);
                 }
 
+                AddNotReadyNote();
                 await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, cancellationToken);
                 return;
             }
@@ -178,6 +187,10 @@ public partial class AplosIntegrationService
             Dictionary<int, PaymentStatusTrigger> achPaymentTriggers = null;
             List<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping)> readyToPay = [];
 
+            // Read once per run, and only when a card bill needs it.
+            CardRail cardRail = null;
+            async Task<CardRail> GetCardRailOnce() => cardRail ??= await GetCardRail(logger, mapping, cancellationToken);
+
             foreach (var (paymentRequest, billMapping) in aplosOriginated)
             {
                 if (billMapping.PaidSyncedUtc is not null)
@@ -188,7 +201,7 @@ public partial class AplosIntegrationService
 
                 if (paymentRequest.PayoutDate is null)
                 {
-                    var awaitingNote = await CheckAwaitingCardCharge(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken);
+                    var awaitingNote = await CheckAwaitingCardCharge(logger, mapping, billMapping, paymentRequest, GetCardRailOnce, utcNow, cancellationToken);
                     if (awaitingNote is not null)
                     {
                         failureCount++;
@@ -220,10 +233,9 @@ public partial class AplosIntegrationService
                 readyToPay.Add((paymentRequest, billMapping));
             }
 
-            CardRail cardRail = null;
             if (readyToPay.Any(bill => IsCardPayment(bill.PaymentRequest)))
             {
-                cardRail = await GetCardRail(logger, mapping, cancellationToken);
+                await GetCardRailOnce();
             }
 
             // Checked once per account per run, before any bill is paid. Aplos posts against whatever the number means
@@ -322,7 +334,7 @@ public partial class AplosIntegrationService
         {
             failureCount++;
             failureNotes.Add(DescribeFailure(ex));
-            if (!ready && waiting.Count > 0 && !failureNotes.Contains(notReadyNote)) failureNotes.Add(notReadyNote);
+            AddNotReadyNote();
             logger.LogError(ex, $"Failed to sync bill payments for business {mapping.PEXBusinessAcctId}.");
         }
 
@@ -656,6 +668,7 @@ public partial class AplosIntegrationService
         Pex2AplosMappingModel mapping,
         AplosBillMappingModel billMapping,
         BillPaymentRequestModel paymentRequest,
+        Func<Task<CardRail>> getCardRail,
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
@@ -688,10 +701,9 @@ public partial class AplosIntegrationService
         }
 
         logger.LogWarning($"PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId} has had no card charge linked since {billMapping.AwaitingChargeSinceUtc:O}.");
-        // The card rail isn't read for a bill with no charge, so the setting stands in for it.
-        var clearingAccountNumber = mapping.PEXFundingSource == FundingSource.Credit && mapping.BillPaymentsCardClearingAccountNumber > 0m
-            ? mapping.BillPaymentsCardClearingAccountNumber
-            : (decimal?)null;
+        // The fix follows the rail the connector pays with; an unreadable rail leaves the plain instruction.
+        var cardRail = await getCardRail();
+        var clearingAccountNumber = cardRail is { Error: null, TransferOwed: true } ? cardRail.AccountNumber : (decimal?)null;
         return $"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: PEX sent the vendor a card for this bill at least {waited.Days} days ago and has no charge on it yet (PEX payment {paymentRequest.PaymentRequestId}). If the vendor has charged it, {MarkPaidByHand(mapping, paymentRequest.Amount, clearingAccountNumber, "the bill")} and delete the expense if the sync booked one.";
     }
 

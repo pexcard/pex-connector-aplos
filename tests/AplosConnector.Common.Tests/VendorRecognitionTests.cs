@@ -52,7 +52,7 @@ public class VendorRecognitionTests : VendorSetupTestBase
 
         await RunSync();
         Assert.Empty(CardOrders);
-        AssertReported("has no linked PEX vendor card yet");
+        AssertReported("The PEX vendor card for Acme Supplies isn't ready yet; the connector finishes setting it up when the next bill for Acme Supplies is imported.");
 
         SetupPexVendors(ListedVendor());
         await RunSync();
