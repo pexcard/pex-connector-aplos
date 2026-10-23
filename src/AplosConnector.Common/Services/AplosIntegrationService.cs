@@ -113,11 +113,36 @@ namespace AplosConnector.Common.Services
         {
             var isChanged = false;
 
-            if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+            string partnerBusinessId = null;
+            try
             {
-                var partnerInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken, cancellationToken);
-                mapping.AplosAccountId = partnerInfo.PartnerBusinessId;
-                isChanged |= !string.IsNullOrWhiteSpace(mapping.AplosAccountId);
+                partnerBusinessId = (await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken, cancellationToken))?.PartnerBusinessId?.Trim();
+            }
+            catch (Exception ex) when (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && !cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, $"Failed to refresh partner info for business {mapping.PEXBusinessAcctId}. Using the stored {nameof(mapping.AplosAccountId)}.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(partnerBusinessId) && !string.Equals(partnerBusinessId, mapping.AplosAccountId?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+                {
+                    mapping.AplosAccountId = partnerBusinessId;
+                    isChanged = true;
+                }
+                else if (!_appSettings.ApplyPartnerBusinessIdChanges)
+                {
+                    _logger.LogWarning($"Aplos partner ID mismatch (dry run) for business {mapping.PEXBusinessAcctId}: stored '{mapping.AplosAccountId}', PEX '{partnerBusinessId}'. Not applied because {nameof(_appSettings.ApplyPartnerBusinessIdChanges)} is false.");
+                }
+                else
+                {
+                    _logger.LogWarning($"Aplos partner ID mismatch for business {mapping.PEXBusinessAcctId}: stored '{mapping.AplosAccountId}', PEX '{partnerBusinessId}'. Applied; partner verification reset.");
+
+                    // Re-verify against the new org; the cached token isn't org-specific.
+                    mapping.AplosAccountId = partnerBusinessId;
+                    mapping.AplosPartnerVerified = false;
+                    isChanged = true;
+                }
             }
 
             if (_appSettings.EnforceAplosPartnerVerification && mapping.AplosAuthenticationMode == AplosAuthenticationMode.ClientAuthentication)
@@ -784,7 +809,10 @@ namespace AplosConnector.Common.Services
             return taxTags.Where(c => c.Type == "expense");
         }
 
-        public async Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        public Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+            => RefreshBusinessSettings(mapping, persistChanges: true, cancellationToken);
+
+        public async Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, bool persistChanges, CancellationToken cancellationToken)
         {
             BusinessSettingsModel businessSettings;
             try
@@ -817,13 +845,19 @@ namespace AplosConnector.Common.Services
             if (mapping.SyncReimbursements && !businessSettings.UseReimbursements)
             {
                 mapping.SyncReimbursements = false;
-                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                if (persistChanges)
+                {
+                    await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                }
             }
 
             if (mapping.SyncOutstandingBills && !businessSettings.UseBillPay)
             {
                 mapping.SyncOutstandingBills = false;
-                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                if (persistChanges)
+                {
+                    await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                }
             }
 
             return mapping;

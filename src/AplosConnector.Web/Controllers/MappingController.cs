@@ -12,12 +12,15 @@ using PexCard.Api.Client.Core.Models;
 using System.Threading;
 using AplosConnector.Common.Storage;
 using AplosConnector.Common.Services;
+using Azure;
 
 namespace AplosConnector.Web.Controllers
 {
     [Route("api/[controller]")]
     public partial class MappingController : Controller
     {
+        private const int SaveSettingsMaxAttempts = 3;
+
         private readonly PexOAuthSessionStorage _pexOAuthSessionStorage;
         private readonly Pex2AplosMappingStorage _pex2AplosMappingStorage;
         private readonly SyncHistoryStorage _syncHistoryStorage;
@@ -70,12 +73,24 @@ namespace AplosConnector.Web.Controllers
 
             var pexAcctId = session.PEXBusinessAcctId;
 
-            var mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(pexAcctId, cancellationToken);
-            mapping.UpdateFromSettings(settings);
+            // Save only if the row is unchanged since the read, so a partner ID refreshed meanwhile isn't reverted.
+            for (var attempt = 1; ; attempt++)
+            {
+                var (mapping, eTag) = await _pex2AplosMappingStorage.GetByBusinessAcctIdWithETagAsync(pexAcctId, cancellationToken);
+                mapping.UpdateFromSettings(settings);
 
-            await _aplosIntegrationService.RefreshBusinessSettings(mapping, cancellationToken);
+                // In memory only; a write here would change the ETag and fail the conditional save below.
+                await _aplosIntegrationService.RefreshBusinessSettings(mapping, persistChanges: false, cancellationToken);
 
-            await _pex2AplosMappingStorage.UpdateAsync(mapping, cancellationToken);
+                try
+                {
+                    await _pex2AplosMappingStorage.UpdateAsync(mapping, eTag, cancellationToken);
+                    break;
+                }
+                catch (RequestFailedException ex) when (ex.Status == StatusCodes.Status412PreconditionFailed && attempt < SaveSettingsMaxAttempts)
+                {
+                }
+            }
 
             return Ok();
         }
