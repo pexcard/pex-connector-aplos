@@ -809,7 +809,10 @@ namespace AplosConnector.Common.Services
             return taxTags.Where(c => c.Type == "expense");
         }
 
-        public async Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        public Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+            => RefreshBusinessSettings(mapping, persistChanges: true, cancellationToken);
+
+        public async Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, bool persistChanges, CancellationToken cancellationToken)
         {
             BusinessSettingsModel businessSettings;
             try
@@ -842,13 +845,19 @@ namespace AplosConnector.Common.Services
             if (mapping.SyncReimbursements && !businessSettings.UseReimbursements)
             {
                 mapping.SyncReimbursements = false;
-                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                if (persistChanges)
+                {
+                    await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                }
             }
 
             if (mapping.SyncOutstandingBills && !businessSettings.UseBillPay)
             {
                 mapping.SyncOutstandingBills = false;
-                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                if (persistChanges)
+                {
+                    await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                }
             }
 
             return mapping;

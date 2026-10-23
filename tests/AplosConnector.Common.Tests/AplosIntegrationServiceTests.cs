@@ -1112,6 +1112,30 @@ namespace AplosConnector.Common.Tests
             Assert.False(result.UseReimbursementsEnabled);
         }
 
+        [Theory]
+        [InlineData(true, 1)]
+        [InlineData(false, 0)]
+        public async Task RefreshBusinessSettings_TurnsOffDisabledReimbursements_PersistingOnlyWhenAsked(bool persistChanges, int expectedWrites)
+        {
+            //Arrange
+            var mapping = GetMapping();
+            mapping.PEXFundingSource = FundingSource.Prepaid;
+            mapping.SyncReimbursements = true;
+
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessSettings(mapping.PEXExternalAPIToken, default))
+                .ReturnsAsync(new BusinessSettingsModel { FundingSource = FundingSource.Prepaid, UseReimbursements = false });
+
+            AplosIntegrationService service = GetAplosIntegrationService(_mockMappingStorage.Object);
+
+            //Act
+            var result = await service.RefreshBusinessSettings(mapping, persistChanges, default);
+
+            //Assert
+            Assert.False(result.SyncReimbursements);
+            _mockMappingStorage.Verify(storage => storage.UpdateAsync(mapping, It.IsAny<CancellationToken>()), Times.Exactly(expectedWrites));
+        }
+
         [Fact]
         public async Task RefreshBusinessSettings_DoesNotOverwriteFundingSource_WhenAlreadySet()
         {

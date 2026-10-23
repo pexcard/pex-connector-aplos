@@ -79,7 +79,8 @@ namespace AplosConnector.Web.Controllers
                 var (mapping, eTag) = await _pex2AplosMappingStorage.GetByBusinessAcctIdWithETagAsync(pexAcctId, cancellationToken);
                 mapping.UpdateFromSettings(settings);
 
-                await _aplosIntegrationService.RefreshBusinessSettings(mapping, cancellationToken);
+                // In memory only; a write here would change the ETag and fail the conditional save below.
+                await _aplosIntegrationService.RefreshBusinessSettings(mapping, persistChanges: false, cancellationToken);
 
                 try
                 {

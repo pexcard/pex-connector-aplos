@@ -102,10 +102,10 @@ namespace AplosConnector.Web.Tests
 
         private static IAplosIntegrationService GetIntegrationService()
         {
-            var integration = new Mock<IAplosIntegrationService>();
+            var integration = new Mock<IAplosIntegrationService>(MockBehavior.Strict);
             integration
-                .Setup(s => s.RefreshBusinessSettings(It.IsAny<Pex2AplosMappingModel>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Pex2AplosMappingModel mapping, CancellationToken _) => mapping);
+                .Setup(s => s.RefreshBusinessSettings(It.IsAny<Pex2AplosMappingModel>(), false, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Pex2AplosMappingModel mapping, bool _, CancellationToken _) => mapping);
             return integration.Object;
         }
 
