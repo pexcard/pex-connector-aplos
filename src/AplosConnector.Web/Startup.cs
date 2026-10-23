@@ -32,7 +32,6 @@ using Azure.Data.Tables;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Azure.Storage.Queues;
 using Azure.Identity;
-using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using AplosConnector.Common.Correlation;
 using AplosConnector.Common.Tracing;
 using AplosConnector.Web.Telemetry;
@@ -71,14 +70,6 @@ namespace AplosConnector.Web
             services
                 .AddControllers()
                 .AddNewtonsoftJson();
-
-            // App Insights stays alongside OTel until the follow-up removal; its logger provider is the only path for logs into it, so it is kept.
-            var applicationInsightsKey = _configuration.GetValue<string>("ApplicationInsightsKey");
-            services.AddApplicationInsightsTelemetry(new ApplicationInsightsServiceOptions
-            {
-                InstrumentationKey = applicationInsightsKey,
-                EnableAdaptiveSampling = false,
-            });
 
             // One summary record per request, honoring [NoLog]; UseHttpLogging runs after UseRouting.
             services.AddPexHttpLogging();

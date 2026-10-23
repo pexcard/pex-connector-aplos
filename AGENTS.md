@@ -237,7 +237,6 @@ The core configuration entity that links a PEX business account to an Aplos orga
 | Azure Blob Storage | Data protection key storage |
 | Azure Key Vault | Secret management, encryption certificates; a shared vault supplies the Sumo OTLP endpoint |
 | Azure Service Bus | Token expiration event messaging (`token.expired` topic) |
-| Application Insights | Legacy telemetry, running alongside OpenTelemetry until it is removed |
 | Azure Functions v4 | Background worker hosting |
 
 ### Observability (OpenTelemetry → Sumo Logic)

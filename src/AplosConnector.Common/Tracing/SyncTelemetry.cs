@@ -14,7 +14,7 @@ public static class SyncTelemetry
 
     public static readonly ActivitySource ActivitySource = new(ActivitySourceName);
 
-    // Log scopes keep their existing keys so App Insights queries still match; spans get the fleet's pex.* names.
+    // Log scopes keep their existing keys; spans get the fleet's pex.* names.
     private static readonly IReadOnlyDictionary<string, string> SpanTagNames = new Dictionary<string, string>
     {
         ["BusinessAccountId"] = DiagnosticNames.BusinessPlatformAccountId,
