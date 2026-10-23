@@ -39,8 +39,8 @@
     <PackageReference Include="OpenTelemetry.Resources.Azure" Version="1.15.1-beta.1" />
     <PackageReference Include="PexCard.Api.Client.Core" Version="1.108.0" />
     <PackageReference Include="PexCard.Shared.Encryption.AspNetCore" Version="2026.1.15.1" />
-    <PackageReference Include="PexCard.Shared.OpenTelemetry" Version="2026.6.15.1" />
-    <PackageReference Include="PexCard.Shared.OpenTelemetry.AspNetCore" Version="2026.6.15.1" />
+    <PackageReference Include="PexCard.Shared.OpenTelemetry" Version="2026.9.14.1" />
+    <PackageReference Include="PexCard.Shared.OpenTelemetry.AspNetCore" Version="2026.9.14.1" />
     <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.13" />
     <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
   </ItemGroup>
