@@ -55,6 +55,7 @@ public class ClearingMarkerTests : CardChargeTransferTestBase
     public async Task ALostClearingMarkerLeavesThePayableUnpaid()
     {
         SetupCardBill(CreditCardAccount);
+        _billMappingStorage.Rows.Values.Single().CardTransactionId = VendorCardTransactionId;
         _billMappingStorage.FailNextWrite = true;
 
         await RunCardSync();

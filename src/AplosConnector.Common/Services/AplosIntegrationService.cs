@@ -1051,6 +1051,30 @@ namespace AplosConnector.Common.Services
             var syncCount = 0;
             var failureCount = 0;
 
+            // Unreadable means not synced this run: the bill stage reads the same table, so a charge linked since the last run
+            // has neither a row nor a note yet, and would be booked as a purchase next to its payable.
+            HashSet<long> claimedCardCharges;
+            try
+            {
+                claimedCardCharges = (await _billMappingStorage.GetByBusinessAsync(mapping.PEXBusinessAcctId, cancellationToken) ?? [])
+                    .Where(row => row.CardTransactionId is not null)
+                    .Select(row => row.CardTransactionId.Value)
+                    .ToHashSet();
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, $"Failed to read the bill mappings for business {mapping.PEXBusinessAcctId}, so its transactions were not synced this run.");
+                await _historyStorage.CreateAsync(new SyncResultModel
+                {
+                    PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                    SyncType = SyncTypes.Transactions,
+                    SyncStatus = SyncStatus.Failed.ToString(),
+                    SyncedRecords = 0,
+                    SyncNotes = "Purchases were not synced this run: the connector could not read its bill payment records, which it needs so a bill's card charge isn't booked twice. Retried on the next sync."
+                }, cancellationToken);
+                return [];
+            }
+
             var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
             var aplosAccountCategory = GetAplosAccountCategory();
             var aplosExpenseAccounts = (await GetAplosAccounts(mapping, aplosAccountCategory, cancellationToken)).ToList();
@@ -1106,7 +1130,7 @@ namespace AplosConnector.Common.Services
 
                 var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, includeVendorBillPay: true, cancelToken: cancellationToken);
                 allCardholderTransactions.AddRange(cardholderTransactions);
-                var transactions = FilterCardholderTransactions(mapping, cardholderTransactions).ToList();
+                var transactions = FilterCardholderTransactions(mapping, cardholderTransactions, claimedCardCharges).ToList();
 
                 _logger.LogInformation($"Syncing {transactions.Count} filtered transactions for business: {mapping.PEXBusinessAcctId}");
 
@@ -1389,10 +1413,15 @@ namespace AplosConnector.Common.Services
             return AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE;
         }
 
-        private static IEnumerable<TransactionModel> FilterCardholderTransactions(Pex2AplosMappingModel mapping, CardholderTransactions transactions)
+        private static IEnumerable<TransactionModel> FilterCardholderTransactions(Pex2AplosMappingModel mapping, CardholderTransactions transactions, IReadOnlySet<long> claimedCardCharges)
         {
             foreach (var transaction in transactions.SelectTransactionsToSync(mapping.SyncApprovedOnly))
             {
+                if (claimedCardCharges.Contains(transaction.TransactionId))
+                {
+                    continue;
+                }
+
                 if (transaction.TransactionNotes.Any(x => x.NoteText.Contains(PexCardConst.OLD_SyncedWithAplosNote)))
                 {
                     continue;

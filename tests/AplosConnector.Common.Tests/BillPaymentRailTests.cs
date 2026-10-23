@@ -249,10 +249,9 @@ public class BillPaymentRailTests : BillPaymentsTestBase
         Assert.Equal("1010", Assert.Single(accounts).Id);
     }
 
-    // Checked before the card charge is marked: a marker written for a payment that is then refused would hide the
-    // charge from the transaction sync with nothing booked in its place.
+    // The payable already carries the expense, so a charge the transaction sync booked as well would double it.
     [Fact]
-    public async Task ABrokenCardRailAccountLeavesTheCardChargeUnmarked()
+    public async Task ABrokenCardRailAccountStillClaimsTheCardCharge()
     {
         SeedUnpaidMapping();
         SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
@@ -263,8 +262,10 @@ public class BillPaymentRailTests : BillPaymentsTestBase
 
         VerifyNoPayCall();
         Assert.Contains($"the account that represents your PEX funds ({PexFundsAccountNumber}) could not be found", Assert.Single(_historyRows).SyncNotes);
-        Assert.Empty(_cardTransactionNotes);
-        Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        Assert.Contains(AplosIntegrationService.SyncedAsBillPaymentNote, Assert.Single(_cardTransactionNotes));
+        var row = Assert.Single(_billMappingStorage.Rows.Values);
+        Assert.Equal(VendorCardTransactionId, row.CardTransactionId);
+        Assert.Null(row.PaidSyncedUtc);
     }
 
     [Fact]

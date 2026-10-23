@@ -12,6 +12,8 @@ public interface IAplosVendorCardOrderStorage
 
     Task AddAsync(AplosVendorCardOrderModel model, CancellationToken cancellationToken);
 
+    Task MarkOrderRequestedAsync(AplosVendorCardOrderModel model, string cardName, CancellationToken cancellationToken);
+
     Task SetOrderIdAsync(AplosVendorCardOrderModel model, int cardOrderId, CancellationToken cancellationToken);
 
     Task MarkLinkedAsync(AplosVendorCardOrderModel model, int cardAcctId, DateTime linkedUtc, CancellationToken cancellationToken);

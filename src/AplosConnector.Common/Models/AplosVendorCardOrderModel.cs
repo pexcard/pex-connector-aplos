@@ -7,6 +7,7 @@ public class AplosVendorCardOrderModel
     public int PEXBusinessAcctId { get; set; }
     public int AplosContactId { get; set; }
     public int PexVendorId { get; set; }
+    // Null until a card is about to be ordered, so a row without one has never had a card ordered.
     public string CardName { get; set; }
     // Null when the order was attempted but its id never got recorded; such a card is never re-ordered.
     public int? CardOrderId { get; set; }
