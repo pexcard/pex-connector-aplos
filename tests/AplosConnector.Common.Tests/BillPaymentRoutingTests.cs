@@ -66,6 +66,26 @@ public class BillPaymentRoutingTests : BillPaymentsTestBase
     }
 
     [Fact]
+    public async Task ACardChargePexCannotReturnYetHoldsTheBillInsteadOfMarkingItPaid()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(BillAmount, paid: 0m);
+        _mockPexApiClient
+            .Setup(client => client.GetCardholderPurchase(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((TransactionResultModel)null);
+
+        await RunSync(useBillPay: true);
+
+        Assert.Empty(_payments);
+        Assert.Contains(AplosIntegrationService.SyncedAsBillPaymentNote, Assert.Single(_cardTransactionNotes));
+        Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        var notes = Assert.Single(_historyRows, row => row.SyncType == SyncTypes.BillPayments).SyncNotes;
+        Assert.Contains("could not be read from PEX yet", notes);
+        Assert.DoesNotContain("retried on the next sync", notes);
+    }
+
+    [Fact]
     public async Task ACardPaidBillWithNoSettlementLinkIsNotMarkedPaid()
     {
         SeedUnpaidMapping();
@@ -168,7 +188,7 @@ public class BillPaymentRoutingTests : BillPaymentsTestBase
 
         Assert.Single(_payments);
         Assert.Empty(_cardTransactionNotes);
-        _mockPexApiClient.Verify(client => client.GetCardholderTransaction(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockPexApiClient.Verify(client => client.GetCardholderPurchase(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Contains("Paid via ACH", Assert.Single(_relationshipNotes));
     }
 

@@ -27,6 +27,7 @@ namespace AplosConnector.Common.Entities
             ReversedUtc = model.ReversedUtc?.ToUniversalTime();
             AwaitingChargeSinceUtc = model.AwaitingChargeSinceUtc?.ToUniversalTime();
             PaidFromClearingAccountNumber = (double?)model.PaidFromClearingAccountNumber;
+            CardTransactionId = model.CardTransactionId;
             CreatedUtc = model.CreatedUtc.ToUniversalTime();
         }
 
@@ -41,6 +42,7 @@ namespace AplosConnector.Common.Entities
         public DateTime? ReversedUtc { get; set; }
         public DateTime? AwaitingChargeSinceUtc { get; set; }
         public double? PaidFromClearingAccountNumber { get; set; }
+        public long? CardTransactionId { get; set; }
         public DateTime CreatedUtc { get; set; }
 
         public AplosBillMappingModel ToModel()
@@ -58,6 +60,7 @@ namespace AplosConnector.Common.Entities
                 ReversedUtc = ReversedUtc,
                 AwaitingChargeSinceUtc = AwaitingChargeSinceUtc,
                 PaidFromClearingAccountNumber = (decimal?)PaidFromClearingAccountNumber,
+                CardTransactionId = CardTransactionId,
                 CreatedUtc = CreatedUtc
             };
         }

@@ -92,6 +92,7 @@ public abstract class BillPaymentReversalTestBase
         EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
         // Set by Sync's run-level settings refresh.
         UseBillPayEnabled = true,
+        SyncOutstandingBills = true,
         BillPaymentsAchClearingAccountNumber = CashAccountNumber,
         AplosRegisterAccountNumber = CashAccountNumber
     };
@@ -343,6 +344,12 @@ public abstract class BillPaymentReversalTestBase
         public Task ClearPaidFromClearingAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
         {
             model.PaidFromClearingAccountNumber = null;
+            return UpsertAsync(model, cancellationToken);
+        }
+
+        public Task MarkCardChargeClaimedAsync(AplosBillMappingModel model, long cardTransactionId, CancellationToken cancellationToken)
+        {
+            model.CardTransactionId = cardTransactionId;
             return UpsertAsync(model, cancellationToken);
         }
 

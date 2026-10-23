@@ -43,21 +43,31 @@ public partial class AplosIntegrationService
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        // Runs whatever the import toggle says now: an imported bill's payment is always written back. Sync refreshed the
-        // business settings before any stage.
+        // Sync refreshed the business settings before any stage, so a PEX Bill Pay turned off has already cleared the toggle.
         if (!mapping.UseBillPayEnabled) return;
+
+        // With the import off nothing is written to Aplos, but a bill imported earlier and paid since still has its card charge
+        // claimed, or the transaction sync books it as a purchase. Turning the import on again marks the payable paid.
+        var claimOnly = !mapping.SyncOutstandingBills;
 
         var billMappings = await _billMappingStorage.GetByBusinessAsync(mapping.PEXBusinessAcctId, cancellationToken);
         if (billMappings.Count == 0) return;
 
-        if (!BillPayReady(mapping))
-        {
-            var waiting = billMappings.Where(row => row.PaidSyncedUtc is null).ToList();
-            if (waiting.Count == 0) return;
+        var ready = BillPayReady(mapping);
+        var waiting = billMappings.Where(row => row.PaidSyncedUtc is null).ToList();
+        var notReadyNote = $"{MissingClearingAccountsNote} Waiting: {DescribeBills(waiting)}.";
 
-            logger.LogWarning($"Business {mapping.PEXBusinessAcctId} has {waiting.Count} imported Aplos bills waiting to be marked paid, but its ACH bank account or PEX funds account is not configured.");
-            await WriteBillPaymentsHistory(mapping, 0, 1, [$"{MissingClearingAccountsNote} Waiting: {DescribeBills(waiting)}."], cancellationToken);
-            return;
+        var syncCount = 0;
+        var failureCount = 0;
+        List<string> failureNotes = [];
+
+        // Claiming needs neither account, so an import-off run never asks for them.
+        void AddNotReadyNote()
+        {
+            if (claimOnly || ready || waiting.Count == 0 || failureNotes.Contains(notReadyNote)) return;
+
+            failureCount++;
+            failureNotes.Add(notReadyNote);
         }
 
         var startDateUtc = GetStartDateUtc(mapping, utcNow, _syncSettings);
@@ -67,12 +77,10 @@ public partial class AplosIntegrationService
         if (startDate.Date >= endDate.Date)
         {
             logger.LogInformation($"Skipping sync bill payments for business {mapping.PEXBusinessAcctId}. Empty sync window {startDate:yyyy-MM-dd}..{endDate:yyyy-MM-dd}.");
+            AddNotReadyNote();
+            if (failureCount > 0) await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, cancellationToken);
             return;
         }
-
-        var syncCount = 0;
-        var failureCount = 0;
-        List<string> failureNotes = [];
 
         try
         {
@@ -136,6 +144,31 @@ public partial class AplosIntegrationService
 
             logger.LogInformation($"Business {mapping.PEXBusinessAcctId} has {aplosOriginated.Count} paid Aplos-originated bills and {reversed.Count} reversed bill payments in {fetchFrom:yyyy-MM-dd}..{endDate:yyyy-MM-dd}.");
 
+            // Before any check that can stop a bill: a charge left unclaimed is booked as a purchase by the transaction sync.
+            var claimFailures = await ClaimCardCharges(logger, mapping, aplosOriginated, cancellationToken);
+            failureCount += claimFailures.Count;
+            failureNotes.AddRange(claimFailures);
+
+            if (claimOnly)
+            {
+                if (failureCount > 0) await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, cancellationToken);
+                return;
+            }
+
+            if (!ready)
+            {
+                if (waiting.Count == 0 && failureCount == 0) return;
+
+                if (waiting.Count > 0)
+                {
+                    logger.LogWarning($"Business {mapping.PEXBusinessAcctId} has {waiting.Count} imported Aplos bills waiting to be marked paid, but its ACH bank account or PEX funds account is not configured.");
+                }
+
+                AddNotReadyNote();
+                await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, cancellationToken);
+                return;
+            }
+
             foreach (var (paymentRequest, billMapping) in reversed)
             {
                 try
@@ -154,6 +187,10 @@ public partial class AplosIntegrationService
             Dictionary<int, PaymentStatusTrigger> achPaymentTriggers = null;
             List<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping)> readyToPay = [];
 
+            // Read once per run, and only when a card bill needs it.
+            CardRail cardRail = null;
+            async Task<CardRail> GetCardRailOnce() => cardRail ??= await GetCardRail(logger, mapping, cancellationToken);
+
             foreach (var (paymentRequest, billMapping) in aplosOriginated)
             {
                 if (billMapping.PaidSyncedUtc is not null)
@@ -164,7 +201,7 @@ public partial class AplosIntegrationService
 
                 if (paymentRequest.PayoutDate is null)
                 {
-                    var awaitingNote = await CheckAwaitingCardCharge(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken);
+                    var awaitingNote = await CheckAwaitingCardCharge(logger, mapping, billMapping, paymentRequest, GetCardRailOnce, utcNow, cancellationToken);
                     if (awaitingNote is not null)
                     {
                         failureCount++;
@@ -196,10 +233,9 @@ public partial class AplosIntegrationService
                 readyToPay.Add((paymentRequest, billMapping));
             }
 
-            CardRail cardRail = null;
             if (readyToPay.Any(bill => IsCardPayment(bill.PaymentRequest)))
             {
-                cardRail = await GetCardRail(logger, mapping, cancellationToken);
+                await GetCardRailOnce();
             }
 
             // Checked once per account per run, before any bill is paid. Aplos posts against whatever the number means
@@ -288,10 +324,8 @@ public partial class AplosIntegrationService
                     }
 
                     var retryUntil = ((billMapping.FirstFailedUtc ?? utcNow) + BillPaymentRetryWindow).ToEstCalendarDate();
-                    var byHand = transferOwed
-                        ? $"mark it paid in Aplos by hand from clearing account {cashAccountNumber} and post {paymentRequest.Amount:0.00} as debit {cashAccountNumber} / credit {mapping.AplosRegisterAccountNumber}"
-                        : "it must be marked paid in Aplos by hand";
-                    var retry = ex is CardChargeTransferException ? "" : $" Retried until {retryUntil:yyyy-MM-dd}, then {byHand}.";
+                    var byHand = MarkPaidByHand(mapping, paymentRequest.Amount, transferOwed ? cashAccountNumber : null);
+                    var retry = ex is CardChargeTransferException or ManualFixRequiredException ? "" : $" Retried until {retryUntil:yyyy-MM-dd}, then {byHand}.";
                     failureNotes.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: {DescribeFailure(ex)}{retry}");
                 }
             }
@@ -300,6 +334,7 @@ public partial class AplosIntegrationService
         {
             failureCount++;
             failureNotes.Add(DescribeFailure(ex));
+            AddNotReadyNote();
             logger.LogError(ex, $"Failed to sync bill payments for business {mapping.PEXBusinessAcctId}.");
         }
 
@@ -380,16 +415,18 @@ public partial class AplosIntegrationService
 
         if (IsCardPayment(paymentRequest))
         {
+            var byHand = MarkPaidByHand(mapping, paymentRequest.Amount, transferOwed ? clearingAccountNumber : null);
+
             if (cardTransactionId is null)
             {
-                throw UnlinkedCardPayment(logger, mapping, paymentRequest, utcNow);
+                throw UnlinkedCardPayment(logger, mapping, paymentRequest, utcNow, byHand);
             }
 
-            var cardCharge = await _pexApiClient.GetCardholderTransaction(mapping.PEXExternalAPIToken, cardTransactionId.Value, cancellationToken);
+            var cardCharge = await GetCardCharge(mapping, cardTransactionId.Value, cancellationToken);
 
             if (HasNote(cardCharge, GetSyncedNote(cardTransactionId.Value)))
             {
-                throw new InvalidOperationException($"its card charge is already booked in Aplos as a card purchase (PEX transaction {cardTransactionId}), so the payable was not marked paid. Mark it paid in Aplos and delete that expense.");
+                throw new ManualFixRequiredException($"its card charge is already booked in Aplos as a card purchase (PEX transaction {cardTransactionId}), so the payable was not marked paid. Delete that expense in Aplos and {byHand}.");
             }
 
             // Marked before paying: a marker lost after a successful pay would let the transaction sync book the charge too.
@@ -631,6 +668,7 @@ public partial class AplosIntegrationService
         Pex2AplosMappingModel mapping,
         AplosBillMappingModel billMapping,
         BillPaymentRequestModel paymentRequest,
+        Func<Task<CardRail>> getCardRail,
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
@@ -663,7 +701,10 @@ public partial class AplosIntegrationService
         }
 
         logger.LogWarning($"PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId} has had no card charge linked since {billMapping.AwaitingChargeSinceUtc:O}.");
-        return $"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: PEX sent the vendor a card for this bill at least {waited.Days} days ago and has no charge on it yet. If the vendor has charged it, mark the bill paid in Aplos and delete the expense if the sync booked one.";
+        // The fix follows the rail the connector pays with; an unreadable rail leaves the plain instruction.
+        var cardRail = await getCardRail();
+        var clearingAccountNumber = cardRail is { Error: null, TransferOwed: true } ? cardRail.AccountNumber : (decimal?)null;
+        return $"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: PEX sent the vendor a card for this bill at least {waited.Days} days ago and has no charge on it yet (PEX payment {paymentRequest.PaymentRequestId}). If the vendor has charged it, {MarkPaidByHand(mapping, paymentRequest.Amount, clearingAccountNumber, "the bill")} and delete the expense if the sync booked one.";
     }
 
     private static bool HasStoppedRetrying(AplosBillMappingModel billMapping, DateTime utcNow)
@@ -785,12 +826,69 @@ public partial class AplosIntegrationService
     private static bool HasNote(TransactionResultModel transaction, string noteText)
         => transaction?.Notes?.Any(note => note.Content?.Contains(noteText, StringComparison.OrdinalIgnoreCase) == true) == true;
 
+    // Card charges are purchases; the by-id transaction endpoint covers only funding and fees. The purchases index can
+    // trail a settled charge, and reading nothing must not pass for "not booked as a purchase".
+    private async Task<TransactionResultModel> GetCardCharge(Pex2AplosMappingModel mapping, long cardTransactionId, CancellationToken cancellationToken)
+        => await _pexApiClient.GetCardholderPurchase(mapping.PEXExternalAPIToken, cardTransactionId, cancellationToken)
+            ?? throw new InvalidOperationException($"its card charge (PEX transaction {cardTransactionId}) could not be read from PEX yet, so it could not be checked for an earlier purchase sync and the payable was not marked paid.");
+
     private Task AddCardChargeMarker(Pex2AplosMappingModel mapping, BillPaymentRequestModel paymentRequest, long cardTransactionId, CancellationToken cancellationToken)
         => _pexApiClient.AddTransactionNote(
             mapping.PEXExternalAPIToken,
             new TransactionModel { TransactionId = cardTransactionId, IsPending = false },
             GetSyncedAsBillPaymentNote(paymentRequest),
             cancelToken: cancellationToken);
+
+    // The row is what the transaction sync trusts, so it is written first; the note marks the charge in PEX too. An
+    // unreadable charge is noted anyway: an earlier purchase sync is still caught at pay time.
+    // Returns a note per charge that ended up with neither the row claim nor the note.
+    private async Task<List<string>> ClaimCardCharges(
+        ILogger logger,
+        Pex2AplosMappingModel mapping,
+        IEnumerable<(BillPaymentRequestModel PaymentRequest, AplosBillMappingModel BillMapping)> bills,
+        CancellationToken cancellationToken)
+    {
+        List<string> unclaimed = [];
+
+        foreach (var (paymentRequest, billMapping) in bills)
+        {
+            var cardTransactionId = IsCardPayment(paymentRequest) ? GetSettlementTransactionId(paymentRequest) : null;
+            if (cardTransactionId is null || billMapping.CardTransactionId == cardTransactionId) continue;
+
+            var rowClaimed = true;
+            try
+            {
+                await _billMappingStorage.MarkCardChargeClaimedAsync(billMapping, cardTransactionId.Value, cancellationToken);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                rowClaimed = false;
+                logger.LogWarning(ex, $"Failed to record card charge {cardTransactionId} on the bill mapping for payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}.");
+            }
+
+            var noteClaimed = true;
+            try
+            {
+                var cardCharge = await _pexApiClient.GetCardholderPurchase(mapping.PEXExternalAPIToken, cardTransactionId.Value, cancellationToken);
+                if (!HasNote(cardCharge, SyncedAsBillPaymentNote))
+                {
+                    await AddCardChargeMarker(mapping, paymentRequest, cardTransactionId.Value, cancellationToken);
+                }
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                noteClaimed = false;
+                logger.LogWarning(ex, $"Failed to write the bill payment note on card charge {cardTransactionId} for payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}.");
+            }
+
+            if (!rowClaimed && !noteClaimed)
+            {
+                unclaimed.Add($"Bill {billMapping.AplosReferenceNumber ?? billMapping.AplosPayableId}: its card charge could not be held back, so it may be booked in Aplos as a purchase.");
+            }
+        }
+
+        return unclaimed;
+    }
 
     // Closing the row ends every later look at the bill, so a card charge must carry its marker first.
     private async Task CloseHealedBill(
@@ -823,7 +921,7 @@ public partial class AplosIntegrationService
 
             try
             {
-                var cardCharge = await _pexApiClient.GetCardholderTransaction(mapping.PEXExternalAPIToken, cardTransactionId.Value, cancellationToken);
+                var cardCharge = await GetCardCharge(mapping, cardTransactionId.Value, cancellationToken);
                 if (HasNote(cardCharge, GetSyncedNote(cardTransactionId.Value)))
                 {
                     logger.LogWarning($"Closing Aplos payable {billMapping.AplosPayableId} for business {mapping.PEXBusinessAcctId}, but its card charge (PEX transaction {cardTransactionId}) was also synced to Aplos as a purchase.");
@@ -852,17 +950,29 @@ public partial class AplosIntegrationService
         ILogger logger,
         Pex2AplosMappingModel mapping,
         BillPaymentRequestModel paymentRequest,
-        DateTime utcNow)
+        DateTime utcNow,
+        string byHand = null)
     {
         // Some links never arrive (split charges, reversals, a lost settlement message).
         if (utcNow - paymentRequest.PayoutDate.Value.UtcDateTime > UnlinkedCardPaymentGracePeriod)
         {
             logger.LogWarning($"PEX payment request {paymentRequest.PaymentRequestId} for business {mapping.PEXBusinessAcctId} has had no SettlementTransactionId since its payout on {paymentRequest.PayoutDate:O}.");
-            return new InvalidOperationException($"PEX has not linked its card charge to this payment {UnlinkedCardPaymentGracePeriod.Days} days after payout, so it cannot be marked paid automatically. Mark it paid in Aplos, and if the card charge was synced to Aplos as an expense, delete that expense.");
+            return new ManualFixRequiredException($"PEX has not linked its card charge to this payment (PEX payment {paymentRequest.PaymentRequestId}) {UnlinkedCardPaymentGracePeriod.Days} days after payout, so it cannot be marked paid automatically. {Capitalize(byHand ?? MarkPaidByHand(mapping, paymentRequest.Amount, null))}, and if the card charge was synced to Aplos as an expense, delete that expense.");
         }
 
         return new InvalidOperationException("PEX has not linked the card charge to this payment yet, so it was not marked paid. It is retried on the next sync.");
     }
+
+    // A credit business pays an imported card bill from the vendor card clearing account and owes the transfer (153880).
+    private static string MarkPaidByHand(Pex2AplosMappingModel mapping, decimal amount, decimal? clearingAccountNumber, string subject = "it")
+        => clearingAccountNumber is { } clearing
+            ? $"mark {subject} paid in Aplos by hand from clearing account {clearing} and post {amount:0.00} as debit {clearing} / credit {mapping.AplosRegisterAccountNumber}"
+            : $"mark {subject} paid in Aplos by hand";
+
+    private static string Capitalize(string text) => string.Concat(char.ToUpperInvariant(text[0]).ToString(), text[1..]);
+
+    // Retrying cannot fix it, so the message carries the whole fix and no retry date.
+    private sealed class ManualFixRequiredException(string message) : InvalidOperationException(message);
 
     private static DateTime GetBillPaymentsFetchStart(
         ILogger logger,

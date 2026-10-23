@@ -90,6 +90,22 @@ public class BillPaymentReReadTests : BillPaymentsTestBase
     }
 
     [Fact]
+    public async Task ACardPaidBillAlreadyPaidInAplosStaysOpenWhilePexCannotReturnItsCharge()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
+        SetupLivePayable(amount: 125.50m, paid: 125.50m);
+        _mockPexApiClient
+            .Setup(client => client.GetCardholderPurchase(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((TransactionResultModel)null);
+
+        await RunSync(useBillPay: true);
+
+        Assert.Contains(AplosIntegrationService.SyncedAsBillPaymentNote, Assert.Single(_cardTransactionNotes));
+        Assert.Null(Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+    }
+
+    [Fact]
     public async Task AnUnreadablePexBillDoesNotHoldBackTheOthers()
     {
         SeedUnpaidMapping();

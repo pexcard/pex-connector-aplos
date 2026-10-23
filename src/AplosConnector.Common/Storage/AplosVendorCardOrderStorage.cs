@@ -9,7 +9,8 @@ using System.Threading.Tasks;
 
 namespace AplosConnector.Common.Storage;
 
-// One row per connector-created vendor, written before its card is ordered: PEX card orders are not idempotent.
+// One row per connector-created vendor, written when the vendor is created. Its card name is written before the
+// card is ordered: PEX card orders are not idempotent.
 public class AplosVendorCardOrderStorage : AzureTableStorageAbstract, IAplosVendorCardOrderStorage
 {
     public const string TABLE_NAME = "AplosVendorCardOrder";
@@ -35,12 +36,32 @@ public class AplosVendorCardOrderStorage : AzureTableStorageAbstract, IAplosVend
         return models;
     }
 
-    // Insert-only: an existing row means a card was already ordered for this vendor.
     public async Task AddAsync(AplosVendorCardOrderModel model, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(model);
 
         await TableClient.AddEntityAsync(new AplosVendorCardOrderEntity(model), cancellationToken);
+    }
+
+    public async Task MarkOrderRequestedAsync(AplosVendorCardOrderModel model, string cardName, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        // Conditional on the row as read: an overlapping run that wrote a card name first gets a 412 here and orders nothing.
+        var row = (await TableClient.GetEntityAsync<TableEntity>(model.PEXBusinessAcctId.ToString(), AplosVendorCardOrderEntity.GetRowKey(model), cancellationToken: cancellationToken)).Value;
+        if (row.GetString(nameof(AplosVendorCardOrderEntity.CardName)) is not null)
+        {
+            throw new InvalidOperationException($"A vendor card was already requested for PEX vendor {model.PexVendorId}.");
+        }
+
+        var nameColumn = new TableEntity(row.PartitionKey, row.RowKey)
+        {
+            [nameof(AplosVendorCardOrderEntity.CardName)] = cardName
+        };
+
+        await TableClient.UpdateEntityAsync(nameColumn, row.ETag, TableUpdateMode.Merge, cancellationToken);
+
+        model.CardName = cardName;
     }
 
     public async Task SetOrderIdAsync(AplosVendorCardOrderModel model, int cardOrderId, CancellationToken cancellationToken)

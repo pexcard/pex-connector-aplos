@@ -63,22 +63,7 @@ public abstract class VendorSetupTestBase
                 It.IsAny<Func<ILogger, AplosAuthModel>>(), It.IsAny<Func<AplosAuthModel, ILogger, CancellationToken, Task>>()))
             .Returns(_aplosApiClient.Object);
         SetupBills((ContactId, ContactName));
-        _aplosApiClient
-            .Setup(c => c.GetContact(ContactId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AplosApiContactResponse
-            {
-                Data = new AplosApiContactData
-                {
-                    Contact = new AplosApiContactDetail
-                    {
-                        Id = ContactId,
-                        CompanyName = ContactName,
-                        Type = "company",
-                        Email = "ap@acme.example",
-                        Addresses = [new AplosApiContactAddressDetail { IsPrimary = true, Street1 = "1 Main St", City = "Austin", State = "TX", PostalCode = "73301" }]
-                    }
-                }
-            });
+        SetupContactState("TX");
 
         SetupPexVendors();
         PexApiClient
@@ -137,7 +122,7 @@ public abstract class VendorSetupTestBase
             new SyncSettingsModel(),
             null,
             _billMappingStorage.Object,
-            CardOrderStorage).SyncOutstandingBills(NullLogger.Instance, mapping, UtcNow, default);
+            CardOrderStorage) { VendorCardOrderReadDelay = TimeSpan.Zero }.SyncOutstandingBills(NullLogger.Instance, mapping, UtcNow, default);
     }
 
     // One bill per contact, numbered INV-9001 onwards.
@@ -153,6 +138,24 @@ public abstract class VendorSetupTestBase
                 Amount = 10m,
                 Contact = new AplosApiContactDetail { Id = contact.ContactId, CompanyName = contact.Name, Type = "company" }
             }).ToList());
+
+    protected void SetupContactState(string state) =>
+        _aplosApiClient
+            .Setup(c => c.GetContact(ContactId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AplosApiContactResponse
+            {
+                Data = new AplosApiContactData
+                {
+                    Contact = new AplosApiContactDetail
+                    {
+                        Id = ContactId,
+                        CompanyName = ContactName,
+                        Type = "company",
+                        Email = "ap@acme.example",
+                        Addresses = [new AplosApiContactAddressDetail { IsPrimary = true, Street1 = "1 Main St", City = "Austin", State = state, PostalCode = "73301" }]
+                    }
+                }
+            });
 
     protected void SetupPexVendors(params VendorModel[] vendors) =>
         PexApiClient
@@ -176,7 +179,7 @@ public abstract class VendorSetupTestBase
                 Cards = [new VendorCardOrderItemResponse { AcctId = acctId, VendorName = ContactName }, .. moreCards.Select(c => new VendorCardOrderItemResponse { AcctId = c.AcctId, VendorName = c.Name })]
             });
 
-    protected void SeedCardOrder(int? cardAcctId, int? orderId = CardOrderId, int contactId = ContactId, int vendorId = VendorId, string cardName = ContactName) =>
+    protected void SeedCardOrder(int? cardAcctId, int? orderId = CardOrderId, int contactId = ContactId, int vendorId = VendorId, string cardName = ContactName, DateTime? createdUtc = null) =>
         CardOrderStorage.Seed(new AplosVendorCardOrderModel
         {
             PEXBusinessAcctId = BusinessId,
@@ -185,7 +188,8 @@ public abstract class VendorSetupTestBase
             CardName = cardName,
             CardOrderId = orderId,
             CardAcctId = cardAcctId,
-            LinkedUtc = cardAcctId.HasValue ? UtcNow : null
+            LinkedUtc = cardAcctId.HasValue ? UtcNow : null,
+            CreatedUtc = createdUtc ?? UtcNow
         });
 
     protected void VerifyCardLinked(Times times, int vendorId = VendorId, int cardAcctId = CardAcctId) =>
