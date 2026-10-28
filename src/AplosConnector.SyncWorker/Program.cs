@@ -96,6 +96,9 @@ public class Program
             .SetSampler(new AlwaysOnSampler())
             .AddSource(SyncTelemetry.ActivitySourceName));
 
+        // Session deletes hit the session table by row key, which is the session id; keep it out of outbound spans.
+        builder.Services.AddSessionIdRedaction();
+
         // Drop the Functions detector's deployment.environment.name (PEX uses deployment.environment); runs last.
         builder.Services.AddOpenTelemetry().ConfigureResource(r =>
         {

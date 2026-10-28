@@ -293,11 +293,11 @@ Cloned from the QBO connector (marketplace `legacy-apps/pex-connector-qbo`); its
 
 Telemetry overrides for local runs:
 - **Web:** put these in your `appsettings.Development.json`.
-  - The base log level is `Information` (it gates the OTel exporter), so restore `Debug` locally.
+  - The base log level is `Information` (it gates the OTel exporter), so restore `Debug` locally. Leave `Microsoft`/`System` at the base `Warning`: ASP.NET Core's request logs include the full path and query, which carry session ids.
   - Mark the environment as `local`.
 
   ```json
-  "Logging": { "LogLevel": { "Default": "Debug", "Microsoft": "Information", "System": "Information" } },
+  "Logging": { "LogLevel": { "Default": "Debug" } },
   "TelemetryConfig": { "Resource": { "DeploymentEnvironment": "local" } }
   ```
 - **SyncWorker:** it doesn't read `appsettings.Development.json`. Put the same keys in `local.settings.json` `Values` using `__` separators, e.g. `"Logging__LogLevel__Default": "Debug"`.

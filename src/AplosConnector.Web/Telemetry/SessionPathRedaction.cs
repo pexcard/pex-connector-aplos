@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpLogging;
+using AplosConnector.Common.Tracing;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Instrumentation.AspNetCore;
 
@@ -53,6 +54,7 @@ public static class SessionPathRedactionServiceCollectionExtensions
             };
         });
         services.AddHttpLoggingInterceptor<SessionPathHttpLoggingInterceptor>();
+        services.AddSessionIdRedaction();
         return services;
     }
 }
