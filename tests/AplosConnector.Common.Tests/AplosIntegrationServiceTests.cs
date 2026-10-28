@@ -9,6 +9,7 @@ using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services;
 using AplosConnector.Common.Storage;
 using AplosConnector.Common.Services.Abstractions;
+using Azure.Data.Tables;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -33,6 +34,9 @@ namespace AplosConnector.Common.Tests
         private readonly Mock<IAplosApiClientFactory> _mockAplosApiClientFactory;
         private readonly Mock<IAplosIntegrationMappingService> _mockAplosIntegrationMappingService;
         private readonly Mock<IPexApiClient> _mockPexApiClient;
+        private readonly Mock<Pex2AplosMappingStorage> _mockMappingStorage =
+            new(MockBehavior.Loose, (TableClient)null, (IStorageMappingService)null, (ILogger)null);
+        private readonly Mock<ILogger<AplosIntegrationService>> _mockLogger = new();
 
         public AplosIntegrationServiceTests()
         {
@@ -989,6 +993,21 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public void Pex2AplosMappingModel_UpdateFromSettings_KeepsServerOwnedPartnerFields()
+        {
+            //Arrange
+            var mapping = new Pex2AplosMappingModel { AplosAccountId = "newAccountId", AplosPartnerVerified = false };
+            var settings = new Pex2AplosMappingModel { AplosAccountId = "oldAccountId", AplosPartnerVerified = true }.ToStorageModel();
+
+            //Act
+            mapping.UpdateFromSettings(settings);
+
+            //Assert
+            Assert.Equal("newAccountId", mapping.AplosAccountId);
+            Assert.False(mapping.AplosPartnerVerified);
+        }
+
+        [Fact]
         public void Pex2AplosMappingModel_SyncReimbursements_ContactNotRequired_WhenCreateContactEnabled()
         {
             //Arrange
@@ -1093,6 +1112,30 @@ namespace AplosConnector.Common.Tests
             Assert.False(result.UseReimbursementsEnabled);
         }
 
+        [Theory]
+        [InlineData(true, 1)]
+        [InlineData(false, 0)]
+        public async Task RefreshBusinessSettings_TurnsOffDisabledReimbursements_PersistingOnlyWhenAsked(bool persistChanges, int expectedWrites)
+        {
+            //Arrange
+            var mapping = GetMapping();
+            mapping.PEXFundingSource = FundingSource.Prepaid;
+            mapping.SyncReimbursements = true;
+
+            _mockPexApiClient
+                .Setup(client => client.GetBusinessSettings(mapping.PEXExternalAPIToken, default))
+                .ReturnsAsync(new BusinessSettingsModel { FundingSource = FundingSource.Prepaid, UseReimbursements = false });
+
+            AplosIntegrationService service = GetAplosIntegrationService(_mockMappingStorage.Object);
+
+            //Act
+            var result = await service.RefreshBusinessSettings(mapping, persistChanges, default);
+
+            //Assert
+            Assert.False(result.SyncReimbursements);
+            _mockMappingStorage.Verify(storage => storage.UpdateAsync(mapping, It.IsAny<CancellationToken>()), Times.Exactly(expectedWrites));
+        }
+
         [Fact]
         public async Task RefreshBusinessSettings_DoesNotOverwriteFundingSource_WhenAlreadySet()
         {
@@ -1135,9 +1178,240 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(FundingSource.Prepaid, result.PEXFundingSource);
         }
 
-        private AplosIntegrationService GetAplosIntegrationService()
+        [Fact]
+        public async Task EnsurePartnerInfoPopulated_KeepsVerification_WhenPartnerBusinessIdUnchanged()
         {
-            _mockOptions.Setup(mockOptions => mockOptions.Value).Returns(new AppSettingsModel());
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            SetupGetPartner(mapping, "accountId");
+            AplosIntegrationService service = GetPartnerInfoService();
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            AssertMappingUnchanged(mapping);
+            _mockPexApiClient.Verify(client => client.GetPartner(mapping.PEXExternalAPIToken, default), Times.Once);
+            _mockAplosApiClient.Verify(client => client.GetPartnerVerification(It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task EnsurePartnerInfoPopulated_ResetsVerification_WhenPartnerBusinessIdChanged()
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            SetupGetPartner(mapping, "newAccountId");
+            SetupUnauthorizedPartnerVerification();
+            AplosIntegrationService service = GetPartnerInfoService(applyPartnerBusinessIdChanges: true);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            Assert.Equal("newAccountId", mapping.AplosAccountId);
+            Assert.False(mapping.AplosPartnerVerified);
+            Assert.Equal("cachedToken", mapping.AplosAccessToken);
+            Assert.NotNull(mapping.AplosAccessTokenExpiresAt);
+            _mockAplosApiClientFactory.Verify(factory => factory.CreateClient(
+                "newAccountId",
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Uri>(),
+                It.IsAny<Func<ILogger, AplosAuthModel>>(),
+                It.IsAny<Func<AplosAuthModel, ILogger, CancellationToken, Task>>()), Times.Once);
+            _mockMappingStorage.Verify(storage => storage.UpdateAsync(mapping, It.IsAny<CancellationToken>()), Times.Once);
+            VerifyWarningLogged("Aplos partner ID mismatch for business 123: stored 'accountId', PEX 'newAccountId'", Times.Once());
+        }
+
+        [Theory]
+        [InlineData("ACCOUNTID")]
+        [InlineData(" accountId ")]
+        [InlineData("accountId\t")]
+        public async Task EnsurePartnerInfoPopulated_KeepsVerification_WhenPartnerBusinessIdDiffersOnlyByCaseOrWhitespace(string partnerBusinessId)
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            SetupGetPartner(mapping, partnerBusinessId);
+            AplosIntegrationService service = GetPartnerInfoService(applyPartnerBusinessIdChanges: true);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            AssertMappingUnchanged(mapping);
+            VerifyWarningLogged("Aplos partner ID mismatch", Times.Never());
+        }
+
+        [Fact]
+        public async Task EnsurePartnerInfoPopulated_StoresTrimmedPartnerBusinessId_WhenChangeApplied()
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            SetupGetPartner(mapping, " newAccountId ");
+            SetupUnauthorizedPartnerVerification();
+            AplosIntegrationService service = GetPartnerInfoService(applyPartnerBusinessIdChanges: true);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            Assert.Equal("newAccountId", mapping.AplosAccountId);
+            VerifyWarningLogged("PEX 'newAccountId'", Times.Once());
+        }
+
+        [Fact]
+        public async Task EnsurePartnerInfoPopulated_OnlyLogsMismatch_WhenApplyPartnerBusinessIdChangesDisabled()
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            SetupGetPartner(mapping, "newAccountId");
+            AplosIntegrationService service = GetPartnerInfoService(applyPartnerBusinessIdChanges: false);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            AssertMappingUnchanged(mapping);
+            _mockAplosApiClient.Verify(client => client.GetPartnerVerification(It.IsAny<CancellationToken>()), Times.Never);
+            VerifyWarningLogged("Aplos partner ID mismatch (dry run) for business 123: stored 'accountId', PEX 'newAccountId'", Times.Once());
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task EnsurePartnerInfoPopulated_PopulatesId_WhenNoStoredId(bool applyPartnerBusinessIdChanges)
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            mapping.AplosAccountId = null;
+            mapping.AplosPartnerVerified = false;
+            SetupGetPartner(mapping, "newAccountId");
+            SetupUnauthorizedPartnerVerification();
+            AplosIntegrationService service = GetPartnerInfoService(applyPartnerBusinessIdChanges);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            Assert.Equal("newAccountId", mapping.AplosAccountId);
+            _mockMappingStorage.Verify(storage => storage.UpdateAsync(mapping, It.IsAny<CancellationToken>()), Times.Once);
+            VerifyWarningLogged("Aplos partner ID mismatch", Times.Never());
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" ")]
+        public async Task EnsurePartnerInfoPopulated_KeepsStoredId_WhenPartnerBusinessIdBlank(string partnerBusinessId)
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            SetupGetPartner(mapping, partnerBusinessId);
+            AplosIntegrationService service = GetPartnerInfoService();
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            AssertMappingUnchanged(mapping);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task EnsurePartnerInfoPopulated_KeepsStoredId_WhenGetPartnerThrows(bool applyPartnerBusinessIdChanges)
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            _mockPexApiClient
+                .Setup(client => client.GetPartner(mapping.PEXExternalAPIToken, default))
+                .ThrowsAsync(new Exception("PEX API unavailable"));
+            AplosIntegrationService service = GetPartnerInfoService(applyPartnerBusinessIdChanges);
+
+            //Act
+            await service.EnsurePartnerInfoPopulated(mapping, default);
+
+            //Assert
+            AssertMappingUnchanged(mapping);
+            VerifyWarningLogged("Failed to refresh partner info for business 123", Times.Once());
+        }
+
+        [Fact]
+        public async Task EnsurePartnerInfoPopulated_Throws_WhenGetPartnerThrowsWithoutStoredId()
+        {
+            //Arrange
+            var mapping = GetVerifiedMapping();
+            mapping.AplosAccountId = null;
+            _mockPexApiClient
+                .Setup(client => client.GetPartner(mapping.PEXExternalAPIToken, default))
+                .ThrowsAsync(new Exception("PEX API unavailable"));
+            AplosIntegrationService service = GetPartnerInfoService();
+
+            //Act / Assert
+            await Assert.ThrowsAsync<Exception>(() => service.EnsurePartnerInfoPopulated(mapping, default));
+        }
+
+        private Pex2AplosMappingModel GetVerifiedMapping()
+        {
+            var mapping = GetMapping();
+            mapping.PEXBusinessAcctId = 123;
+            mapping.PEXExternalAPIToken = "pexToken";
+            mapping.AplosPartnerVerified = true;
+            mapping.AplosAccessToken = "cachedToken";
+            mapping.AplosAccessTokenExpiresAt = DateTime.UtcNow.AddHours(1);
+            return mapping;
+        }
+
+        private void SetupGetPartner(Pex2AplosMappingModel mapping, string partnerBusinessId)
+        {
+            _mockPexApiClient
+                .Setup(client => client.GetPartner(mapping.PEXExternalAPIToken, default))
+                .ReturnsAsync(new PartnerModel { PartnerBusinessId = partnerBusinessId });
+        }
+
+        private void SetupUnauthorizedPartnerVerification()
+        {
+            _mockAplosApiClient
+                .Setup(client => client.GetPartnerVerification(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AplosApiPartnerVerificationResponse
+                {
+                    Data = new AplosApiPartnerVerificationData { PartnerVerification = new AplosApiPartnerVerificationDetails { Authorized = false } }
+                });
+        }
+
+        private void AssertMappingUnchanged(Pex2AplosMappingModel mapping)
+        {
+            Assert.Equal("accountId", mapping.AplosAccountId);
+            Assert.True(mapping.AplosPartnerVerified);
+            Assert.Equal("cachedToken", mapping.AplosAccessToken);
+            Assert.NotNull(mapping.AplosAccessTokenExpiresAt);
+            _mockMappingStorage.Verify(storage => storage.UpdateAsync(It.IsAny<Pex2AplosMappingModel>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        private void VerifyWarningLogged(string messagePart, Times times)
+        {
+            _mockLogger.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, _) => state.ToString().Contains(messagePart)),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()), times);
+        }
+
+        private AplosIntegrationService GetPartnerInfoService(bool applyPartnerBusinessIdChanges = false)
+        {
+            return GetAplosIntegrationService(
+                _mockMappingStorage.Object,
+                new AppSettingsModel { ApplyPartnerBusinessIdChanges = applyPartnerBusinessIdChanges },
+                _mockLogger.Object);
+        }
+
+        private AplosIntegrationService GetAplosIntegrationService(
+            Pex2AplosMappingStorage mappingStorage = null,
+            AppSettingsModel appSettings = null,
+            ILogger<AplosIntegrationService> logger = null)
+        {
+            _mockOptions.Setup(mockOptions => mockOptions.Value).Returns(appSettings ?? new AppSettingsModel());
             _mockAplosApiClientFactory
                 .Setup(mockAplosClientFactory => mockAplosClientFactory.CreateClient(
                     It.IsAny<string>(),
@@ -1149,13 +1423,13 @@ namespace AplosConnector.Common.Tests
                 .Returns(_mockAplosApiClient.Object);
 
             return new AplosIntegrationService(
-                new NullLogger<AplosIntegrationService>(),
+                logger ?? new NullLogger<AplosIntegrationService>(),
                 _mockOptions.Object,
                 _mockAplosApiClientFactory.Object,
                 _mockAplosIntegrationMappingService.Object,
                 _mockPexApiClient.Object,
                 null,
-                null,
+                mappingStorage,
                 _mockSettings,
                 null,
                 Mock.Of<IAplosBillMappingStorage>(),

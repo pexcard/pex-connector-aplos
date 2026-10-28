@@ -154,6 +154,12 @@
             <th>Sync reimbursements <span class="badge-new">New</span></th>
             <td><app-status-icon [value]="settings.syncReimbursements"></app-status-icon></td>
           </tr>
+          @if (settings.useBillPayEnabled) {
+            <tr>
+              <th>Sync outstanding bills <span class="badge-new">New</span></th>
+              <td><app-status-icon [value]="settings.syncOutstandingBills"></app-status-icon></td>
+            </tr>
+          }
           <tr>
             <th>Sync 990 tag</th>
             <td><app-status-icon [value]="settings.syncTaxTagToPex"></app-status-icon></td>

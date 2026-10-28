@@ -63,10 +63,25 @@ namespace AplosConnector.Common.Storage
             await TableClient.UpdateEntityAsync(entity, ETag.All, TableUpdateMode.Merge, cancellationToken);
         }
 
+        public virtual async Task UpdateAsync(Pex2AplosMappingModel model, ETag ifMatch, CancellationToken cancellationToken)
+        {
+            var entity = _storageMappingService.Map(model);
+            entity.PartitionKey = PARTITION_KEY;
+            entity.RowKey = model.PEXBusinessAcctId.ToString();
+
+            await TableClient.UpdateEntityAsync(entity, ifMatch, TableUpdateMode.Merge, cancellationToken);
+        }
+
         public virtual async Task<Pex2AplosMappingModel> GetByBusinessAcctIdAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
         {
             var entity = await GetEntityByBusinessAcctId(pexBusinessAcctId, cancellationToken);
             return _storageMappingService.Map(entity);
+        }
+
+        public virtual async Task<(Pex2AplosMappingModel Mapping, ETag ETag)> GetByBusinessAcctIdWithETagAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
+        {
+            var entity = await GetEntityByBusinessAcctId(pexBusinessAcctId, cancellationToken);
+            return (_storageMappingService.Map(entity), entity?.ETag ?? default);
         }
 
         private async Task<Pex2AplosMappingEntity> GetEntityByBusinessAcctId(int pexBusinessAcctId, CancellationToken cancellationToken)

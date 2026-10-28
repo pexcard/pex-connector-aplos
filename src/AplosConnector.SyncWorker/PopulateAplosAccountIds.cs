@@ -80,7 +80,8 @@ namespace AplosConnector.SyncWorker
                         {
                             log.LogInformation($"Got partner info");
 
-                            if (mapping.AplosAccountId != partnerInfo.PartnerBusinessId)
+                            var partnerBusinessId = partnerInfo.PartnerBusinessId?.Trim();
+                            if (!string.IsNullOrWhiteSpace(partnerBusinessId) && !string.Equals(partnerBusinessId, mapping.AplosAccountId?.Trim(), StringComparison.OrdinalIgnoreCase))
                             {
                                 if (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && !overwriteEnabled)
                                 {
@@ -88,9 +89,11 @@ namespace AplosConnector.SyncWorker
                                     continue;
                                 }
 
-                                log.LogInformation($"Updating {nameof(mapping.AplosAccountId)} from '{mapping.AplosAccountId}' to '{partnerInfo.PartnerBusinessId}'");
+                                log.LogInformation($"Updating {nameof(mapping.AplosAccountId)} from '{mapping.AplosAccountId}' to '{partnerBusinessId}'");
 
-                                mapping.AplosAccountId = partnerInfo.PartnerBusinessId;
+                                // A new org needs its own partner verification.
+                                mapping.AplosAccountId = partnerBusinessId;
+                                mapping.AplosPartnerVerified = false;
                                 await _mappingStorage.UpdateAsync(mapping, cancellationToken);
                                 response.BusinessesUpdated++;
                             }

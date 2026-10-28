@@ -740,6 +740,7 @@ namespace AplosConnector.Common.Tests
                 PaidSyncedUtc = UtcNow,
                 FirstFailedUtc = UtcNow.AddDays(-2),
                 AwaitingChargeSinceUtc = UtcNow.AddDays(-1),
+                CardTransactionId = 987654,
                 CreatedUtc = UtcNow
             };
 
@@ -756,6 +757,7 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(model.PaidSyncedUtc, rebuilt.PaidSyncedUtc);
             Assert.Equal(model.FirstFailedUtc, rebuilt.FirstFailedUtc);
             Assert.Equal(model.AwaitingChargeSinceUtc, rebuilt.AwaitingChargeSinceUtc);
+            Assert.Equal(model.CardTransactionId, rebuilt.CardTransactionId);
             Assert.Equal(model.CreatedUtc, rebuilt.CreatedUtc);
         }
 
@@ -855,6 +857,14 @@ namespace AplosConnector.Common.Tests
             {
                 ThrowIfFailing();
                 model.PaidFromClearingAccountNumber = null;
+                Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
+                return Task.CompletedTask;
+            }
+
+            public Task MarkCardChargeClaimedAsync(AplosBillMappingModel model, long cardTransactionId, CancellationToken cancellationToken)
+            {
+                ThrowIfFailing();
+                model.CardTransactionId = cardTransactionId;
                 Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = model;
                 return Task.CompletedTask;
             }

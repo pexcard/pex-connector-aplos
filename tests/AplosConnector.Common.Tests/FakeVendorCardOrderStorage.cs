@@ -18,6 +18,8 @@ public sealed class FakeVendorCardOrderStorage : IAplosVendorCardOrderStorage
 
     public bool FailAdd { get; set; }
 
+    public bool FailMarkOrderRequested { get; set; }
+
     public bool FailSetOrderId { get; set; }
 
     public HashSet<int> FailMarkLinkedForContacts { get; } = [];
@@ -38,6 +40,15 @@ public sealed class FakeVendorCardOrderStorage : IAplosVendorCardOrderStorage
             throw new Azure.RequestFailedException(409, "The specified entity already exists.");
         }
 
+        return Task.CompletedTask;
+    }
+
+    public Task MarkOrderRequestedAsync(AplosVendorCardOrderModel model, string cardName, CancellationToken cancellationToken)
+    {
+        if (FailMarkOrderRequested) throw new InvalidOperationException("Table storage is unavailable.");
+        if (Rows[(model.AplosContactId, model.PexVendorId)].CardName is not null) throw new InvalidOperationException("A vendor card was already requested.");
+        Rows[(model.AplosContactId, model.PexVendorId)].CardName = cardName;
+        model.CardName = cardName;
         return Task.CompletedTask;
     }
 

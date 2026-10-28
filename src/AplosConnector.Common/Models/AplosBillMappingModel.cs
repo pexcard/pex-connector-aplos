@@ -21,6 +21,8 @@ namespace AplosConnector.Common.Models
         // The vendor card clearing account the bill is paid from, written before paying: the transfer out of that account
         // is owed once the payable reads paid, even if the setting has changed since (153880).
         public decimal? PaidFromClearingAccountNumber { get; set; }
+        // The card charge claimed for this bill: the transaction sync never books it, whatever the PEX note says.
+        public long? CardTransactionId { get; set; }
         public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     }
 }

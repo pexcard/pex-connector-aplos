@@ -242,6 +242,38 @@ public class CardChargeTransferTests : CardChargeTransferTestBase
             Assert.Single(_historyRows).SyncNotes);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ACardChargeAlreadyBookedAsAPurchaseGivesTheFixForTheBusinessRail(bool credit)
+    {
+        SetupCardBill(credit ? CreditCardAccount : PrepaidAccount);
+        _cardTransactionNotes.Add($"Synced transaction #{VendorCardTransactionId} to Aplos on 2026-09-10T00:00:00.0000000Z");
+
+        await RunCardSync();
+
+        VerifyNoPayCall();
+        var notes = Assert.Single(_historyRows).SyncNotes;
+        Assert.Contains($"(PEX transaction {VendorCardTransactionId})", notes);
+        Assert.Contains(credit
+            ? $"Delete that expense in Aplos and mark it paid in Aplos by hand from clearing account {CardClearingAccountNumber} and post 125.50 as debit {CardClearingAccountNumber} / credit {PexFundsAccountNumber}."
+            : "Delete that expense in Aplos and mark it paid in Aplos by hand.", notes);
+        Assert.DoesNotContain("Retried until", notes);
+    }
+
+    [Fact]
+    public async Task ACreditCardBillNeverLinkedGivesTheClearingAccountFix()
+    {
+        SetupCardBill(CreditCardAccount);
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, linkedCardCharge: false, payoutDate: PayoutDate.AddDays(-3));
+
+        await RunCardSync();
+
+        Assert.Contains(
+            $"Mark it paid in Aplos by hand from clearing account {CardClearingAccountNumber} and post 125.50 as debit {CardClearingAccountNumber} / credit {PexFundsAccountNumber}, and if the card charge was synced",
+            Assert.Single(_historyRows).SyncNotes);
+    }
+
     [Fact]
     public async Task ATransferAlreadyInAplosIsNotPostedAgain()
     {

@@ -7,7 +7,9 @@ using AplosConnector.Common.Models;
 using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Common.Storage;
 using AplosConnector.Web.Controllers;
+using Azure;
 using Azure.Data.Tables;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -25,8 +27,8 @@ namespace AplosConnector.Web.Tests
             new(MockBehavior.Loose, (TableClient)null, (IStorageMappingService)null, (ILogger)null);
         private readonly Mock<SyncHistoryStorage> _history = new(MockBehavior.Loose, (TableClient)null);
 
-        private MappingController BuildController() =>
-            new(_sessions.Object, _mappings.Object, _history.Object, null, null, null);
+        private MappingController BuildController(IAplosIntegrationService aplosIntegrationService = null) =>
+            new(_sessions.Object, _mappings.Object, _history.Object, null, aplosIntegrationService, null);
 
         private void SetupSession() =>
             _sessions.Setup(s => s.GetBySessionGuidAsync(SessionGuid, It.IsAny<CancellationToken>()))
@@ -59,6 +61,52 @@ namespace AplosConnector.Web.Tests
         [Fact]
         public async Task SaveSettings_ReturnsOk_WithValidSessionId()
         {
+        }
+
+        [Fact]
+        public async Task SaveSettings_RetriesOnFreshRow_WhenRowChangedSinceRead()
+        {
+            SetupSession();
+            var stale = new Pex2AplosMappingModel { PEXBusinessAcctId = BusinessAcctId, AplosAccountId = "oldAccountId", AplosPartnerVerified = true };
+            var fresh = new Pex2AplosMappingModel { PEXBusinessAcctId = BusinessAcctId, AplosAccountId = "newAccountId", AplosPartnerVerified = false };
+            _mappings.SetupSequence(m => m.GetByBusinessAcctIdWithETagAsync(BusinessAcctId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((stale, new ETag("1")))
+                .ReturnsAsync((fresh, new ETag("2")));
+            _mappings.Setup(m => m.UpdateAsync(It.IsAny<Pex2AplosMappingModel>(), new ETag("1"), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new RequestFailedException(StatusCodes.Status412PreconditionFailed, "Precondition Failed"));
+            var settings = new Pex2AplosMappingModel { AutomaticSync = true }.ToStorageModel();
+
+            var result = await BuildController(GetIntegrationService()).SaveSettings(SessionGuid.ToString(), settings, default);
+
+            Assert.IsType<OkResult>(result);
+            _mappings.Verify(m => m.UpdateAsync(
+                It.Is<Pex2AplosMappingModel>(x => x.AplosAccountId == "newAccountId" && !x.AplosPartnerVerified && x.AutomaticSync),
+                new ETag("2"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task SaveSettings_Throws_WhenRowKeepsChanging()
+        {
+            SetupSession();
+            _mappings.Setup(m => m.GetByBusinessAcctIdWithETagAsync(BusinessAcctId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => (new Pex2AplosMappingModel { PEXBusinessAcctId = BusinessAcctId }, new ETag("1")));
+            _mappings.Setup(m => m.UpdateAsync(It.IsAny<Pex2AplosMappingModel>(), It.IsAny<ETag>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new RequestFailedException(StatusCodes.Status412PreconditionFailed, "Precondition Failed"));
+            var settings = new Pex2AplosMappingModel().ToStorageModel();
+
+            await Assert.ThrowsAsync<RequestFailedException>(() => BuildController(GetIntegrationService()).SaveSettings(SessionGuid.ToString(), settings, default));
+
+            _mappings.Verify(m => m.UpdateAsync(It.IsAny<Pex2AplosMappingModel>(), It.IsAny<ETag>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+        }
+
+        private static IAplosIntegrationService GetIntegrationService()
+        {
+            var integration = new Mock<IAplosIntegrationService>(MockBehavior.Strict);
+            integration
+                .Setup(s => s.RefreshBusinessSettings(It.IsAny<Pex2AplosMappingModel>(), false, It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Pex2AplosMappingModel mapping, bool _, CancellationToken _) => mapping);
+            return integration.Object;
         }
 
         [Fact]

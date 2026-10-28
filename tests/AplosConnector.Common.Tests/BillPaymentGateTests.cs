@@ -59,6 +59,21 @@ public class BillPaymentGateTests : BillPaymentsTestBase
     }
 
     [Fact]
+    public async Task Gate_NoBillPayAccountsConfigured_IsNotReportedOnAFailedRunWithTheImportOff()
+    {
+        SeedUnpaidMapping();
+        _mockPexApiClient
+            .Setup(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("PEX is unavailable."));
+
+        await RunSync(useBillPay: true, achClearingAccountNumber: 0m, pexFundsAccountNumber: 0m, configure: mapping => mapping.SyncOutstandingBills = false);
+
+        var historyRow = Assert.Single(_historyRows);
+        Assert.Contains("PEX is unavailable.", historyRow.SyncNotes);
+        Assert.DoesNotContain("ACH bank account", historyRow.SyncNotes);
+    }
+
+    [Fact]
     public async Task Gate_NoBillPayAccountsConfigured_StaysSilentWhenNoImportedBillIsWaiting()
     {
         SeedUnpaidMapping();

@@ -114,11 +114,36 @@ namespace AplosConnector.Common.Services
         {
             var isChanged = false;
 
-            if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+            string partnerBusinessId = null;
+            try
             {
-                var partnerInfo = await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken, cancellationToken);
-                mapping.AplosAccountId = partnerInfo.PartnerBusinessId;
-                isChanged |= !string.IsNullOrWhiteSpace(mapping.AplosAccountId);
+                partnerBusinessId = (await _pexApiClient.GetPartner(mapping.PEXExternalAPIToken, cancellationToken))?.PartnerBusinessId?.Trim();
+            }
+            catch (Exception ex) when (!string.IsNullOrWhiteSpace(mapping.AplosAccountId) && !cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, $"Failed to refresh partner info for business {mapping.PEXBusinessAcctId}. Using the stored {nameof(mapping.AplosAccountId)}.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(partnerBusinessId) && !string.Equals(partnerBusinessId, mapping.AplosAccountId?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(mapping.AplosAccountId))
+                {
+                    mapping.AplosAccountId = partnerBusinessId;
+                    isChanged = true;
+                }
+                else if (!_appSettings.ApplyPartnerBusinessIdChanges)
+                {
+                    _logger.LogWarning($"Aplos partner ID mismatch (dry run) for business {mapping.PEXBusinessAcctId}: stored '{mapping.AplosAccountId}', PEX '{partnerBusinessId}'. Not applied because {nameof(_appSettings.ApplyPartnerBusinessIdChanges)} is false.");
+                }
+                else
+                {
+                    _logger.LogWarning($"Aplos partner ID mismatch for business {mapping.PEXBusinessAcctId}: stored '{mapping.AplosAccountId}', PEX '{partnerBusinessId}'. Applied; partner verification reset.");
+
+                    // Re-verify against the new org; the cached token isn't org-specific.
+                    mapping.AplosAccountId = partnerBusinessId;
+                    mapping.AplosPartnerVerified = false;
+                    isChanged = true;
+                }
             }
 
             if (_appSettings.EnforceAplosPartnerVerification && mapping.AplosAuthenticationMode == AplosAuthenticationMode.ClientAuthentication)
@@ -785,7 +810,10 @@ namespace AplosConnector.Common.Services
             return taxTags.Where(c => c.Type == "expense");
         }
 
-        public async Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+        public Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
+            => RefreshBusinessSettings(mapping, persistChanges: true, cancellationToken);
+
+        public async Task<Pex2AplosMappingModel> RefreshBusinessSettings(Pex2AplosMappingModel mapping, bool persistChanges, CancellationToken cancellationToken)
         {
             BusinessSettingsModel businessSettings;
             try
@@ -818,13 +846,19 @@ namespace AplosConnector.Common.Services
             if (mapping.SyncReimbursements && !businessSettings.UseReimbursements)
             {
                 mapping.SyncReimbursements = false;
-                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                if (persistChanges)
+                {
+                    await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                }
             }
 
             if (mapping.SyncOutstandingBills && !businessSettings.UseBillPay)
             {
                 mapping.SyncOutstandingBills = false;
-                await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                if (persistChanges)
+                {
+                    await _mappingStorage.UpdateAsync(mapping, cancellationToken);
+                }
             }
 
             return mapping;
@@ -1052,6 +1086,30 @@ namespace AplosConnector.Common.Services
             var syncCount = 0;
             var failureCount = 0;
 
+            // Unreadable means not synced this run: the bill stage reads the same table, so a charge linked since the last run
+            // has neither a row nor a note yet, and would be booked as a purchase next to its payable.
+            HashSet<long> claimedCardCharges;
+            try
+            {
+                claimedCardCharges = (await _billMappingStorage.GetByBusinessAsync(mapping.PEXBusinessAcctId, cancellationToken) ?? [])
+                    .Where(row => row.CardTransactionId is not null)
+                    .Select(row => row.CardTransactionId.Value)
+                    .ToHashSet();
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, $"Failed to read the bill mappings for business {mapping.PEXBusinessAcctId}, so its transactions were not synced this run.");
+                await _historyStorage.CreateAsync(new SyncResultModel
+                {
+                    PEXBusinessAcctId = mapping.PEXBusinessAcctId,
+                    SyncType = SyncTypes.Transactions,
+                    SyncStatus = SyncStatus.Failed.ToString(),
+                    SyncedRecords = 0,
+                    SyncNotes = "Purchases were not synced this run: the connector could not read its bill payment records, which it needs so a bill's card charge isn't booked twice. Retried on the next sync."
+                }, cancellationToken);
+                return [];
+            }
+
             var aplosFunds = (await GetAplosFunds(mapping, cancellationToken)).ToList();
             var aplosAccountCategory = GetAplosAccountCategory();
             var aplosExpenseAccounts = (await GetAplosAccounts(mapping, aplosAccountCategory, cancellationToken)).ToList();
@@ -1107,7 +1165,7 @@ namespace AplosConnector.Common.Services
 
                 var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, includeVendorBillPay: true, cancelToken: cancellationToken);
                 allCardholderTransactions.AddRange(cardholderTransactions);
-                var transactions = FilterCardholderTransactions(mapping, cardholderTransactions).ToList();
+                var transactions = FilterCardholderTransactions(mapping, cardholderTransactions, claimedCardCharges).ToList();
 
                 _logger.LogInformation($"Syncing {transactions.Count} filtered transactions for business: {mapping.PEXBusinessAcctId}");
 
@@ -1392,10 +1450,15 @@ namespace AplosConnector.Common.Services
             return AplosApiClient.APLOS_ACCOUNT_CATEGORY_EXPENSE;
         }
 
-        private static IEnumerable<TransactionModel> FilterCardholderTransactions(Pex2AplosMappingModel mapping, CardholderTransactions transactions)
+        private static IEnumerable<TransactionModel> FilterCardholderTransactions(Pex2AplosMappingModel mapping, CardholderTransactions transactions, IReadOnlySet<long> claimedCardCharges)
         {
             foreach (var transaction in transactions.SelectTransactionsToSync(mapping.SyncApprovedOnly))
             {
+                if (claimedCardCharges.Contains(transaction.TransactionId))
+                {
+                    continue;
+                }
+
                 if (transaction.TransactionNotes.Any(x => x.NoteText.Contains(PexCardConst.OLD_SyncedWithAplosNote)))
                 {
                     continue;

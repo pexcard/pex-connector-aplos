@@ -37,8 +37,7 @@ namespace AplosConnector.Common.Models
                 EndDateUtc = mapping.EndDateUtc.Value.ToUniversalTime();
             }
 
-            AplosAccountId = mapping.AplosAccountId;
-            AplosPartnerVerified = mapping.AplosPartnerVerified;
+            // AplosAccountId/AplosPartnerVerified are server-owned; a stale settings page must not restore them.
             AplosClientId = mapping.AplosClientId;
             AplosPrivateKey = mapping.AplosPrivateKey;
             AplosAuthenticationMode = mapping.AplosAuthenticationMode;
