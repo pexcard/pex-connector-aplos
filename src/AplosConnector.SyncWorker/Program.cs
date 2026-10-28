@@ -1,18 +1,24 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Http;
 using Aplos.Api.Client;
 using Aplos.Api.Client.Abstractions;
+using AplosConnector.Common.Correlation;
 using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services;
 using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Common.Storage;
+using AplosConnector.Common.Tracing;
 using AplosConnector.Common.VendorCards;
+using AplosConnector.SyncWorker.Correlation;
+using AplosConnector.SyncWorker.Tracing;
 using Azure.Data.Tables;
 using Azure.Identity;
 using Azure.Storage.Queues;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Azure.Functions.Worker.OpenTelemetry;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,9 +26,14 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using PexCard.Api.Client;
 using PexCard.Api.Client.Core;
+using PexCard.Api.Client.Core.Interfaces;
 using PexCard.App.Infrastructure.AzureServiceBus.DependencyInjection;
+using PexCard.Shared.OpenTelemetry.Abstractions.Options;
+using PexCard.Shared.OpenTelemetry.Extensions;
 
 #if !DEBUG
 using PexCard.Shared.Encryption.AspNetCore;
@@ -39,6 +50,10 @@ public class Program
 
         builder.ConfigureFunctionsWebApplication();
 
+        // Links queue invocations to the producer's trace; no-op for HTTP and timer triggers.
+        builder.UseMiddleware<QueueTraceLinkMiddleware>();
+        builder.UseMiddleware<CorrelationIdMiddleware>();
+
         builder.Configuration
             .AddJsonFile("appsettings.json", false, true)
             .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", true, true)
@@ -48,6 +63,60 @@ public class Program
         if (!builder.Configuration.ProtectConfigurationSources(new ProtectConfigurationSourcesOptions { AssemblyTypeMarker = typeof(Program) }))
             return;
 #endif
+
+        // KeyVault:Uri comes from the app's KeyVault__Uri setting, never git; secrets use "--" for ":" (TelemetryConfig--Exporter--BaseUrl).
+        var kvUri = builder.Configuration["KeyVault:Uri"];
+        if (!string.IsNullOrWhiteSpace(kvUri))
+        {
+            builder.Configuration.AddAzureKeyVault(new Uri(kvUri), new DefaultAzureCredential());
+        }
+
+        // Before ConfigurePexTelemetry, so its service.name wins over the Functions detector's.
+        builder.Services.AddOpenTelemetry().UseFunctionsWorkerDefaults();
+
+        var telemetryOptions = builder.Configuration.GetSection("TelemetryConfig").Get<PexTelemetryOptions>()
+            ?? throw new InvalidOperationException("Telemetry configuration is missing.");
+        telemetryOptions = telemetryOptions with
+        {
+            Resource = telemetryOptions.Resource with
+            {
+                ServiceName = "pex-connector-aplos-func",
+                DeploymentHostType = "azure-functions"
+            },
+            // Scopes carry TraceId/SpanId, faas.* and the correlation id baggage onto exported logs.
+            Logging = telemetryOptions.Logging with
+            {
+                IncludeScopes = true
+            }
+        };
+        builder.Services.ConfigurePexTelemetry(telemetryOptions);
+
+        // After ConfigurePexTelemetry: the host hands queue and timer invocations an unsampled parent, which ParentBased would drop.
+        builder.Services.AddOpenTelemetry().WithTracing(b => b
+            .SetSampler(new AlwaysOnSampler())
+            .AddSource(SyncTelemetry.ActivitySourceName));
+
+        // Session deletes hit the session table by row key, which is the session id; keep it out of outbound spans.
+        builder.Services.AddSessionIdRedaction();
+
+        // Drop the Functions detector's deployment.environment.name (PEX uses deployment.environment); runs last.
+        builder.Services.AddOpenTelemetry().ConfigureResource(r =>
+        {
+            var kept = r.Build().Attributes
+                .Where(attr => attr.Key != "deployment.environment.name")
+                .ToList();
+            r.Clear();
+            r.AddAttributes(kept);
+        });
+
+        // Baggage surfaces pex.correlation_id on log records; the default trio must stay.
+        builder.Logging.Configure(options => options.ActivityTrackingOptions =
+            ActivityTrackingOptions.TraceId | ActivityTrackingOptions.SpanId |
+            ActivityTrackingOptions.ParentId | ActivityTrackingOptions.Baggage);
+
+        // PexApiClient picks up the resolver and sends X-Correlation-Id on every call.
+        builder.Services.AddSingleton(new CorrelationIdAccessor(CorrelationConstants.Prefix));
+        builder.Services.AddSingleton<ICorrelationIdResolver, CorrelationIdResolver>();
 
         builder.Services.AddLogging();
         

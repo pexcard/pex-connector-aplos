@@ -1,0 +1,12 @@
+{
+  "isEnabled": false,
+  "collectionSourceUrl": "",
+  "applicationName": "pex-connector-aplos",
+  "serviceName": "pex-connector-aplos-web",
+  "deploymentEnvironment": "sandbox",
+  "deploymentRegion": "azure",
+  "deploymentHostType": "angular",
+  "samplingProbability": 1,
+  "collectSessionId": true,
+  "propagateTraceHeaderCorsUrls": []
+}

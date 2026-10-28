@@ -25,6 +25,8 @@ variables:
   value: 'Release'
 - name: dotnetVersion
   value: '10.0'
+- name: app_version
+  value: '$(Build.BuildNumber)'
 
 steps:
 - task: AzureKeyVault@2
@@ -56,6 +58,15 @@ steps:
   inputs:
     versionSpec: '22.x'
   displayName: 'Install node.js'
+
+# Stamp #{app_version} into environment.prod.ts before the csproj builds the SPA; fail-closed so the literal never ships.
+- task: replacetokens@5
+  displayName: 'Stamp SPA version'
+  inputs:
+    targetFiles: 'src/AplosConnector.Web/ClientApp/src/environments/environment.prod.ts'
+    tokenPattern: 'octopus'
+    actionOnMissing: 'fail'
+    actionOnNoFiles: 'fail'
 
 - script: dotnet publish src --configuration $(buildConfiguration)
   displayName: 'dotnet publish $(buildConfiguration)'

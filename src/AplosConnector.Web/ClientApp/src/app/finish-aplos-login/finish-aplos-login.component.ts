@@ -19,7 +19,7 @@ export class FinishAplosLoginComponent implements OnInit {
   ngOnInit() {
     this.activatedRoute.queryParams.subscribe(
       params=>{
-        console.log('query params', params);
+        console.log('query params received');
         this.code = params.code;
         this.state = params.state;
         this.realmId = params.realmId;

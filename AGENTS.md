@@ -235,10 +235,27 @@ The core configuration entity that links a PEX business account to an Aplos orga
 | Azure Table Storage | Primary data persistence (sessions, mappings, history, vendor cards) |
 | Azure Queue Storage | Async sync job queue |
 | Azure Blob Storage | Data protection key storage |
-| Azure Key Vault | Secret management, encryption certificates |
+| Azure Key Vault | Secret management, encryption certificates; a shared vault supplies the Sumo OTLP endpoint |
 | Azure Service Bus | Token expiration event messaging (`token.expired` topic) |
-| Application Insights | Application telemetry and monitoring |
 | Azure Functions v4 | Background worker hosting |
+
+### Observability (OpenTelemetry → Sumo Logic)
+
+Cloned from the QBO connector (marketplace `legacy-apps/pex-connector-qbo`); its `AGENTS.md` explains each knob. Three tiers share `application=pex-connector-aplos`:
+
+| Tier | `service.name` | Wiring |
+|---|---|---|
+| Web API | `pex-connector-aplos-api` | `Startup.ConfigureServices`: Azure App Service detector, then `ConfigurePexTelemetry`, then `AddPexHttpLogging` |
+| SyncWorker | `pex-connector-aplos-func` | `Program.cs`: `UseFunctionsWorkerDefaults`, then `ConfigurePexTelemetry`, then `AlwaysOnSampler` + `AddSource(SyncTelemetry.ActivitySourceName)`, then the `deployment.environment.name` strip |
+| Browser | `pex-connector-aplos-web` | `ClientApp/src/app/services/telemetry-setup.ts`, configured by `assets/config/sumo-telemetry.json` (off unless the release swaps in the `.token` file) |
+
+- `TelemetryConfig` lives in `appsettings*.json` and is shared by both hosts through the linked files. `Exporter.BaseUrl` stays `REPLACE`; Key Vault supplies the real endpoint.
+- The vault address is never committed (this repo is public). Each web and function app sets it with a `KeyVault__Uri` app setting.
+- The exporter is off in the base file and on in QA/Production. With it on and the vault unreadable, startup fails.
+- Correlation ids are `ext-aplos-{32 hex}` (`AplosConnector.Common/Correlation`). `PexApiClient` forwards them as `X-Correlation-Id`.
+- Sync spans (`sync-business`, `sync-transaction`, `sync-invoice`, `sync-reimbursement`) come from `SyncTelemetry.BeginItemContext`. Log scopes keep their original keys; spans use the `pex.*` names.
+- `Pex2AplosMappingQueue` embeds `traceparent` in the message body. The worker's `QueueTraceLinkMiddleware` links the consumer span back to the producer.
+- The session id is a bearer credential. Keep it out of telemetry: `/finish-pex-login/{sessionId}` is redacted in request spans, HttpLogging records and RUM, and query strings are dropped.
 
 ## Authentication & Security
 
@@ -271,6 +288,20 @@ The core configuration entity that links a PEX business account to an Aplos orga
 - `appsettings.Development.json` - Local development (sandbox credentials)
 - `appsettings.QA.json` - QA environment
 - `appsettings.Production.json` - Production (encrypted)
+
+`appsettings.*.json` is gitignored. QA and Production are force-tracked and hold only `REPLACE` tokens. `appsettings.Development.json` stays local and is never committed.
+
+Telemetry overrides for local runs:
+- **Web:** put these in your `appsettings.Development.json`.
+  - The base log level is `Information` (it gates the OTel exporter), so restore `Debug` locally. Leave `Microsoft`/`System` at the base `Warning`: ASP.NET Core's request logs include the full path and query, which carry session ids.
+  - Mark the environment as `local`.
+
+  ```json
+  "Logging": { "LogLevel": { "Default": "Debug" } },
+  "TelemetryConfig": { "Resource": { "DeploymentEnvironment": "local" } }
+  ```
+- **SyncWorker:** it doesn't read `appsettings.Development.json`. Put the same keys in `local.settings.json` `Values` using `__` separators, e.g. `"Logging__LogLevel__Default": "Debug"`.
+- **Key Vault:** the base file leaves the exporter off, so local runs need no vault. To export to the sandbox Sumo source, set `KeyVault:Uri` to the shared non-prod vault (ask the team, never commit it) and `TelemetryConfig:Exporter:Enabled` to `true`; `az login` then needs secret get/list on that vault.
 
 ### Key Configuration Sections (`AppSettings`)
 
