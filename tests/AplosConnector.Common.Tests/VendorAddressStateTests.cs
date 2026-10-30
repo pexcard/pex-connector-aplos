@@ -31,6 +31,8 @@ public class VendorAddressStateTests : VendorSetupTestBase
 
         PexApiClient.Verify(c => c.CreateVendor(It.IsAny<string>(), It.IsAny<CreateVendorRequestModel>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Empty(CreatedBillInbox);
-        Assert.Contains("Bill INV-9001: Add a billing address for the Acme Supplies contact in Aplos. Missing: State.", Assert.Single(HistoryRows).SyncNotes);
+        var notes = Assert.Single(HistoryRows).SyncNotes;
+        Assert.StartsWith("1 bill from Aplos needs attention. ", notes);
+        Assert.Contains("Bill INV-9001: Add a billing address for the Acme Supplies contact in Aplos. Missing: State.", notes);
     }
 }

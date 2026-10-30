@@ -60,13 +60,14 @@ public partial class AplosIntegrationService
         var syncCount = 0;
         var failureCount = 0;
         List<string> failureNotes = [];
+        var stageFailed = false;
 
         // Claiming needs neither account, so an import-off run never asks for them.
         void AddNotReadyNote()
         {
             if (claimOnly || ready || waiting.Count == 0 || failureNotes.Contains(notReadyNote)) return;
 
-            failureCount++;
+            failureCount += waiting.Count;
             failureNotes.Add(notReadyNote);
         }
 
@@ -78,7 +79,7 @@ public partial class AplosIntegrationService
         {
             logger.LogInformation($"Skipping sync bill payments for business {mapping.PEXBusinessAcctId}. Empty sync window {startDate:yyyy-MM-dd}..{endDate:yyyy-MM-dd}.");
             AddNotReadyNote();
-            if (failureCount > 0) await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, cancellationToken);
+            if (failureCount > 0) await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, stageFailed: false, cancellationToken);
             return;
         }
 
@@ -151,7 +152,7 @@ public partial class AplosIntegrationService
 
             if (claimOnly)
             {
-                if (failureCount > 0) await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, cancellationToken);
+                if (failureCount > 0) await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, stageFailed: false, cancellationToken);
                 return;
             }
 
@@ -165,7 +166,7 @@ public partial class AplosIntegrationService
                 }
 
                 AddNotReadyNote();
-                await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, cancellationToken);
+                await WriteBillPaymentsHistory(mapping, 0, failureCount, failureNotes, stageFailed: false, cancellationToken);
                 return;
             }
 
@@ -332,13 +333,14 @@ public partial class AplosIntegrationService
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            failureCount++;
+            // Not a bill, so it fails the run without adding to the bill count.
+            stageFailed = true;
             failureNotes.Add(DescribeFailure(ex));
             AddNotReadyNote();
             logger.LogError(ex, $"Failed to sync bill payments for business {mapping.PEXBusinessAcctId}.");
         }
 
-        await WriteBillPaymentsHistory(mapping, syncCount, failureCount, failureNotes, cancellationToken);
+        await WriteBillPaymentsHistory(mapping, syncCount, failureCount, failureNotes, stageFailed, cancellationToken);
     }
 
     private static bool CameFromAplosImport(BillPaymentRequestModel paymentRequest)
@@ -768,6 +770,13 @@ public partial class AplosIntegrationService
             return new CardRail(pexFundsAccountNumber, null, false, null);
         }
 
+        // The clearing account is a credit-only setting: a prepaid business can't see it, so one left saved from
+        // before is not used.
+        if (mapping.PEXFundingSource == FundingSource.Prepaid)
+        {
+            return new CardRail(pexFundsAccountNumber, null, false, $"Aplos can't mark bills paid from your PEX funds account {pexFundsAccountNumber} ({pexFundsAccount.Name}). Choose a bank account to represent your PEX funds in the connector settings.");
+        }
+
         if (mapping.BillPaymentsCardClearingAccountNumber <= 0m)
         {
             return new CardRail(pexFundsAccountNumber, null, false, $"Aplos can't mark bills paid from your PEX funds account {pexFundsAccountNumber} ({pexFundsAccount.Name}). Set the Aplos vendor card clearing account for bill payments in the connector settings.");
@@ -1112,10 +1121,11 @@ public partial class AplosIntegrationService
         int syncCount,
         int failureCount,
         List<string> failureNotes,
+        bool stageFailed,
         CancellationToken cancellationToken)
     {
         SyncStatus syncStatus;
-        if (failureCount == 0)
+        if (failureCount == 0 && !stageFailed)
         {
             syncStatus = SyncStatus.Success;
         }
@@ -1134,8 +1144,13 @@ public partial class AplosIntegrationService
             SyncType = SyncTypes.BillPayments,
             SyncStatus = syncStatus.ToString(),
             SyncedRecords = syncCount,
-            SyncNotes = string.Join(" ", failureNotes)
+            SyncNotes = JoinFailureNotes(failureCount, "1 bill payment needs attention.", $"{failureCount} bill payments need attention.", failureNotes)
         };
         await _historyStorage.CreateAsync(result, cancellationToken);
     }
+
+    private static string JoinFailureNotes(int failureCount, string oneFailed, string manyFailed, List<string> failureNotes)
+        => failureCount == 0
+            ? string.Join(" ", failureNotes)
+            : string.Join(" ", [failureCount == 1 ? oneFailed : manyFailed, .. failureNotes]);
 }
