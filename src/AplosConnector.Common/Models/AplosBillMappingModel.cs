@@ -23,6 +23,9 @@ namespace AplosConnector.Common.Models
         public decimal? PaidFromClearingAccountNumber { get; set; }
         // The card charge claimed for this bill: the transaction sync never books it, whatever the PEX note says.
         public long? CardTransactionId { get; set; }
+        // Set only for a bill created in PEX, whose row exists just to claim its card charge; it has no Aplos payable, and
+        // PaidSyncedUtc marks the bill payment posted to Aplos.
+        public int? PexPaymentRequestId { get; set; }
         public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     }
 }

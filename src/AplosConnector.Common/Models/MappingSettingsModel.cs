@@ -67,6 +67,11 @@ namespace AplosConnector.Common.Models
         /// </summary>
         public bool SyncOutstandingBills { get; set; }
         /// <summary>
+        /// Whether bill payments made in PEX are posted to Aplos. Imported Aplos bills are marked paid there only when
+        /// <see cref="SyncOutstandingBills"/> is on too, which runs only while this is on.
+        /// </summary>
+        public bool SyncBillPayments { get; set; }
+        /// <summary>
         /// Whether the PEX business account has Bill Pay enabled. Read-only; ignored if sent by the client.
         /// </summary>
         public bool UseBillPayEnabled { get; set; }

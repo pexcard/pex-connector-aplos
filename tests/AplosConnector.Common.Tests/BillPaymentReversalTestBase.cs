@@ -93,6 +93,7 @@ public abstract class BillPaymentReversalTestBase
         // Set by Sync's run-level settings refresh.
         UseBillPayEnabled = true,
         SyncOutstandingBills = true,
+        SyncBillPayments = true,
         BillPaymentsAchClearingAccountNumber = CashAccountNumber,
         AplosRegisterAccountNumber = CashAccountNumber
     };
@@ -352,6 +353,12 @@ public abstract class BillPaymentReversalTestBase
             model.CardTransactionId = cardTransactionId;
             return UpsertAsync(model, cancellationToken);
         }
+
+        public Task ClaimPexCreatedCardChargeAsync(int pexBusinessAcctId, int pexPaymentRequestId, long cardTransactionId, CancellationToken cancellationToken)
+            => throw new NotSupportedException("Reversal tests post no bill created in PEX.");
+
+        public Task MarkPexCreatedClaimPostedAsync(int pexBusinessAcctId, int pexPaymentRequestId, DateTime postedUtc, CancellationToken cancellationToken)
+            => throw new NotSupportedException("Reversal tests post no bill created in PEX.");
 
         private void ThrowIfFailing(string write)
         {

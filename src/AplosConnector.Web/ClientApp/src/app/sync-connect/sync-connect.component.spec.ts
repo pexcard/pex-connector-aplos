@@ -67,16 +67,16 @@ describe('SyncConnectComponent', () => {
     expect(component.defaultCategoryForm.get('billPaymentsAchClearingAccountNumber').value).toBe(1500);
   });
 
-  // PEX picks the rail only when a bill is paid, so importing bills needs the ACH bank account up front.
-  it('requires the bill payment ACH bank account only while Aplos bills are imported', () => {
+  // PEX picks the rail only when a bill is paid, so syncing bill payments needs the ACH bank account up front.
+  it('requires the bill payment ACH bank account only while bill payments sync', () => {
     const achControl = component.defaultCategoryForm.get('billPaymentsAchClearingAccountNumber');
     achControl.setValue(0);
 
-    component.settingsModel.syncOutstandingBills = false;
+    component.settingsModel.syncBillPayments = false;
     component.updateOtherOptionsValidators();
     expect(achControl.valid).toBeTrue();
 
-    component.settingsModel.syncOutstandingBills = true;
+    component.settingsModel.syncBillPayments = true;
     component.updateOtherOptionsValidators();
     expect(achControl.valid).toBeFalse();
 
@@ -84,9 +84,42 @@ describe('SyncConnectComponent', () => {
     expect(achControl.valid).toBeTrue();
   });
 
+  // Bill payments book through the purchases mapping, so a business without tags syncing only bill payments needs its defaults.
+  it('requires the shared default fund and expense account for a business without tags syncing only bill payments', () => {
+    const fundControl = component.defaultCategoryForm.get('defaultAplosFundId');
+    const accountControl = component.defaultCategoryForm.get('defaultAplosTransactionAccountNumber');
+    fundControl.setValue(0);
+    accountControl.setValue(0);
+    component.hasTagsAvailable = false;
+    component.settingsModel.syncTransactions = false;
+    component.settingsModel.syncReimbursements = false;
+    component.settingsModel.syncBillPayments = true;
+
+    component.updateOtherOptionsValidators();
+
+    expect(fundControl.valid).toBeFalse();
+    expect(accountControl.valid).toBeFalse();
+  });
+
+  it('asks for no bill payment account while Sync bill payments hides a ticked import', () => {
+    const achControl = component.defaultCategoryForm.get('billPaymentsAchClearingAccountNumber');
+    const clearingControl = component.defaultCategoryForm.get('billPaymentsCardClearingAccountNumber');
+    achControl.setValue(0);
+    clearingControl.setValue(0);
+    component.isCredit = true;
+    component.settingsModel.syncBillPayments = false;
+    component.settingsModel.syncOutstandingBills = true;
+
+    component.updateOtherOptionsValidators();
+
+    expect(achControl.valid).toBeTrue();
+    expect(clearingControl.valid).toBeTrue();
+  });
+
   it('requires the vendor card clearing account only for a credit business importing bills', () => {
     const clearingControl = component.defaultCategoryForm.get('billPaymentsCardClearingAccountNumber');
     clearingControl.setValue(0);
+    component.settingsModel.syncBillPayments = true;
     component.settingsModel.syncOutstandingBills = true;
 
     component.isCredit = false;

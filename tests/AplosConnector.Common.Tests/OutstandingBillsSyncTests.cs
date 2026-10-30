@@ -869,6 +869,12 @@ namespace AplosConnector.Common.Tests
                 return Task.CompletedTask;
             }
 
+            public Task ClaimPexCreatedCardChargeAsync(int pexBusinessAcctId, int pexPaymentRequestId, long cardTransactionId, CancellationToken cancellationToken)
+                => throw new NotSupportedException("The import posts no bill created in PEX.");
+
+            public Task MarkPexCreatedClaimPostedAsync(int pexBusinessAcctId, int pexPaymentRequestId, DateTime postedUtc, CancellationToken cancellationToken)
+                => throw new NotSupportedException("The import posts no bill created in PEX.");
+
             private static string Key(int pexBusinessAcctId, string aplosPayableId) => $"{pexBusinessAcctId}|{aplosPayableId}";
         }
 
@@ -884,6 +890,7 @@ namespace AplosConnector.Common.Tests
             // Set by Sync's run-level settings refresh, which also clears the import toggle when bill pay is off.
             mapping.UseBillPayEnabled = useBillPay;
             mapping.SyncOutstandingBills = syncOutstandingBills && useBillPay;
+            mapping.SyncBillPayments = useBillPay;
 
             _mockPexApiClient
                 .Setup(client => client.GetBusinessSettings(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -904,6 +911,7 @@ namespace AplosConnector.Common.Tests
             IsManualSync = true,
             EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
             SyncOutstandingBills = syncOutstandingBills,
+            SyncBillPayments = true,
             // Import is gated on the payment half being configured too - see BillPayReady.
             BillPaymentsAchClearingAccountNumber = 1010m,
             BillPaymentsCardClearingAccountNumber = 1020m,

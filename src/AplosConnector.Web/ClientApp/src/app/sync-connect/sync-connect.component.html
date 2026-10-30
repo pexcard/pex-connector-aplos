@@ -135,8 +135,8 @@
       (clrWizardPageOnCommit)="onSettingsCommit()"
       (clrWizardPageOnCancel)="onCloseWizard()"
     [clrWizardPageNextDisabled]="!optionsForm.valid
-                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncOutstandingBills) && !settingsModel.aplosRegisterAccountNumber)
-                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements || settingsModel.syncOutstandingBills) && !settingsModel.earliestTransactionDateToSync)">
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncBillPayments) && !settingsModel.aplosRegisterAccountNumber)
+                   || ((settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements || settingsModel.syncBillPayments) && !settingsModel.earliestTransactionDateToSync)">
       <ng-template clrPageNavTitle>Sync Selection</ng-template>
       <ng-template clrPageTitle>Choose what to sync</ng-template>
       @if (!hasTagsAvailable) {
@@ -273,10 +273,20 @@
             <input
               type="checkbox"
               clrToggle
-              name="syncOutstandingBills"
-              [(ngModel)]="settingsModel.syncOutstandingBills" />
-            <label>Sync outstanding bills: import unpaid Aplos bills into PEX, and mark them paid in Aplos once paid in PEX. <span class="badge-new">New</span></label>
+              name="syncBillPayments"
+              [(ngModel)]="settingsModel.syncBillPayments" />
+            <label>Automatically import PEX bill payments into Aplos. <span class="badge-new">New</span></label>
           </clr-toggle-wrapper>
+          @if (settingsModel.syncBillPayments) {
+            <clr-toggle-wrapper>
+              <input
+                type="checkbox"
+                clrToggle
+                name="syncOutstandingBills"
+                [(ngModel)]="settingsModel.syncOutstandingBills" />
+              <label>Automatically import unpaid Aplos bills into PEX, and mark them paid in Aplos. <span class="badge-new">New</span></label>
+            </clr-toggle-wrapper>
+          }
         }
         <hr />
         <clr-toggle-wrapper>
@@ -295,12 +305,12 @@
             </clr-tooltip>
           </label>
         </clr-toggle-wrapper>
-        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements || settingsModel.syncOutstandingBills) {
+        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements || settingsModel.syncBillPayments) {
           <hr />
         }
         <!-- Reimbursements don't use the PEX register account — their cash side is the
         reimbursements Bank Account on Other Options. -->
-        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncOutstandingBills) {
+        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncBillPayments) {
           <div class="card">
             <div class="card-block">
               <app-loading-placeholder
@@ -344,7 +354,7 @@
         }
         <p></p>
         <p></p>
-        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements || settingsModel.syncOutstandingBills) {
+        @if (settingsModel.syncTransactions || settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncReimbursements || settingsModel.syncBillPayments) {
           <div class="clr-row">
             <div class="clr-col">
               Please specify a start date for the sync. Transactions made prior to this date will not be imported into Aplos. All transactions after this date will be imported automatically.
@@ -468,7 +478,7 @@
     </clr-wizard-page>
   }
 
-  @if (isAuthenticated && (settingsModel.syncTransactions || settingsModel.syncReimbursements) && hasTagsAvailable) {
+  @if (isAuthenticated && (settingsModel.syncTransactions || settingsModel.syncReimbursements || settingsModel.syncBillPayments) && hasTagsAvailable) {
     <clr-wizard-page
       (clrWizardPageOnCommit)="onTagMappingCommit()"
       (clrWizardPageOnCancel)="onCloseWizard()"
@@ -731,7 +741,7 @@
     </clr-wizard-page>
   }
 
-  @if (isAuthenticated && (settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncRebates || settingsModel.syncReimbursements || settingsModel.syncOutstandingBills)) {
+  @if (isAuthenticated && (settingsModel.syncTransfers || settingsModel.syncInvoices || settingsModel.syncPexFees || settingsModel.syncRebates || settingsModel.syncReimbursements || settingsModel.syncBillPayments)) {
     <clr-wizard-page
       (clrWizardPageOnLoad)="updateOtherOptionsValidators()"
       (clrWizardPageOnCommit)="onDefaultCategoryCommit()"
@@ -740,17 +750,17 @@
       <ng-template clrPageNavTitle>Other Options</ng-template>
       <ng-template  clrPageTitle>
         @if (isPrepaid) {
-          <span>Configure options for transfers, fees, rebates and reimbursements</span>
+          <span>Configure options for transfers, fees, rebates{{ settingsModel.syncBillPayments ? ', reimbursements and bill payments' : ' and reimbursements' }}</span>
         }
         @if (isCredit) {
-          <span>Configure options for PEX statement payments, fees, rebates and reimbursements</span>
+          <span>Configure options for PEX statement payments, fees, rebates{{ settingsModel.syncBillPayments ? ', reimbursements and bill payments' : ' and reimbursements' }}</span>
         }
       </ng-template>
       @if (isPrepaid) {
-        <h5>Please choose the following items when importing Transfers, Fees, Rebates and Reimbursements into Aplos</h5>
+        <h5>Please choose the following items when importing Transfers, Fees, Rebates{{ settingsModel.syncBillPayments ? ', Reimbursements and Bill Payments' : ' and Reimbursements' }} into Aplos</h5>
       }
       @if (isCredit) {
-        <h5>Please choose the following items when importing PEX Statement Payments, Fees, Rebates and Reimbursements into Aplos</h5>
+        <h5>Please choose the following items when importing PEX Statement Payments, Fees, Rebates{{ settingsModel.syncBillPayments ? ', Reimbursements and Bill Payments' : ' and Reimbursements' }} into Aplos</h5>
       }
       <app-loading-placeholder
         [loadingState]="loadingExpenseCategories"
@@ -762,8 +772,8 @@
         </clr-spinner>
       }
       <form clrForm [formGroup]="defaultCategoryForm" [class.hide]="!savingSettings">
-        <!-- Purchases / Reimbursements shared defaults (no-tags businesses only) -->
-        @if (!hasTagsAvailable && (settingsModel.syncTransactions || settingsModel.syncReimbursements)) {
+        <!-- Purchases / Reimbursements / Bill Payments shared defaults (no-tags businesses only) -->
+        @if (!hasTagsAvailable && (settingsModel.syncTransactions || settingsModel.syncReimbursements || settingsModel.syncBillPayments)) {
           <table class="table table-2col">
             <caption>{{ tagMappingPageTitle }}</caption>
             <thead>
@@ -1202,8 +1212,8 @@
               </table>
             </div>
           }
-          <!-- Bill Pay -->
-          @if (settingsModel.syncOutstandingBills) {
+          <!-- Bill Payments -->
+          @if (settingsModel.syncBillPayments) {
             <div>
               <app-loading-placeholder
                 [loadingState]="loadingCashAccounts"
@@ -1211,7 +1221,7 @@
                 (retry)="getCashAccounts()"></app-loading-placeholder>
               <table class="table table-2col">
                 <caption>
-                  <h4>Bill Pay</h4>
+                  <h4>Bill Payments</h4>
                 </caption>
                 <thead>
                   <tr>
@@ -1226,7 +1236,7 @@
                       <clr-tooltip>
                         <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
                         <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
-                          <span>Aplos bills imported into PEX and paid there by ACH are marked paid in Aplos from this bank account.</span>
+                          <span>Bills paid by ACH are booked against this bank account: Aplos bills imported into PEX are marked paid from it, and bills created in PEX are credited to it.</span>
                         </clr-tooltip-content>
                       </clr-tooltip>
                     </td>
@@ -1241,27 +1251,29 @@
                       </div>
                     </td>
                   </tr>
-                  <tr>
-                    <td class="left">
-                      Vendor Card Clearing Account
-                      <clr-tooltip>
-                        <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
-                        <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
-                          <span>Technical asset account used by the connector to close Aplos bills paid by PEX vendor card. The connector clears it on every bill. Required only when your PEX funds account is a liability (credit card) account.</span>
-                        </clr-tooltip-content>
-                      </clr-tooltip>
-                    </td>
-                    <td class="left">
-                      <div class="clr-select-wrapper">
-                        <select class="clr-select select" formControlName="billPaymentsCardClearingAccountNumber" aria-label="Vendor card clearing account for bill payments">
-                          <option [value]="0"></option>
-                          @for (aplosAccount of aplosCashAccounts; track aplosAccount) {
-                            <option [value]="aplosAccount.id">{{aplosAccount | aplosAccount}}</option>
-                          }
-                        </select>
-                      </div>
-                    </td>
-                  </tr>
+                  @if (settingsModel.syncOutstandingBills && isCredit) {
+                    <tr>
+                      <td class="left">
+                        Vendor Card Clearing Account
+                        <clr-tooltip>
+                          <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
+                          <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
+                            <span>Technical asset account used by the connector to close Aplos bills paid by PEX vendor card. The connector clears it on every bill. Required only when your PEX funds account is a liability (credit card) account.</span>
+                          </clr-tooltip-content>
+                        </clr-tooltip>
+                      </td>
+                      <td class="left">
+                        <div class="clr-select-wrapper">
+                          <select class="clr-select select" formControlName="billPaymentsCardClearingAccountNumber" aria-label="Vendor card clearing account for bill payments">
+                            <option [value]="0"></option>
+                            @for (aplosAccount of aplosCashAccounts; track aplosAccount) {
+                              <option [value]="aplosAccount.id">{{aplosAccount | aplosAccount}}</option>
+                            }
+                          </select>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 </tbody>
               </table>
             </div>

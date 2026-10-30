@@ -27,5 +27,9 @@ namespace AplosConnector.Common.Storage
         Task ClearPaidFromClearingAsync(AplosBillMappingModel model, CancellationToken cancellationToken);
 
         Task MarkCardChargeClaimedAsync(AplosBillMappingModel model, long cardTransactionId, CancellationToken cancellationToken);
+
+        Task ClaimPexCreatedCardChargeAsync(int pexBusinessAcctId, int pexPaymentRequestId, long cardTransactionId, CancellationToken cancellationToken);
+
+        Task MarkPexCreatedClaimPostedAsync(int pexBusinessAcctId, int pexPaymentRequestId, DateTime postedUtc, CancellationToken cancellationToken);
     }
 }
