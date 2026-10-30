@@ -851,8 +851,9 @@ namespace AplosConnector.Common.Services
                 }
             }
 
-            if (mapping.SyncOutstandingBills && !businessSettings.UseBillPay)
+            if ((mapping.SyncBillPayments || mapping.SyncOutstandingBills) && !businessSettings.UseBillPay)
             {
+                mapping.SyncBillPayments = false;
                 mapping.SyncOutstandingBills = false;
                 if (persistChanges)
                 {
@@ -1162,7 +1163,7 @@ namespace AplosConnector.Common.Services
             {
                 _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod} in batches of {fetchBatchSizeDays} day(s) (batchSizeSource={fetchBatchSizeSource}).");
 
-                var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, includeVendorBillPay: true, cancelToken: cancellationToken);
+                var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, includeVendorBillPay: IncludeVendorBillPay(mapping), cancelToken: cancellationToken);
                 allCardholderTransactions.AddRange(cardholderTransactions);
                 var transactions = FilterCardholderTransactions(mapping, cardholderTransactions, claimedCardCharges).ToList();
 
@@ -1466,8 +1467,14 @@ namespace AplosConnector.Common.Services
                     continue;
                 }
 
-                // Already booked by the bill stage as the payment of an imported Aplos bill.
+                // Already booked by the bill stage as a bill payment.
                 if (transaction.TransactionNotes.Any(x => x.NoteText.Contains(SyncedAsBillPaymentNote, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                // An auto-billed vendor card charge shares its bill's notes.
+                if (transaction.TransactionNotes.Any(x => IsBillPaymentSyncedNote(x.NoteText)))
                 {
                     continue;
                 }
@@ -1475,6 +1482,10 @@ namespace AplosConnector.Common.Services
                 yield return transaction;
             }
         }
+
+        // With Sync bill payments on, PEX leaves vendor card charges out and the bill stage books them; off, they are purchases
+        // again, which the claims and notes keep from booking twice.
+        private static bool IncludeVendorBillPay(Pex2AplosMappingModel mapping) => !(mapping.UseBillPayEnabled && mapping.SyncBillPayments);
 
         private static string GetSyncedNote(TransactionModel transaction) => GetSyncedNote(transaction.TransactionId);
 

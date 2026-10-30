@@ -5,6 +5,7 @@ using Aplos.Api.Client.Models.Detail;
 using Aplos.Api.Client.Models.Response;
 using Aplos.Api.Client.Models.Single;
 using AplosConnector.Common.Const;
+using AplosConnector.Common.Entities;
 using AplosConnector.Common.Enums;
 using AplosConnector.Common.Models;
 using AplosConnector.Common.Models.Settings;
@@ -29,7 +30,7 @@ using Xunit;
 
 namespace AplosConnector.Common.Tests;
 
-public abstract class BillPaymentsTestBase
+public abstract partial class BillPaymentsTestBase
 {
     protected const int PexBusinessAcctId = 6118231;
     protected const string AplosPayableId = "9001";
@@ -75,6 +76,7 @@ public abstract class BillPaymentsTestBase
         decimal achClearingAccountNumber = AchClearingAccountNumber,
         decimal cardClearingAccountNumber = CardClearingAccountNumber,
         decimal pexFundsAccountNumber = PexFundsAccountNumber,
+        bool syncBillPayments = true,
         Action<Pex2AplosMappingModel> configure = null,
         CancellationToken cancellationToken = default)
     {
@@ -91,9 +93,10 @@ public abstract class BillPaymentsTestBase
             BillPaymentsAchClearingAccountNumber = achClearingAccountNumber,
             BillPaymentsCardClearingAccountNumber = cardClearingAccountNumber,
             AplosRegisterAccountNumber = pexFundsAccountNumber,
-            // Set by Sync's run-level settings refresh.
+            // Set by Sync's run-level settings refresh, which also clears the toggles when bill pay is off.
             UseBillPayEnabled = useBillPay,
-            SyncOutstandingBills = useBillPay
+            SyncOutstandingBills = useBillPay,
+            SyncBillPayments = syncBillPayments && useBillPay
         };
         configure?.Invoke(mapping);
 
@@ -147,6 +150,7 @@ public abstract class BillPaymentsTestBase
                     BillId = PexBillId,
                     BillRefNo = "INV-9001",
                     Amount = 125.50m,
+                    PayeeName = "Acme Supplies",
                     PaymentRequestStatus = PaymentRequestStatus.Closed,
                     PaymentRequestStatusTrigger = PaymentRequestStatusTrigger.Paid
                 }],
@@ -368,131 +372,5 @@ public abstract class BillPaymentsTestBase
             null,
             _billMappingStorage,
             Mock.Of<IAplosVendorCardOrderStorage>());
-    }
-
-    protected sealed class FakeBillMappingStorage : IAplosBillMappingStorage
-    {
-        public readonly Dictionary<string, AplosBillMappingModel> Rows = new(StringComparer.OrdinalIgnoreCase);
-
-        public bool FailNextWrite { get; set; }
-
-        public bool FailNextRead { get; set; }
-
-        public void Seed(AplosBillMappingModel model) => Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = Copy(model);
-
-        // Copies in and out, like a table: a model the service mutates is not the stored row until it is written.
-        public Task<List<AplosBillMappingModel>> GetByBusinessAsync(int pexBusinessAcctId, CancellationToken cancellationToken)
-        {
-            if (FailNextRead)
-            {
-                FailNextRead = false;
-                return Task.FromException<List<AplosBillMappingModel>>(new InvalidOperationException("Table storage is unavailable."));
-            }
-
-            return Task.FromResult(Rows.Values.Where(row => row.PEXBusinessAcctId == pexBusinessAcctId).Select(Copy).ToList());
-        }
-
-        public Task AddAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
-        {
-            ThrowIfFailing();
-            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = Copy(model);
-            return Task.CompletedTask;
-        }
-
-        // Mirrors AplosBillMappingStorage: update-only, and only the paid column changes.
-        public Task MarkPaidAsync(AplosBillMappingModel model, DateTime paidUtc, CancellationToken cancellationToken)
-        {
-            ThrowIfFailing();
-            model.PaidSyncedUtc = paidUtc;
-            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].PaidSyncedUtc = paidUtc;
-            return Task.CompletedTask;
-        }
-
-        public Task MarkFailedAsync(AplosBillMappingModel model, DateTime failedUtc, CancellationToken cancellationToken)
-        {
-            ThrowIfFailing();
-            model.FirstFailedUtc = failedUtc;
-            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].FirstFailedUtc = failedUtc;
-            return Task.CompletedTask;
-        }
-
-        // Mirrors AplosBillMappingStorage: a full replace that clears the paid marker and the retry clock.
-        public Task MarkReversedAsync(AplosBillMappingModel model, DateTime reversedUtc, CancellationToken cancellationToken)
-        {
-            ThrowIfFailing();
-            model.ReversedUtc = reversedUtc;
-            model.PaidSyncedUtc = null;
-            model.FirstFailedUtc = null;
-            model.AwaitingChargeSinceUtc = null;
-            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)] = Copy(model);
-            return Task.CompletedTask;
-        }
-
-        public Task ClearReversedAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
-        {
-            ThrowIfFailing();
-            model.ReversedUtc = null;
-            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].ReversedUtc = null;
-            return Task.CompletedTask;
-        }
-
-        public Task MarkAwaitingChargeAsync(AplosBillMappingModel model, DateTime awaitingSinceUtc, CancellationToken cancellationToken)
-        {
-            ThrowIfFailing();
-            model.AwaitingChargeSinceUtc = awaitingSinceUtc;
-            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].AwaitingChargeSinceUtc = awaitingSinceUtc;
-            return Task.CompletedTask;
-        }
-
-        public Task MarkPaidFromClearingAsync(AplosBillMappingModel model, decimal clearingAccountNumber, CancellationToken cancellationToken)
-        {
-            ThrowIfFailing();
-            model.PaidFromClearingAccountNumber = clearingAccountNumber;
-            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].PaidFromClearingAccountNumber = clearingAccountNumber;
-            return Task.CompletedTask;
-        }
-
-        public Task ClearPaidFromClearingAsync(AplosBillMappingModel model, CancellationToken cancellationToken)
-        {
-            ThrowIfFailing();
-            model.PaidFromClearingAccountNumber = null;
-            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].PaidFromClearingAccountNumber = null;
-            return Task.CompletedTask;
-        }
-
-        public Task MarkCardChargeClaimedAsync(AplosBillMappingModel model, long cardTransactionId, CancellationToken cancellationToken)
-        {
-            ThrowIfFailing();
-            model.CardTransactionId = cardTransactionId;
-            Rows[Key(model.PEXBusinessAcctId, model.AplosPayableId)].CardTransactionId = cardTransactionId;
-            return Task.CompletedTask;
-        }
-
-        private void ThrowIfFailing()
-        {
-            if (!FailNextWrite) return;
-
-            FailNextWrite = false;
-            throw new InvalidOperationException("Table storage is unavailable.");
-        }
-
-        private static string Key(int pexBusinessAcctId, string aplosPayableId) => $"{pexBusinessAcctId}|{aplosPayableId}";
-
-        private static AplosBillMappingModel Copy(AplosBillMappingModel model) => new()
-        {
-            PEXBusinessAcctId = model.PEXBusinessAcctId,
-            AplosPayableId = model.AplosPayableId,
-            AplosReferenceNumber = model.AplosReferenceNumber,
-            PexBillInboxId = model.PexBillInboxId,
-            MetadataRelationId = model.MetadataRelationId,
-            Amount = model.Amount,
-            PaidSyncedUtc = model.PaidSyncedUtc,
-            FirstFailedUtc = model.FirstFailedUtc,
-            ReversedUtc = model.ReversedUtc,
-            AwaitingChargeSinceUtc = model.AwaitingChargeSinceUtc,
-            PaidFromClearingAccountNumber = model.PaidFromClearingAccountNumber,
-            CardTransactionId = model.CardTransactionId,
-            CreatedUtc = model.CreatedUtc
-        };
     }
 }

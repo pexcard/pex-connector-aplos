@@ -103,6 +103,7 @@ public abstract class VendorSetupTestBase
             AplosPrivateKey = "privateKey",
             EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
             SyncOutstandingBills = true,
+            SyncBillPayments = true,
             UseBillPayEnabled = true,
             BillPaymentsAchClearingAccountNumber = 1010m,
             BillPaymentsCardClearingAccountNumber = 1020m,

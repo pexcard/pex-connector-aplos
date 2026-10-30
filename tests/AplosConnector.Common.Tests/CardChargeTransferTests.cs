@@ -199,6 +199,19 @@ public class CardChargeTransferTests : CardChargeTransferTestBase
     }
 
     [Fact]
+    public async Task WithNoClearingAccountAPrepaidBusinessOnANonRegisterAccountIsToldToChooseABankAccount()
+    {
+        SetupCardBill(EquipmentAccount);
+
+        await RunSync(useBillPay: true, cardClearingAccountNumber: 0m, configure: mapping => mapping.PEXFundingSource = FundingSource.Prepaid);
+
+        VerifyNoPayCall();
+        var notes = Assert.Single(_historyRows).SyncNotes;
+        Assert.Contains("Choose a bank account to represent your PEX funds in the connector settings.", notes);
+        Assert.DoesNotContain("clearing account", notes);
+    }
+
+    [Fact]
     public async Task AFailedTransferFailsTheBillAndTheNextRunPostsOnlyTheTransfer()
     {
         SetupCardBill(CreditCardAccount);
