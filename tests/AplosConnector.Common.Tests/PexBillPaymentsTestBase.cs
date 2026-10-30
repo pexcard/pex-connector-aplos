@@ -139,6 +139,7 @@ public abstract class PexBillPaymentsTestBase : BillPaymentsTestBase
         => RunSync(useBillPay: true, achClearingAccountNumber: achBankAccountNumber, configure: mapping =>
         {
             mapping.DefaultAplosFundId = FundId;
+            mapping.DefaultAplosTransactionAccountNumber = PurchasesAccountNumber;
             mapping.PexFundsTagId = FundTagId;
             mapping.ExpenseAccountMappings = [new ExpenseAccountMappingModel { ExpenseAccountsPexTagId = PurchasesAccountTagId, DefaultAplosTransactionAccountNumber = PurchasesAccountNumber }];
             configure?.Invoke(mapping);

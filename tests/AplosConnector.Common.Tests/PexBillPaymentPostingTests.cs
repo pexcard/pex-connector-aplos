@@ -123,6 +123,16 @@ public class PexBillPaymentPostingTests : PexBillPaymentsTestBase
     }
 
     [Fact]
+    public async Task WithoutTagsABillTakesTheDefaultAccountShownInSettingsNotAStaleTagDefault()
+    {
+        AddPexBill(PayeeFundsDestinationType.BankAccount);
+
+        await RunPexBillSync(configure: mapping => mapping.DefaultAplosTransactionAccountNumber = NoTagsAccountNumber);
+
+        AssertLines(Assert.Single(_postedTransactions), AchClearingAccountNumber, NoTagsAccountNumber, FundId);
+    }
+
+    [Fact]
     public async Task ABillsTaxTagIsReadFromThePurchasesTaxTag()
     {
         UseTags(FundTagId, PurchasesAccountTagId, "tax-tag");

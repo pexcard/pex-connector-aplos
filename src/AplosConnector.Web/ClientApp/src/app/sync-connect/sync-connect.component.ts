@@ -803,8 +803,8 @@ export class SyncConnectComponent implements OnInit {
     const formValue = this.defaultCategoryForm.value;
     
     // Only update defaultAplosFundId if it's being used in the transaction options form
-    // (when tags are not available and purchases or reimbursements sync is enabled)
-    if (!this.hasTagsAvailable && (this.settingsModel.syncTransactions || this.settingsModel.syncReimbursements)) {
+    // (when tags are not available and purchases, reimbursements or bill payments sync is enabled)
+    if (!this.hasTagsAvailable && (this.settingsModel.syncTransactions || this.settingsModel.syncReimbursements || this.settingsModel.syncBillPayments)) {
       this.settingsModel.defaultAplosFundId = formValue.defaultAplosFundId;
       this.settingsModel.defaultAplosTransactionAccountNumber = formValue.defaultAplosTransactionAccountNumber;
     }

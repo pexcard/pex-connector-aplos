@@ -101,6 +101,20 @@ describe('SyncConnectComponent', () => {
     expect(accountControl.valid).toBeFalse();
   });
 
+  it('saves the shared default fund and expense account for a business without tags syncing only bill payments', () => {
+    component.defaultCategoryForm.get('defaultAplosFundId').setValue(225);
+    component.defaultCategoryForm.get('defaultAplosTransactionAccountNumber').setValue(6000);
+    component.hasTagsAvailable = false;
+    component.settingsModel.syncTransactions = false;
+    component.settingsModel.syncReimbursements = false;
+    component.settingsModel.syncBillPayments = true;
+
+    component.updateSettingsFromDefaultCategoryForm();
+
+    expect(component.settingsModel.defaultAplosFundId).toBe(225);
+    expect(component.settingsModel.defaultAplosTransactionAccountNumber).toBe(6000);
+  });
+
   it('asks for no bill payment account while Sync bill payments hides a ticked import', () => {
     const achControl = component.defaultCategoryForm.get('billPaymentsAchClearingAccountNumber');
     const clearingControl = component.defaultCategoryForm.get('billPaymentsCardClearingAccountNumber');

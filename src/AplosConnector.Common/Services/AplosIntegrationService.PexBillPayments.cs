@@ -383,7 +383,7 @@ public partial class AplosIntegrationService
         if (!context.UseTags)
         {
             values.AplosFundId = mapping.DefaultAplosFundId;
-            values.AplosTransactionAccountNumber = defaultAccountNumber;
+            values.AplosTransactionAccountNumber = mapping.DefaultAplosTransactionAccountNumber;
         }
         else
         {
