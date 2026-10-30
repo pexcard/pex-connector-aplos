@@ -1241,27 +1241,29 @@
                       </div>
                     </td>
                   </tr>
-                  <tr>
-                    <td class="left">
-                      Vendor Card Clearing Account
-                      <clr-tooltip>
-                        <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
-                        <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
-                          <span>Technical asset account used by the connector to close Aplos bills paid by PEX vendor card. The connector clears it on every bill. Required only when your PEX funds account is a liability (credit card) account.</span>
-                        </clr-tooltip-content>
-                      </clr-tooltip>
-                    </td>
-                    <td class="left">
-                      <div class="clr-select-wrapper">
-                        <select class="clr-select select" formControlName="billPaymentsCardClearingAccountNumber" aria-label="Vendor card clearing account for bill payments">
-                          <option [value]="0"></option>
-                          @for (aplosAccount of aplosCashAccounts; track aplosAccount) {
-                            <option [value]="aplosAccount.id">{{aplosAccount | aplosAccount}}</option>
-                          }
-                        </select>
-                      </div>
-                    </td>
-                  </tr>
+                  @if (isCredit) {
+                    <tr>
+                      <td class="left">
+                        Vendor Card Clearing Account
+                        <clr-tooltip>
+                          <cds-icon clrTooltipTrigger shape="info-circle" size="20"></cds-icon>
+                          <clr-tooltip-content clrPosition="bottom-right" clrSize="lg" *clrIfOpen>
+                            <span>Technical asset account used by the connector to close Aplos bills paid by PEX vendor card. The connector clears it on every bill. Required only when your PEX funds account is a liability (credit card) account.</span>
+                          </clr-tooltip-content>
+                        </clr-tooltip>
+                      </td>
+                      <td class="left">
+                        <div class="clr-select-wrapper">
+                          <select class="clr-select select" formControlName="billPaymentsCardClearingAccountNumber" aria-label="Vendor card clearing account for bill payments">
+                            <option [value]="0"></option>
+                            @for (aplosAccount of aplosCashAccounts; track aplosAccount) {
+                              <option [value]="aplosAccount.id">{{aplosAccount | aplosAccount}}</option>
+                            }
+                          </select>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 </tbody>
               </table>
             </div>
