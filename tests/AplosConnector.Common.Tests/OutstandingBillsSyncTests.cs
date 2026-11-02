@@ -231,16 +231,73 @@ namespace AplosConnector.Common.Tests
             Assert.DoesNotContain("billing address", row.SyncNotes);
         }
 
+        // The Start date is stored as the server's local midnight: UTC midnight when deployed, the evening before from a server east of UTC (157312).
+        [Theory]
+        [InlineData("2026-08-01T00:00:00Z")]
+        [InlineData("2026-07-31T22:00:00Z")]
+        public async Task APayableDatedTheDayBeforeTheStartDateIsNotImported(string storedStartDateUtc)
+        {
+            SetupExistingPexVendor();
+            var onStartDay = NewPayable("9001", amount: 10m, paid: 0m);
+            onStartDay.BillDate = new DateTime(2026, 8, 1);
+            var dayBefore = NewPayable("9002", amount: 20m, paid: 0m);
+            dayBefore.BillDate = new DateTime(2026, 7, 31);
+            SetupPayables(onStartDay, dayBefore);
+
+            await RunSync(useBillPay: true, syncOutstandingBills: true, configure: mapping =>
+                mapping.EarliestTransactionDateToSync = DateTimeOffset.Parse(storedStartDateUtc).UtcDateTime);
+
+            Assert.Equal("INV-9001", Assert.Single(_createdBillInbox).BillNumber);
+        }
+
+        // A lookback start is a real instant, so it still reads as its EST day.
         [Fact]
-        public async Task PayablesAreReadFromTheEstCalendarDayOfTheWindowStart()
+        public async Task ALookbackStartIsReadAsItsEstDay()
+        {
+            SetupExistingPexVendor();
+            var onLookbackDay = NewPayable("9001", amount: 10m, paid: 0m);
+            onLookbackDay.BillDate = new DateTime(2026, 9, 1);
+            var dayBefore = NewPayable("9002", amount: 20m, paid: 0m);
+            dayBefore.BillDate = new DateTime(2026, 8, 31);
+            SetupPayables(onLookbackDay, dayBefore);
+
+            // 10 days before 2026-09-11T12:00Z is 2026-09-01T12:00Z, 08:00 on 2026-09-01 in EST.
+            await RunSync(useBillPay: true, syncOutstandingBills: true, configure: mapping =>
+            {
+                mapping.IsManualSync = false;
+                mapping.SyncTransactionsIntervalDays = 10;
+            });
+
+            Assert.Equal("INV-9001", Assert.Single(_createdBillInbox).BillNumber);
+        }
+
+        [Fact]
+        public async Task AStartDateOlderThanAYearIsReadFromTheOneYearStart()
+        {
+            SetupExistingPexVendor();
+            var onFloorDay = NewPayable("9001", amount: 10m, paid: 0m);
+            onFloorDay.BillDate = new DateTime(2025, 9, 11);
+            var dayBefore = NewPayable("9002", amount: 20m, paid: 0m);
+            dayBefore.BillDate = new DateTime(2025, 9, 10);
+            SetupPayables(onFloorDay, dayBefore);
+
+            // A year before 2026-09-11T12:00Z is 2025-09-11T12:00Z, 08:00 on 2025-09-11 in EST.
+            await RunSync(useBillPay: true, syncOutstandingBills: true, configure: mapping =>
+                mapping.EarliestTransactionDateToSync = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+            Assert.Equal("INV-9001", Assert.Single(_createdBillInbox).BillNumber);
+        }
+
+        [Fact]
+        public async Task PayablesAreReadFromThePickedStartDay()
         {
             SetupExistingPexVendor();
             SetupPayables(NewPayable("9001", amount: 10m, paid: 0m));
 
             await RunSync(useBillPay: true, syncOutstandingBills: true);
 
-            // EarliestTransactionDateToSync is 2026-08-01T00:00Z, which is still 2026-07-31 in EST.
-            _mockAplosApiClient.Verify(c => c.GetPayables(new DateOnly(2026, 7, 31), It.IsAny<CancellationToken>()), Times.Once);
+            // EarliestTransactionDateToSync is the picked day, 2026-08-01.
+            _mockAplosApiClient.Verify(c => c.GetPayables(new DateOnly(2026, 8, 1), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -429,8 +486,8 @@ namespace AplosConnector.Common.Tests
             var bills = await GetAplosIntegrationService().GetAplosOutstandingBills(NewMapping(syncOutstandingBills: true), null, UtcNow, default);
 
             Assert.Equal("9001", Assert.Single(bills).Id);
-            // EarliestTransactionDateToSync is 2026-08-01T00:00Z, which is still 2026-07-31 in EST - as the import reads.
-            _mockAplosApiClient.Verify(c => c.GetPayables(new DateOnly(2026, 7, 31), It.IsAny<CancellationToken>()), Times.Once);
+            // EarliestTransactionDateToSync is the picked day, 2026-08-01 - as the import reads.
+            _mockAplosApiClient.Verify(c => c.GetPayables(new DateOnly(2026, 8, 1), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -877,10 +934,11 @@ namespace AplosConnector.Common.Tests
             SetupDefaults();
         }
 
-        private async Task<Pex2AplosMappingModel> RunSync(bool useBillPay, bool syncOutstandingBills, DateTime? endDateUtc = null)
+        private async Task<Pex2AplosMappingModel> RunSync(bool useBillPay, bool syncOutstandingBills, DateTime? endDateUtc = null, Action<Pex2AplosMappingModel> configure = null)
         {
             var mapping = NewMapping(syncOutstandingBills);
             mapping.EndDateUtc = endDateUtc;
+            configure?.Invoke(mapping);
             // Set by Sync's run-level settings refresh, which also clears the import toggle when bill pay is off.
             mapping.UseBillPayEnabled = useBillPay;
             mapping.SyncOutstandingBills = syncOutstandingBills && useBillPay;
