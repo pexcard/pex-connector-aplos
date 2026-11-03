@@ -51,7 +51,8 @@ namespace AplosConnector.Common.Services
             DateTime utcNow,
             CancellationToken cancellationToken)
         {
-            if (!mapping.SyncOutstandingBills) return;
+            // Nested under Sync bill payments: an import is only worth making if its payment comes back.
+            if (!mapping.SyncBillPayments || !mapping.SyncOutstandingBills) return;
 
             if (!mapping.UseBillPayEnabled)
             {
@@ -218,7 +219,7 @@ namespace AplosConnector.Common.Services
                 SyncType = SyncTypes.OutstandingBills,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
-                SyncNotes = failureCount == 0 ? string.Empty : string.Join(" ", failureNotes)
+                SyncNotes = failureCount == 0 ? string.Empty : string.Join(" ", [failureCount == 1 ? "1 bill from Aplos needs attention." : $"{failureCount} bills from Aplos need attention.", .. failureNotes])
             };
             await _historyStorage.CreateAsync(result, cancellationToken);
         }

@@ -15,7 +15,10 @@ namespace AplosConnector.Common.Entities
         public AplosBillMappingEntity(AplosBillMappingModel model)
         {
             PartitionKey = model.PEXBusinessAcctId.ToString();
-            RowKey = model.AplosPayableId;
+            RowKey = model.AplosPayableId
+                ?? (model.PexPaymentRequestId is { } pexPaymentRequestId
+                    ? GetPexCreatedRowKey(pexPaymentRequestId)
+                    : throw new ArgumentException("A bill mapping needs an Aplos payable id or a PEX payment request id.", nameof(model)));
             PEXBusinessAcctId = model.PEXBusinessAcctId;
             AplosPayableId = model.AplosPayableId;
             AplosReferenceNumber = model.AplosReferenceNumber;
@@ -28,8 +31,11 @@ namespace AplosConnector.Common.Entities
             AwaitingChargeSinceUtc = model.AwaitingChargeSinceUtc?.ToUniversalTime();
             PaidFromClearingAccountNumber = (double?)model.PaidFromClearingAccountNumber;
             CardTransactionId = model.CardTransactionId;
+            PexPaymentRequestId = model.PexPaymentRequestId;
             CreatedUtc = model.CreatedUtc.ToUniversalTime();
         }
+
+        public static string GetPexCreatedRowKey(int pexPaymentRequestId) => $"pex-{pexPaymentRequestId}";
 
         public int PEXBusinessAcctId { get; set; }
         public string AplosPayableId { get; set; }
@@ -43,6 +49,7 @@ namespace AplosConnector.Common.Entities
         public DateTime? AwaitingChargeSinceUtc { get; set; }
         public double? PaidFromClearingAccountNumber { get; set; }
         public long? CardTransactionId { get; set; }
+        public int? PexPaymentRequestId { get; set; }
         public DateTime CreatedUtc { get; set; }
 
         public AplosBillMappingModel ToModel()
@@ -61,6 +68,7 @@ namespace AplosConnector.Common.Entities
                 AwaitingChargeSinceUtc = AwaitingChargeSinceUtc,
                 PaidFromClearingAccountNumber = (decimal?)PaidFromClearingAccountNumber,
                 CardTransactionId = CardTransactionId,
+                PexPaymentRequestId = PexPaymentRequestId,
                 CreatedUtc = CreatedUtc
             };
         }

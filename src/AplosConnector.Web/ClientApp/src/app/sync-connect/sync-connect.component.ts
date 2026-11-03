@@ -174,6 +174,7 @@ export class SyncConnectComponent implements OnInit {
     syncReimbursements: false,
     useReimbursementsEnabled: false,
     syncOutstandingBills: false,
+    syncBillPayments: false,
     useBillPayEnabled: false,
     billPaymentsAchClearingAccountNumber: 0,
     billPaymentsCardClearingAccountNumber: 0,
@@ -246,12 +247,15 @@ export class SyncConnectComponent implements OnInit {
 
   // Single shared mapping step: the title reflects which syncs are enabled.
   get tagMappingPageTitle(): string {
-    const purchases = this.settingsModel.syncTransactions;
-    const reimbursements = this.settingsModel.syncReimbursements;
-    if (purchases && reimbursements) {
-      return 'Purchases and Reimbursements';
+    const names = [
+      this.settingsModel.syncTransactions && 'Purchases',
+      this.settingsModel.syncReimbursements && 'Reimbursements',
+      this.settingsModel.syncBillPayments && 'Bill Payments'
+    ].filter(Boolean);
+    if (names.length === 0) {
+      return 'Purchases';
     }
-    return reimbursements ? 'Reimbursements' : 'Purchases';
+    return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
   }
 
   get earliestTransactionDateToSync() {
@@ -752,7 +756,7 @@ export class SyncConnectComponent implements OnInit {
   // Invoked on init and via (clrWizardPageOnLoad) when the user enters this page.
   // That is sufficient ONLY because every sync-type toggle it reads (syncTransactions,
   // syncTransfers, syncInvoices, syncPexFees, syncRebates, syncReimbursements,
-  // syncOutstandingBills, syncTaxTagToPex) lives on an EARLIER wizard page and cannot be changed while
+  // syncBillPayments, syncTaxTagToPex) lives on an EARLIER wizard page and cannot be changed while
   // "Other Options" is shown. If any of those toggles is ever surfaced on this page,
   // also call this from that toggle's (change) handler or the validators will go stale.
   updateOtherOptionsValidators() {
@@ -760,8 +764,8 @@ export class SyncConnectComponent implements OnInit {
     const transfersOrInvoices = s.syncTransfers || s.syncInvoices;
     const rebatesVisible = (s.syncTransactions && s.syncRebates) || s.syncInvoices;
 
-    // Shared purchases/reimbursements defaults (only shown when tags unavailable)
-    const purchasesVisible = !this.hasTagsAvailable && (s.syncTransactions || s.syncReimbursements);
+    // Shared purchases/reimbursements/bill payments defaults (only shown when tags unavailable)
+    const purchasesVisible = !this.hasTagsAvailable && (s.syncTransactions || s.syncReimbursements || s.syncBillPayments);
     this.applyRequired('defaultAplosFundId', purchasesVisible);
     this.applyRequired('defaultAplosTransactionAccountNumber', purchasesVisible);
 
@@ -786,10 +790,12 @@ export class SyncConnectComponent implements OnInit {
     // fund/expense/tags come from the shared mapping page or the shared defaults above.
     this.applyRequired('reimbursementsAplosRegisterAccountNumber', s.syncReimbursements);
 
-    // Bill pay: PEX picks the rail only when a bill is paid, so the ACH bank account is needed up front.
-    this.applyRequired('billPaymentsAchClearingAccountNumber', s.syncOutstandingBills);
+    // Bill pay: PEX picks the rail only when a bill is paid, so the ACH bank account is needed up front. Card
+    // bills use the PEX funds account, required on the Sync Selection page.
+    // The import box keeps its value while Sync bill payments hides it, so it counts only under that toggle.
+    this.applyRequired('billPaymentsAchClearingAccountNumber', s.syncBillPayments);
     // A credit business's PEX funds account is a liability, which Aplos can't pay a bill from (153880).
-    this.applyRequired('billPaymentsCardClearingAccountNumber', s.syncOutstandingBills && this.isCredit);
+    this.applyRequired('billPaymentsCardClearingAccountNumber', s.syncBillPayments && s.syncOutstandingBills && this.isCredit);
   }
 
   updateSettingsFromDefaultCategoryForm() {
@@ -797,8 +803,8 @@ export class SyncConnectComponent implements OnInit {
     const formValue = this.defaultCategoryForm.value;
     
     // Only update defaultAplosFundId if it's being used in the transaction options form
-    // (when tags are not available and purchases or reimbursements sync is enabled)
-    if (!this.hasTagsAvailable && (this.settingsModel.syncTransactions || this.settingsModel.syncReimbursements)) {
+    // (when tags are not available and purchases, reimbursements or bill payments sync is enabled)
+    if (!this.hasTagsAvailable && (this.settingsModel.syncTransactions || this.settingsModel.syncReimbursements || this.settingsModel.syncBillPayments)) {
       this.settingsModel.defaultAplosFundId = formValue.defaultAplosFundId;
       this.settingsModel.defaultAplosTransactionAccountNumber = formValue.defaultAplosTransactionAccountNumber;
     }

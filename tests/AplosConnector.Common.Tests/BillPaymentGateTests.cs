@@ -74,14 +74,15 @@ public class BillPaymentGateTests : BillPaymentsTestBase
     }
 
     [Fact]
-    public async Task Gate_NoBillPayAccountsConfigured_StaysSilentWhenNoImportedBillIsWaiting()
+    public async Task Gate_NoBillPayAccountsConfigured_ReportsNoFailureWhenNoImportedBillIsWaiting()
     {
         SeedUnpaidMapping();
         _billMappingStorage.Rows.Values.Single().PaidSyncedUtc = UtcNow;
 
         await RunSync(useBillPay: true, achClearingAccountNumber: 0m, pexFundsAccountNumber: 0m);
 
-        Assert.Empty(_historyRows);
+        var historyRow = Assert.Single(_historyRows);
+        Assert.Equal((SyncStatus.Success.ToString(), ""), (historyRow.SyncStatus, historyRow.SyncNotes));
         VerifyNoPayCall();
     }
 
@@ -105,14 +106,16 @@ public class BillPaymentGateTests : BillPaymentsTestBase
     }
 
     [Fact]
-    public async Task AnImportedBillIsMarkedPaidWithNoBillPaymentsToggle()
+    public async Task AnImportedBillWaitsWhileSyncBillPaymentsIsOffAndIsPaidOnceItIsBackOn()
     {
         SeedUnpaidMapping();
         SetupPaidPexBill();
         SetupLivePayable(amount: 125.50m, paid: 0m);
 
-        await RunSync(useBillPay: true);
+        await RunSync(useBillPay: true, syncBillPayments: false, configure: mapping => mapping.SyncOutstandingBills = true);
+        Assert.Empty(_payments);
 
+        await RunSync(useBillPay: true, syncBillPayments: true);
         Assert.Single(_payments);
     }
 
@@ -121,7 +124,7 @@ public class BillPaymentGateTests : BillPaymentsTestBase
     {
         SetupPaidPexBill();
 
-        await RunSync(useBillPay: true);
+        await RunSync(useBillPay: true, syncBillPayments: false);
 
         Assert.Empty(_historyRows);
         _mockPexApiClient.Verify(client => client.GetBillPayments(
@@ -148,7 +151,8 @@ public class BillPaymentGateTests : BillPaymentsTestBase
             PEXBusinessAcctId = PexBusinessAcctId,
             BillPaymentsAchClearingAccountNumber = AchClearingAccountNumber,
             BillPaymentsCardClearingAccountNumber = CardClearingAccountNumber,
-            UseBillPayEnabled = true
+            UseBillPayEnabled = true,
+            SyncBillPayments = true
         };
 
         var service = new StorageMappingService(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
@@ -156,12 +160,17 @@ public class BillPaymentGateTests : BillPaymentsTestBase
         // Last known, for a run whose business settings refresh fails: the worker loads the mapping from storage, and
         // a false here would hand bill pay card transactions back to the transaction sync.
         Assert.True(roundTripped.UseBillPayEnabled);
-        Assert.Equal(AchClearingAccountNumber, roundTripped.BillPaymentsAchClearingAccountNumber);
-        Assert.Equal(CardClearingAccountNumber, roundTripped.BillPaymentsCardClearingAccountNumber);
+        AssertBillPaymentSettings(roundTripped);
 
         var rebuilt = new Pex2AplosMappingModel { PEXBusinessAcctId = PexBusinessAcctId };
         rebuilt.UpdateFromSettings(original.ToStorageModel());
-        Assert.Equal(AchClearingAccountNumber, rebuilt.BillPaymentsAchClearingAccountNumber);
-        Assert.Equal(CardClearingAccountNumber, rebuilt.BillPaymentsCardClearingAccountNumber);
+        AssertBillPaymentSettings(rebuilt);
+    }
+
+    private static void AssertBillPaymentSettings(Pex2AplosMappingModel mapping)
+    {
+        Assert.True(mapping.SyncBillPayments);
+        Assert.Equal(AchClearingAccountNumber, mapping.BillPaymentsAchClearingAccountNumber);
+        Assert.Equal(CardClearingAccountNumber, mapping.BillPaymentsCardClearingAccountNumber);
     }
 }

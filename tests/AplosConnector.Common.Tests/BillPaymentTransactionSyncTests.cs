@@ -29,28 +29,8 @@ using Xunit;
 
 namespace AplosConnector.Common.Tests;
 
-public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
+public class BillPaymentTransactionSyncTests : BillPaymentTransactionSyncTestBase
 {
-    private const int VendorCardAcctId = 5150;
-    private const decimal ExpenseAccountNumber = 5000m;
-    private const decimal RegisterAccountNumber = 1050m;
-    private const int FundId = 1;
-
-    private readonly List<AplosApiTransactionDetail> _createdAplosTransactions = [];
-    private const long RefundTransactionId = 987700;
-    private const decimal RefundAmount = 20m;
-
-    private readonly List<bool> _includeVendorBillPayArgs = [];
-    private bool _paidByCard;
-    // Stands in for includeVendorBillPay=false (154868): PEX leaves vendor card charges out but keeps their credits.
-    private bool _feedDropsVendorCardCharges;
-    private bool _refundInFeed;
-
-    public BillPaymentTransactionSyncTests()
-    {
-        SetupTransactionSyncDefaults();
-    }
-
     [Fact]
     public async Task PayingAnAplosBillByVendorCardMarksThePayablePaidAndBooksNoExpense()
     {
@@ -67,8 +47,6 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
         var marker = Assert.Single(_cardTransactionNotes);
         Assert.Contains(AplosIntegrationService.SyncedAsBillPaymentNote, marker);
         Assert.Contains("Paid via Card", marker);
-
-        Assert.Equal([true], _includeVendorBillPayArgs.Distinct());
     }
 
     [Fact]
@@ -89,50 +67,13 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
     }
 
     [Fact]
-    public async Task APexOriginatedBillPaidByCardIsBookedAsAPurchaseByTheTransactionSync()
-    {
-        SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
-
-        await RunBothSyncs();
-
-        Assert.Empty(_payments);
-        var aplosTransaction = Assert.Single(_createdAplosTransactions);
-        Assert.Equal(VendorCardTransactionId.ToString(), aplosTransaction.Note);
-        Assert.Single(aplosTransaction.Lines, line => line.Account.AccountNumber == RegisterAccountNumber);
-        Assert.DoesNotContain(aplosTransaction.Lines, line => line.Account.AccountNumber == CardClearingAccountNumber);
-    }
-
-    [Fact]
-    public async Task APexOriginatedBillPaidByAchIsNotSynced()
-    {
-        SetupPaidBill(PayeeFundsDestinationType.BankAccount);
-
-        await RunBothSyncs();
-
-        Assert.Empty(_payments);
-        Assert.Empty(_createdAplosTransactions);
-    }
-
-    [Fact]
-    public async Task AnAutoBilledVendorCardChargeIsBookedAsAPurchaseByTheTransactionSync()
-    {
-        SetupPaidBill(PayeeFundsDestinationType.VendorVirtualCard, PaymentRequestStatusTrigger.AutoBilledVendorCard);
-
-        await RunBothSyncs();
-
-        var aplosTransaction = Assert.Single(_createdAplosTransactions);
-        Assert.Single(aplosTransaction.Lines, line => line.Account.AccountNumber == RegisterAccountNumber);
-        Assert.Empty(_payments);
-    }
-
-    [Fact]
     public async Task WithTheImportOffAnImportedBillsChargeIsClaimedAndNothingIsWrittenToAplos()
     {
         SeedUnpaidMapping();
         SetupPaidBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard);
         SetupLivePayable(BillAmount, paid: 0m);
 
-        await RunBothSyncs(mapping => mapping.SyncOutstandingBills = false);
+        await RunBothSyncs(mapping => { mapping.SyncOutstandingBills = false; mapping.SyncBillPayments = false; });
 
         Assert.Empty(_payments);
         Assert.Empty(_createdAplosTransactions);
@@ -332,135 +273,4 @@ public class BillPaymentTransactionSyncTests : BillPaymentsTestBase
         Assert.Equal((SyncTypes.Transactions, SyncStatus.Failed.ToString()), (historyRow.SyncType, historyRow.SyncStatus));
         Assert.Contains("could not read its bill payment records", historyRow.SyncNotes);
     }
-
-    private async Task<Pex2AplosMappingModel> RunBothSyncs(Action<Pex2AplosMappingModel> configureMapping = null)
-    {
-        var mapping = NewSyncMapping();
-
-        configureMapping?.Invoke(mapping);
-
-        // Sync's order: the marker must be on the charge before the transaction sync reads it.
-        var service = GetAplosIntegrationService();
-        await service.SyncBillPayments(NullLogger.Instance, mapping, UtcNow, default);
-        await service.SyncTransactions(NullLogger.Instance, mapping, UtcNow, default);
-        return mapping;
-    }
-
-    private static Pex2AplosMappingModel NewSyncMapping() => new()
-    {
-        PEXBusinessAcctId = PexBusinessAcctId,
-        PEXExternalAPIToken = "token",
-        AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication,
-        AplosAccountId = "accountId",
-        AplosClientId = "clientId",
-        AplosPrivateKey = "privateKey",
-        IsManualSync = true,
-        EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
-        SyncTransactions = true,
-        SyncTransactionsCreateContact = true,
-        AplosRegisterAccountNumber = RegisterAccountNumber,
-        DefaultAplosFundId = FundId,
-        DefaultAplosTransactionAccountNumber = ExpenseAccountNumber,
-        ExpenseAccountMappings = [],
-        // Set by Sync's run-level settings refresh.
-        UseBillPayEnabled = true,
-        SyncOutstandingBills = true,
-        BillPaymentsAchClearingAccountNumber = AchClearingAccountNumber,
-        BillPaymentsCardClearingAccountNumber = CardClearingAccountNumber
-    };
-
-    private void SetupPaidBill(PayeeFundsDestinationType fundsDestinationType, PaymentRequestStatusTrigger trigger = PaymentRequestStatusTrigger.Paid)
-    {
-        // Only a card payment leaves a card transaction behind.
-        _paidByCard = fundsDestinationType != PayeeFundsDestinationType.BankAccount;
-        SetupPaidPexBill(fundsDestinationType, statusTrigger: trigger);
-    }
-
-    private void SetupTransactionSyncDefaults()
-    {
-        _mockPexApiClient
-            .Setup(client => client.GetBusinessSettings(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new BusinessSettingsModel { UseBillPay = true });
-
-        _mockPexApiClient
-            .Setup(client => client.IsTagsAvailable(It.IsAny<string>(), It.IsAny<CustomFieldType>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        _mockPexApiClient
-            .Setup(client => client.GetTags(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
-
-        // PEX returns a bill pay card transaction only when the caller asks for it.
-        _mockPexApiClient
-            .Setup(client => client.GetAllCardholderTransactions(
-                It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
-                It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string _, DateTime startDate, DateTime endDate, bool _, bool _, bool includeVendorBillPay, CancellationToken _) =>
-            {
-                _includeVendorBillPayArgs.Add(includeVendorBillPay);
-
-                var inBatch = startDate <= PayoutDate.UtcDateTime && PayoutDate.UtcDateTime <= endDate;
-                List<TransactionModel> transactions = [];
-                if (includeVendorBillPay && inBatch && _paidByCard && !_feedDropsVendorCardCharges) transactions.Add(VendorCardBillPayTransaction());
-                if (inBatch && _refundInFeed) transactions.Add(VendorCardRefund());
-                return new CardholderTransactions(transactions);
-            });
-
-        _mockAplosApiClient
-            .Setup(client => client.GetFunds(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
-        _mockAplosApiClient
-            .Setup(client => client.GetAccounts(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
-        _mockAplosApiClient
-            .Setup(client => client.GetTags(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
-        _mockAplosApiClient
-            .Setup(client => client.GetTransactions(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
-
-        _mockAplosIntegrationMappingService
-            .Setup(service => service.Map(It.IsAny<IEnumerable<AplosApiFundDetail>>()))
-            .Returns([new PexAplosApiObject { Id = FundId.ToString(), Name = "General Fund" }]);
-        _mockAplosIntegrationMappingService
-            .Setup(service => service.Map(It.IsAny<IEnumerable<AplosApiAccountDetail>>()))
-            .Returns([new PexAplosApiObject { Id = ExpenseAccountNumber.ToString(), Name = "Supplies" }]);
-
-        _mockAplosApiClient
-            .Setup(client => client.CreateTransaction(It.IsAny<AplosApiTransactionDetail>(), It.IsAny<CancellationToken>()))
-            .Callback<AplosApiTransactionDetail, CancellationToken>((aplosTransaction, _) => _createdAplosTransactions.Add(aplosTransaction))
-            .ReturnsAsync(() => new AplosApiTransactionResponse
-            {
-                Data = new AplosApiTransactionData { Transaction = new AplosApiTransactionDetail { Id = 77000 } }
-            });
-    }
-
-    private TransactionModel VendorCardBillPayTransaction()
-    {
-        return new TransactionModel
-        {
-            TransactionId = VendorCardTransactionId,
-            AcctId = VendorCardAcctId,
-            TransactionAmount = -BillAmount,
-            TransactionTime = PayoutDate.UtcDateTime,
-            SettlementTime = PayoutDate.UtcDateTime,
-            MerchantName = "Acme Supplies",
-            TransactionNotes = _cardTransactionNotes.Select(note => new TransactionNoteModel { NoteText = note }).ToList(),
-            TransactionTags = new TransactionTagsModel(),
-            TransactionType = TransactionType.Network
-        };
-    }
-
-    private static TransactionModel VendorCardRefund() => new()
-    {
-        TransactionId = RefundTransactionId,
-        AcctId = VendorCardAcctId,
-        TransactionAmount = RefundAmount,
-        TransactionTime = PayoutDate.UtcDateTime,
-        SettlementTime = PayoutDate.UtcDateTime,
-        MerchantName = "Acme Supplies",
-        TransactionNotes = [],
-        TransactionTags = new TransactionTagsModel(),
-        TransactionType = TransactionType.Network
-    };
 }

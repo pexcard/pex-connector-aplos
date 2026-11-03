@@ -313,7 +313,7 @@ export class SyncManageComponent implements OnInit {
   }
 
   getBillPaymentsInfo() {
-    if (!this.settings.syncOutstandingBills) {
+    if (!this.settings.syncBillPayments) {
       return;
     }
 
