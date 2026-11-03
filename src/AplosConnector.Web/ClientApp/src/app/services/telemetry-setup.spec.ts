@@ -18,6 +18,10 @@ describe('telemetry-setup scrubbing', () => {
     ['a URL-encoded return url', JSON.stringify({ returnUrl: encodeURIComponent(`/sync-manage?sessionId=${sessionId}`) })],
     ['a router error on the session route', `Cannot match any routes. URL Segment: 'finish-pex-login/${sessionId}'`],
     ['a private key field', JSON.stringify({ aplosClientId: 'client', aplosPrivateKey: 'MIIEsecret' })],
+    ['a multiline PEM private key field', JSON.stringify({ aplosPrivateKey: '-----BEGIN PRIVATE KEY-----\nMIIEsecret\nMIIEsecret\n-----END PRIVATE KEY-----' })],
+    ['a base64 key with escaped newlines', JSON.stringify({ aplosPrivateKey: 'MIIEsecret\nMIIEsecret' })],
+    ['a PEM block in free text', 'bad key -----BEGIN RSA PRIVATE KEY-----\nMIIEsecret\n-----END RSA PRIVATE KEY----- rejected'],
+    ['an unquoted JSON value', `{"token":${'1'.repeat(6)}MIIEsecret}`],
     ['a raw JWT', `token ${jwt}`]
   ];
 

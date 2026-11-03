@@ -175,8 +175,13 @@ export const scrubText = (text: string): string => text
   .replace(/(\/[^\s/?#"'`<>]*)[?#][^\s"'`<>]*?((?::\d+){0,2}[):]?)(?=[\s"'`<>]|$)/g, '$1$2')
   // Aplos: mask the finish-pex-login session id here too; no leading slash required, as router errors omit it.
   .replace(/(finish-pex-login\/)[^\s/?#"'`<>]+/gi, '$1{sessionId}')
-  // Aplos: mask credential values by key as well (JSON, query or URL-encoded), since structured console.error args need not be absolute URLs.
-  .replace(/((?:sessionId|jwt|token|accessToken|aplosPrivateKey|privateKey)(?:["']?\s*[:=]\s*["']?|%3D))[^\s&"',}<>\\%]+/gi, '$1[REDACTED]')
+  // Aplos: mask any PEM private key block, whether its line breaks are real or JSON-escaped.
+  .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g, '[REDACTED]')
+  // Aplos: mask credential values by key as well, since structured console.error args need not be absolute URLs.
+  // Quoted values are masked up to their closing quote, so spaces or escaped newlines inside a key can't end the mask early.
+  .replace(/((?:sessionId|jwt|token|accessToken|aplosPrivateKey|privateKey)["']?\s*[:=]\s*)(["'])(?:\\.|(?!\2)[^\\])*\2/gi, '$1$2[REDACTED]$2')
+  // Unquoted query, key=value or URL-encoded values.
+  .replace(/((?:sessionId|jwt|token|accessToken|aplosPrivateKey|privateKey)(?:["']?\s*[:=]\s*|%3D))(?!["'])[^\s&"',}<>\\%]+/gi, '$1[REDACTED]')
   // Match the whole eyJ run, then count segments — a strict JWT regex backtracks quadratically on long runs (151000).
   .replace(/eyJ[\w.-]*/g, (run: string): string => (run.split('.').length > 2 ? '[REDACTED]' : run));
 
