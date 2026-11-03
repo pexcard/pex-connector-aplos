@@ -49,7 +49,7 @@ export class SyncHistoryComponent implements OnInit, OnDestroy {
     this.mapping.getSettings(this.sessionId).subscribe(settings => {
       if (settings) {
         this.settings = { ...settings };
-        console.log('got settings', this.settings);
+        console.log('got settings');
       }
     }
     );

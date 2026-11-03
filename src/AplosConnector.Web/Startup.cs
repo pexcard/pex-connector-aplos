@@ -21,6 +21,9 @@ using PexCard.Api.Client;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Exceptions;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using AplosConnector.Common.Storage;
@@ -29,7 +32,14 @@ using Azure.Data.Tables;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Azure.Storage.Queues;
 using Azure.Identity;
-using Microsoft.ApplicationInsights.AspNetCore.Extensions;
+using AplosConnector.Common.Correlation;
+using AplosConnector.Common.Tracing;
+using AplosConnector.Web.Telemetry;
+using OpenTelemetry.Resources;
+using PexCard.Api.Client.Core.Interfaces;
+using PexCard.Shared.OpenTelemetry.Abstractions.Constants;
+using PexCard.Shared.OpenTelemetry.AspNetCore;
+using PexCard.Shared.OpenTelemetry.Extensions;
 
 namespace AplosConnector.Web
 {
@@ -45,16 +55,25 @@ namespace AplosConnector.Web
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // PexApiClient sends the current correlation id as X-Correlation-Id on every outbound call.
+            services.AddSingleton(new CorrelationIdAccessor(CorrelationConstants.Prefix));
+            services.AddSingleton<ICorrelationIdResolver, CorrelationIdResolver>();
+
+            // Before ConfigurePexTelemetry so its explicit service.name wins over the detector's WEBSITE_SITE_NAME fallback.
+            services.AddOpenTelemetry().ConfigureResource(b => b.AddAzureAppServiceDetector());
+
+            services.ConfigurePexTelemetry(_configuration);
+
+            // Manual syncs run in this process, so listen for the sync spans here too.
+            services.AddOpenTelemetry().WithTracing(b => b.AddSource(SyncTelemetry.ActivitySourceName));
+
             services
                 .AddControllers()
                 .AddNewtonsoftJson();
 
-            var applicationInsightsKey = _configuration.GetValue<string>("ApplicationInsightsKey");
-            services.AddApplicationInsightsTelemetry(new ApplicationInsightsServiceOptions
-            {
-                InstrumentationKey = applicationInsightsKey,
-                EnableAdaptiveSampling = false,
-            });
+            // One summary record per request, honoring [NoLog]; UseHttpLogging runs after UseRouting.
+            services.AddPexHttpLogging();
+            services.AddSessionPathRedaction();
 
             services.AddOptions();
 
@@ -191,6 +210,34 @@ namespace AplosConnector.Web
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            // First, so everything downstream sees the id: response header, outbound PEX calls, request span tag and log scope.
+            var correlationAccessor = app.ApplicationServices.GetRequiredService<CorrelationIdAccessor>();
+            app.Use(async (ctx, next) =>
+            {
+                var inbound = ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault();
+                var id = IsValidInboundCorrelationId(inbound)
+                    ? inbound
+                    : correlationAccessor.Generate();
+                ctx.Response.Headers["X-Correlation-Id"] = id;
+
+                var prior = correlationAccessor.Current;
+                correlationAccessor.Current = id;
+                Activity.Current?.SetTag(DiagnosticNames.CorrelationId, id);
+
+                var logger = ctx.RequestServices.GetRequiredService<ILogger<Startup>>();
+                try
+                {
+                    using (logger.BeginScope(new Dictionary<string, object> { [DiagnosticNames.CorrelationId] = id }))
+                    {
+                        await next();
+                    }
+                }
+                finally
+                {
+                    correlationAccessor.Current = prior;
+                }
+            });
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -255,6 +302,12 @@ namespace AplosConnector.Web
 
             app.UseRouting();
 
+            // After UseRouting so the endpoint's [NoLog] metadata is resolved.
+            if (!env.IsDevelopment())
+            {
+                app.UseHttpLogging();
+            }
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllerRoute(
@@ -282,6 +335,20 @@ namespace AplosConnector.Web
                         clientAppPath, spa.Options.StartupTimeout, lifetime.ApplicationStopping));
                 }
             });
+        }
+
+        // ASCII letters, digits and - _ . : only, so a hostile header can't break response headers or log scopes.
+        private static bool IsValidInboundCorrelationId(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return false;
+            if (value.Length > CorrelationConstants.MaxInboundLength) return false;
+            foreach (var c in value)
+            {
+                var ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+                      || c == '-' || c == '_' || c == '.' || c == ':';
+                if (!ok) return false;
+            }
+            return true;
         }
     }
 }

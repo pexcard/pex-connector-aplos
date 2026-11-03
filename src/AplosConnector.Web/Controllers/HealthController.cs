@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using PexCard.Api.Client.Core;
 using System.Threading;
 using AplosConnector.Common.Storage;
+using PexCard.Contracts.Attributes;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -72,6 +73,7 @@ namespace AplosConnector.Web.Controllers
         }
 
         [HttpGet, Route("Ping")]
+        [NoLog]
         public PingResultModel GetPing()
         {
             var result = new PingResultModel

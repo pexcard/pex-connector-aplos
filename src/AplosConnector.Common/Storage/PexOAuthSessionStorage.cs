@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using AplosConnector.Common.Entities;
 using AplosConnector.Common.Models;
 using Azure.Data.Tables;
+using PexCard.Shared.OpenTelemetry.Abstractions.Constants;
 
 namespace AplosConnector.Common.Storage
 {
@@ -34,7 +36,14 @@ namespace AplosConnector.Common.Storage
         {
             var entity = await GetEntityBySessionGuidAsync(sessionGuid, cancellationToken);
 
-            return entity?.ToModel();
+            var model = entity?.ToModel();
+            // Every session-scoped endpoint resolves the session here, so this tags the request span with the caller's business.
+            if (model != null)
+            {
+                Activity.Current?.SetTag(DiagnosticNames.BusinessPlatformAccountId, model.PEXBusinessAcctId);
+            }
+
+            return model;
         }
 
         private async Task<PexOAuthSessionEntity> GetEntityBySessionGuidAsync(Guid sessionGuid, CancellationToken cancellationToken)

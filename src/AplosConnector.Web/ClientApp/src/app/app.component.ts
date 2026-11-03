@@ -25,7 +25,7 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loginSubscription$ = this.auth.sessionId.subscribe(
       token => {
-        console.log('login state changed', token);
+        console.log('login state changed', !!token);
         if (token) {
           this.isLoggedIn = true;
         } else {
