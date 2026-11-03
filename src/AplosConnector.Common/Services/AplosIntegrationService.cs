@@ -1671,6 +1671,12 @@ namespace AplosConnector.Common.Services
                     continue;
                 }
 
+                if (invoice.PendingAmount > 0)
+                {
+                    _logger.LogWarning($"Skipping invoice {invoice.InvoiceId}: a payment of {invoice.PendingAmount} is still pending; it syncs on a later run.");
+                    continue;
+                }
+
                 invoicesToSync.Add(invoice);
             }
 
@@ -1704,6 +1710,13 @@ namespace AplosConnector.Common.Services
                         {
                             _logger.LogWarning($"Invoice {invoiceModel.InvoiceId} is not fully paid: totalPaymentsAmount ({totalPaymentsAmount}) < invoiceModel.InvoiceAmount ({invoiceModel.InvoiceAmount}), shortfall ({invoiceModel.InvoiceAmount - totalPaymentsAmount}). Failing invoice {invoiceModel.InvoiceId}.");
                             failureCount++;
+                            continue;
+                        }
+
+                        // Keep after IsInvoiceFullyPaid: Balance Engine never marks a short statement past the return window.
+                        if (!invoiceModel.IsPastReturnWindow)
+                        {
+                            _logger.LogInformation($"Skipping invoice {invoiceModel.InvoiceId}: still inside the ACH return window; it syncs on a later run.");
                             continue;
                         }
 
@@ -2075,7 +2088,6 @@ namespace AplosConnector.Common.Services
         {
             if (invoice.Status != InvoiceStatus.Closed) return $"status is {invoice.Status}, not Closed";
             if (invoice.InvoiceAmount <= 0) return $"amount is {invoice.InvoiceAmount}";
-            if (!invoice.IsPastReturnWindow) return "still inside the ACH return window; it syncs on a later run";
             if (WasPexTransactionSyncedToAplos(aplosTransactions, invoice.InvoiceId.ToString())) return "already synced to Aplos";
             return null;
         }
