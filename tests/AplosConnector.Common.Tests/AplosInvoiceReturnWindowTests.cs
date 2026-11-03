@@ -57,10 +57,12 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(1, row.SyncedRecords);
         }
 
-        [Fact]
-        public async Task SyncInvoices_Fails_WhenTheShortfallIsFromRejectedPayments()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task SyncInvoices_Fails_WhenTheShortfallIsFromRejectedPayments(bool isPastReturnWindow)
         {
-            SetupInvoice(NewInvoice(98762, 79.20m, isPastReturnWindow: true));
+            SetupInvoice(NewInvoice(98762, 79.20m, isPastReturnWindow: isPastReturnWindow));
             SetupPayments(NewPayment(79.20m, rejectedByBank: true));
             var logger = new ListLogger();
 
@@ -75,10 +77,12 @@ namespace AplosConnector.Common.Tests
             Assert.Equal("Failed to sync 1 invoices from PEX.", row.SyncNotes);
         }
 
-        [Fact]
-        public async Task SyncInvoices_Fails_WhenRejectedPaymentsPartlyExplainTheShortfall()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task SyncInvoices_Fails_WhenRejectedPaymentsPartlyExplainTheShortfall(bool isPastReturnWindow)
         {
-            SetupInvoice(NewInvoice(98763, 100.00m, isPastReturnWindow: true));
+            SetupInvoice(NewInvoice(98763, 100.00m, isPastReturnWindow: isPastReturnWindow));
             SetupPayments(NewPayment(60.00m), NewPayment(40.00m, rejectedByBank: true));
             var logger = new ListLogger();
 
@@ -91,10 +95,12 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(0, row.SyncedRecords);
         }
 
-        [Fact]
-        public async Task SyncInvoices_Fails_WhenRejectedPaymentsDoNotExplainTheShortfall()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task SyncInvoices_Fails_WhenRejectedPaymentsDoNotExplainTheShortfall(bool isPastReturnWindow)
         {
-            SetupInvoice(NewInvoice(98764, 100.00m, isPastReturnWindow: true));
+            SetupInvoice(NewInvoice(98764, 100.00m, isPastReturnWindow: isPastReturnWindow));
             SetupPayments(NewPayment(20.00m), NewPayment(5.00m, rejectedByBank: true));
             var logger = new ListLogger();
 
@@ -109,10 +115,12 @@ namespace AplosConnector.Common.Tests
             Assert.Equal("Failed to sync 1 invoices from PEX.", row.SyncNotes);
         }
 
-        [Fact]
-        public async Task SyncInvoices_Fails_WhenARejectedReversalHidesTheShortfall()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task SyncInvoices_Fails_WhenARejectedReversalHidesTheShortfall(bool isPastReturnWindow)
         {
-            SetupInvoice(NewInvoice(98766, 49.90m, isPastReturnWindow: true));
+            SetupInvoice(NewInvoice(98766, 49.90m, isPastReturnWindow: isPastReturnWindow));
             SetupPayments(NewPayment(49.90m, type: PaymentType.SameDayACH), NewPayment(79.20m, type: PaymentType.Reversal), NewPayment(79.20m, rejectedByBank: true, type: PaymentType.Reversal));
             var logger = new ListLogger();
 
@@ -123,10 +131,12 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(SyncStatus.Failed.ToString(), Assert.Single(_historyRows).SyncStatus);
         }
 
-        [Fact]
-        public async Task SyncInvoices_Fails_WhenTheInvoiceIsUnderpaid()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task SyncInvoices_Fails_WhenTheInvoiceIsUnderpaid(bool isPastReturnWindow)
         {
-            SetupInvoice(NewInvoice(98769, 100.00m, isPastReturnWindow: true));
+            SetupInvoice(NewInvoice(98769, 100.00m, isPastReturnWindow: isPastReturnWindow));
             SetupPayments(NewPayment(60.00m));
             var logger = new ListLogger();
 
@@ -166,18 +176,55 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
-        public async Task SyncInvoices_SkipsInvoicesInsideTheReturnWindow()
+        public async Task SyncInvoices_SkipsFullyPaidInvoicesInsideTheReturnWindow()
         {
             SetupInvoice(NewInvoice(98763, 49.90m, isPastReturnWindow: false));
+            SetupPayments(NewPayment(49.90m, type: PaymentType.SameDayACH));
             var logger = new ListLogger();
 
             await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
 
             Assert.Empty(_createdTransactions);
             Assert.Contains(logger.Messages, m => m.Level == LogLevel.Information && m.Text.Contains("Skipping invoice 98763: still inside the ACH return window"));
+            Assert.DoesNotContain(logger.Messages, m => m.Level >= LogLevel.Warning);
+            _mockPexApiClient.Verify(client => client.GetInvoiceAllocations(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            var row = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
+            Assert.Equal(0, row.SyncedRecords);
+        }
+
+        [Fact]
+        public async Task SyncInvoices_SkipsWithAWarning_WhenAPaymentIsPending()
+        {
+            SetupInvoice(NewInvoice(98773, 100.00m, isPastReturnWindow: false, pendingAmount: 100.00m));
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            Assert.Empty(_createdTransactions);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Skipping invoice 98773: a payment of 100.00 is still pending"));
             _mockPexApiClient.Verify(client => client.GetInvoicePayments(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
             var row = Assert.Single(_historyRows);
             Assert.Equal(SyncStatus.Success.ToString(), row.SyncStatus);
+            Assert.Equal(0, row.SyncedRecords);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task SyncInvoices_Fails_WhenCreditsDoNotCoverTheInvoice(bool isPastReturnWindow)
+        {
+            SetupInvoice(NewInvoice(98774, 10.00m, isPastReturnWindow: isPastReturnWindow));
+            SetupPayments(NewPayment(4.00m, type: PaymentType.WriteOff));
+            var logger = new ListLogger();
+
+            await GetAplosIntegrationService().SyncInvoices(logger, NewMapping(), [], new DateTime(2026, 7, 1), default);
+
+            Assert.Empty(_createdTransactions);
+            Assert.Contains(logger.Messages, m => m.Level == LogLevel.Warning && m.Text.Contains("Invoice 98774 is not fully paid") && m.Text.Contains("shortfall (6.00)"));
+            var row = Assert.Single(_historyRows);
+            Assert.Equal(SyncStatus.Failed.ToString(), row.SyncStatus);
+            Assert.Equal("Failed to sync 1 invoices from PEX.", row.SyncNotes);
         }
 
         [Fact]
@@ -212,10 +259,12 @@ namespace AplosConnector.Common.Tests
             Assert.Equal(1, row.SyncedRecords);
         }
 
-        [Fact]
-        public async Task SyncInvoices_Fails_WhenAPaymentTypeIsUnknown()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task SyncInvoices_Fails_WhenAPaymentTypeIsUnknown(bool isPastReturnWindow)
         {
-            SetupInvoice(NewInvoice(98766, 100.00m, isPastReturnWindow: true));
+            SetupInvoice(NewInvoice(98766, 100.00m, isPastReturnWindow: isPastReturnWindow));
             SetupPayments(NewPayment(100.00m, type: (PaymentType)99));
             var logger = new ListLogger();
 
@@ -336,13 +385,14 @@ namespace AplosConnector.Common.Tests
         private static BusinessAccountTransactions RebateCreditTransactions() =>
             new([new TransactionModel { TransactionId = 555, Description = "Rebate Credit", TransactionAmount = 25.00m, TransactionTime = new DateTime(2026, 7, 1) }]);
 
-        private static InvoiceModel NewInvoice(int invoiceId, decimal amount, bool isPastReturnWindow, InvoiceStatus status = InvoiceStatus.Closed) => new()
+        private static InvoiceModel NewInvoice(int invoiceId, decimal amount, bool isPastReturnWindow, InvoiceStatus status = InvoiceStatus.Closed, decimal pendingAmount = 0m) => new()
         {
             InvoiceId = invoiceId,
             InvoiceAmount = amount,
             Status = status,
             DueDate = new DateTime(2026, 7, 1),
             IsPastReturnWindow = isPastReturnWindow,
+            PendingAmount = pendingAmount,
         };
 
         private static InvoicePaymentModel NewPayment(decimal amount, bool rejectedByBank = false, PaymentType type = PaymentType.PEXTransfer) => new()
