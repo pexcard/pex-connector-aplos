@@ -350,7 +350,7 @@
                 <td>{{billPaymentsAchClearingAccount | aplosAccount}}</td>
               </tr>
             }
-            @if (settings.syncOutstandingBills && billPaymentsCardClearingAccount) {
+            @if (settings.syncOutstandingBills && isCredit && billPaymentsCardClearingAccount) {
               <tr class="left">
                 <th>Vendor card clearing account for bill payments</th>
                 <td>{{billPaymentsCardClearingAccount | aplosAccount}}</td>

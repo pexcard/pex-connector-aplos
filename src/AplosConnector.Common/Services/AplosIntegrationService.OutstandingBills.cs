@@ -89,6 +89,7 @@ namespace AplosConnector.Common.Services
             var syncCount = 0;
             var failureCount = 0;
             var failureNotes = new List<string>();
+            var stageFailed = false;
 
             try
             {
@@ -193,13 +194,14 @@ namespace AplosConnector.Common.Services
             }
             catch (Exception ex)
             {
-                failureCount++;
+                // Not a bill, so it fails the run without adding to the bill count.
+                stageFailed = true;
                 failureNotes.Add(ex.Message);
                 logger.LogError(ex, $"Failed to sync outstanding bills for business {mapping.PEXBusinessAcctId}.");
             }
 
             SyncStatus syncStatus;
-            if (failureCount == 0)
+            if (failureCount == 0 && !stageFailed)
             {
                 syncStatus = SyncStatus.Success;
             }
@@ -218,7 +220,7 @@ namespace AplosConnector.Common.Services
                 SyncType = SyncTypes.OutstandingBills,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
-                SyncNotes = failureCount == 0 ? string.Empty : string.Join(" ", failureNotes)
+                SyncNotes = JoinFailureNotes(failureCount, "1 bill from Aplos needs attention.", $"{failureCount} bills from Aplos need attention.", failureNotes)
             };
             await _historyStorage.CreateAsync(result, cancellationToken);
         }
