@@ -31,6 +31,31 @@ public class OutstandingBillsFailureCountTests : VendorSetupTestBase
         Assert.Contains("Bill INV-9002: ", notes);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(null)]
+    public async Task ABillWithNoReferenceIsNamedByItsVendorDateAndAmount(string referenceNumber)
+    {
+        SetupBills(_ => referenceNumber, (ContactId, ContactName));
+        SetupContactState("Narnia");
+
+        await RunSync();
+
+        Assert.StartsWith("1 bill from Aplos needs attention. Bill Acme Supplies, 2026-09-01, $10.00: ", Assert.Single(HistoryRows).SyncNotes);
+    }
+
+    [Fact]
+    public async Task ABillWithNoReferenceAndNoContactNameIsNamedByItsDateAndAmount()
+    {
+        SetupBills(_ => "", (ContactId, null));
+        SetupContactState("Narnia");
+
+        await RunSync();
+
+        Assert.StartsWith("1 bill from Aplos needs attention. Bill 2026-09-01, $10.00: ", Assert.Single(HistoryRows).SyncNotes);
+    }
+
     [Fact]
     public async Task AFailedRunWithNoBillToBlameFailsWithoutABillCount()
     {
