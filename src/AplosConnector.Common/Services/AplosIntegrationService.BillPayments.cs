@@ -200,7 +200,7 @@ public partial class AplosIntegrationService
                     continue;
                 }
 
-                if (paymentRequest.PayoutDate is null)
+                if (paymentRequest.PayoutDate is null && !IsNonPlatformPayment(paymentRequest))
                 {
                     var awaitingNote = await CheckAwaitingCardCharge(logger, mapping, billMapping, paymentRequest, GetCardRailOnce, utcNow, cancellationToken);
                     if (awaitingNote is not null)
@@ -715,6 +715,9 @@ public partial class AplosIntegrationService
     private static bool IsCardPayment(BillPaymentRequestModel paymentRequest)
         => paymentRequest.PayeeFundsDestinationType is PayeeFundsDestinationType.SingleUseVendorVirtualCard or PayeeFundsDestinationType.VendorVirtualCard;
 
+    private static bool IsNonPlatformPayment(BillPaymentRequestModel paymentRequest)
+        => paymentRequest.PayeeFundsDestinationType == PayeeFundsDestinationType.NonPlatform;
+
     private static long? GetSettlementTransactionId(BillPaymentRequestModel paymentRequest)
         => long.TryParse(paymentRequest.SettlementTransactionId, out var transactionId) && transactionId > 0 ? transactionId : null;
 
@@ -1106,9 +1109,17 @@ public partial class AplosIntegrationService
 
             if (paymentRequest is null) continue;
 
-            // PayoutDate is the one paid signal both rails set; the status trigger differs between them. A payment that
-            // failed after payout keeps its payout date, so a reversal is recognised from the status instead.
-            if (paymentRequest.PayoutDate is null && !IsBillPaymentReversed(paymentRequest) && !IsAwaitingCardCharge(paymentRequest)) continue;
+            // Switching a bill to Non Platform leaves the request's destination as created (often a vendor card), so the
+            // bill's latest transfer is the one record of how it was paid.
+            if (bill.PaymentTransferType == PaymentTransferType.BillPayNonPlatform)
+            {
+                paymentRequest.PayeeFundsDestinationType = PayeeFundsDestinationType.NonPlatform;
+            }
+
+            // PayoutDate is the paid signal of the ACH and card rails; the status trigger differs between them. A payment
+            // that failed after payout keeps its payout date, so a reversal is recognised from the status instead. A Non
+            // Platform payment moves no money and never gets a payout date.
+            if (paymentRequest.PayoutDate is null && !IsBillPaymentReversed(paymentRequest) && !IsAwaitingCardCharge(paymentRequest) && !IsNonPlatformPayment(paymentRequest)) continue;
 
             requests.Add(paymentRequest);
         }

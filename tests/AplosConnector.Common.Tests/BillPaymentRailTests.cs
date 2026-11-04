@@ -327,6 +327,53 @@ public class BillPaymentRailTests : BillPaymentsTestBase
     }
 
     [Fact]
+    public async Task ANonPlatformPaymentWithNoPayoutDateIsReportedForAManualFix()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.NonPlatform, hasPayoutDate: false, transferType: PaymentTransferType.BillPayNonPlatform);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        var row = Assert.Single(_billMappingStorage.Rows.Values);
+        Assert.Equal(UtcNow, row.FirstFailedUtc);
+        Assert.Null(row.AwaitingChargeSinceUtc);
+        Assert.Contains("no Aplos account to pay it from", Assert.Single(_historyRows).SyncNotes);
+    }
+
+    [Fact]
+    public async Task ACardBillSwitchedToNonPlatformIsReportedNotAwaitedAsACardCharge()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, hasPayoutDate: false, linkedCardCharge: false, transferType: PaymentTransferType.BillPayNonPlatform);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        _mockAplosApiClient.Verify(client => client.GetAccount(It.IsAny<decimal>(), It.IsAny<CancellationToken>()), Times.Never);
+        var row = Assert.Single(_billMappingStorage.Rows.Values);
+        Assert.Equal(UtcNow, row.FirstFailedUtc);
+        Assert.Null(row.AwaitingChargeSinceUtc);
+        var notes = Assert.Single(_historyRows).SyncNotes;
+        Assert.Contains("no Aplos account to pay it from", notes);
+        Assert.DoesNotContain("sent the vendor a card", notes);
+    }
+
+    [Fact]
+    public async Task ANonPlatformPaymentWithNoPayoutDateClosesOncePaidInAplosAfterTheRetryWindow()
+    {
+        SeedUnpaidMapping(firstFailedUtc: UtcNow.AddDays(-31));
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, hasPayoutDate: false, linkedCardCharge: false, transferType: PaymentTransferType.BillPayNonPlatform);
+        SetupLivePayable(amount: 125.50m, paid: 125.50m);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+        Assert.DoesNotContain(_historyRows, row => row.SyncStatus != SyncStatus.Success.ToString());
+    }
+
+    [Fact]
     public async Task AnAlreadyPaidBillDoesNotCheckTheClearingAccounts()
     {
         SeedPaidMapping();

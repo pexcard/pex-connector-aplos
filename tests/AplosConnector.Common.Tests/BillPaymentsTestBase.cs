@@ -136,7 +136,8 @@ public abstract class BillPaymentsTestBase
         bool linkedCardCharge = true,
         DateTimeOffset? payoutDate = null,
         PaymentRequestMetadataModel metadata = null,
-        PaymentRequestStatusTrigger statusTrigger = PaymentRequestStatusTrigger.Paid)
+        PaymentRequestStatusTrigger statusTrigger = PaymentRequestStatusTrigger.Paid,
+        PaymentTransferType? transferType = null)
     {
         _mockPexApiClient
             .Setup(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -148,7 +149,8 @@ public abstract class BillPaymentsTestBase
                     BillRefNo = "INV-9001",
                     Amount = 125.50m,
                     PaymentRequestStatus = PaymentRequestStatus.Closed,
-                    PaymentRequestStatusTrigger = PaymentRequestStatusTrigger.Paid
+                    PaymentRequestStatusTrigger = PaymentRequestStatusTrigger.Paid,
+                    PaymentTransferType = transferType
                 }],
                 PageInfo = new PageInfoModel { Page = 1, PageSize = 50, TotalItems = 1 }
             });
