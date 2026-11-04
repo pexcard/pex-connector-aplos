@@ -715,6 +715,15 @@ public partial class AplosIntegrationService
     private static bool IsCardPayment(BillPaymentRequestModel paymentRequest)
         => paymentRequest.PayeeFundsDestinationType is PayeeFundsDestinationType.SingleUseVendorVirtualCard or PayeeFundsDestinationType.VendorVirtualCard;
 
+    // The request's destination type is the vendor's preferred method (card first), not the one the payer chose.
+    private static PayeeFundsDestinationType GetPaidDestinationType(PaymentTransferType? transferType, PayeeFundsDestinationType requestedType) => transferType switch
+    {
+        PaymentTransferType.BillPayAch or PaymentTransferType.ReimbursementAch => PayeeFundsDestinationType.BankAccount,
+        PaymentTransferType.BillPayVirtualCards when requestedType != PayeeFundsDestinationType.SingleUseVendorVirtualCard => PayeeFundsDestinationType.VendorVirtualCard,
+        PaymentTransferType.BillPayNonPlatform => PayeeFundsDestinationType.NonPlatform,
+        _ => requestedType
+    };
+
     private static long? GetSettlementTransactionId(BillPaymentRequestModel paymentRequest)
         => long.TryParse(paymentRequest.SettlementTransactionId, out var transactionId) && transactionId > 0 ? transactionId : null;
 
@@ -1105,6 +1114,8 @@ public partial class AplosIntegrationService
             }
 
             if (paymentRequest is null) continue;
+
+            paymentRequest.PayeeFundsDestinationType = GetPaidDestinationType(bill.PaymentTransferType, paymentRequest.PayeeFundsDestinationType);
 
             // PayoutDate is the one paid signal both rails set; the status trigger differs between them. A payment that
             // failed after payout keeps its payout date, so a reversal is recognised from the status instead.
