@@ -47,6 +47,7 @@ public abstract class VendorSetupTestBase
     protected readonly FakeVendorCardOrderStorage CardOrderStorage = new();
     protected readonly List<SyncResultModel> HistoryRows = [];
     protected readonly List<CreateBillInboxRequestModel> CreatedBillInbox = [];
+    protected readonly List<AplosBillMappingModel> StoredBillMappings = [];
     protected readonly List<VendorCardCreateOrderRequestModel> CardOrders = [];
 
     protected VendorSetupTestBase()
@@ -58,6 +59,10 @@ public abstract class VendorSetupTestBase
         _billMappingStorage
             .Setup(s => s.GetByBusinessAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
+        _billMappingStorage
+            .Setup(s => s.AddAsync(It.IsAny<AplosBillMappingModel>(), It.IsAny<CancellationToken>()))
+            .Callback<AplosBillMappingModel, CancellationToken>((row, _) => StoredBillMappings.Add(row))
+            .Returns(Task.CompletedTask);
         _aplosApiClientFactory
             .Setup(f => f.CreateClient(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Uri>(),
                 It.IsAny<Func<ILogger, AplosAuthModel>>(), It.IsAny<Func<AplosAuthModel, ILogger, CancellationToken, Task>>()))

@@ -57,6 +57,16 @@ public class OutstandingBillsFailureCountTests : VendorSetupTestBase
     }
 
     [Fact]
+    public async Task AnImportedBillWithNoReferenceStoresItsLabelForTheBillPaymentNotes()
+    {
+        SetupBills(_ => "", (ContactId, ContactName));
+
+        await RunSync();
+
+        Assert.Equal("Acme Supplies, 2026-09-01, $10.00", Assert.Single(StoredBillMappings).AplosReferenceNumber);
+    }
+
+    [Fact]
     public async Task AFailedRunWithNoBillToBlameFailsWithoutABillCount()
     {
         PexApiClient

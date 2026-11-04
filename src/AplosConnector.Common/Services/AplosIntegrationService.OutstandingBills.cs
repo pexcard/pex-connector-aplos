@@ -332,7 +332,7 @@ namespace AplosConnector.Common.Services
                 {
                     PEXBusinessAcctId = mapping.PEXBusinessAcctId,
                     AplosPayableId = payable.Id,
-                    AplosReferenceNumber = payable.ReferenceNumber,
+                    AplosReferenceNumber = DescribePayable(payable),
                     PexBillInboxId = billInboxId,
                     MetadataRelationId = metadataId,
                     Amount = AplosPayableFilter.NormalizeAmount(payable.Amount)
