@@ -32,7 +32,6 @@ export class AuthService {
       .pipe(retryWithBackoff())
       .subscribe(
         result => {
-          console.log(result);
           window.location.href = result.OAuthUrl;
         },
         error => console.error(error)
@@ -44,7 +43,6 @@ export class AuthService {
       .get<OAuthURLResponse>(`${this.baseUrl}api/Session/aplosAuthURL`)
       .subscribe(
         result => {
-          console.log('AplosAuthUrl', result);
           window.location.href = result.oAuthUrl;
         },
         error => console.error(error)

@@ -1,10 +1,8 @@
-﻿using System;
-using System.Text;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using AplosConnector.Common.Models;
+using AplosConnector.Common.Tracing;
 using Azure.Storage.Queues;
-using Newtonsoft.Json;
 
 namespace AplosConnector.Common.Storage;
 
@@ -20,7 +18,6 @@ public class Pex2AplosMappingQueue : AzureQueueAbstract
 
     public async Task EnqueueMapping(Pex2AplosMappingModel mapping, CancellationToken cancellationToken)
     {
-        var message = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(mapping)));
-        await QueueClient.SendMessageAsync(message, cancellationToken);
+        await QueueClient.SendMessageWithTraceContextAsync(mapping, cancellationToken);
     }
 }

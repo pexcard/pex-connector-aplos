@@ -626,7 +626,7 @@ export class SyncConnectComponent implements OnInit {
   getSettings() {
     this.mapping.getSettings(this.sessionId).subscribe(data => {
       this.settingsModel = { ...data };
-      console.log('got settings.', this.settingsModel);
+      console.log('got settings.');
 
       this.isPrepaid = this.settingsModel.pexFundingSource == FundingSource.Prepaid;
       this.isCredit = this.settingsModel.pexFundingSource == FundingSource.Credit;
@@ -1133,14 +1133,14 @@ export class SyncConnectComponent implements OnInit {
   saveAplosCredentialsSettings() {
     this.savingSettings = true;
     // Only update Aplos credentials related settings
-    console.log('saving Aplos credentials settings', this.settingsModel);
+    console.log('saving Aplos credentials settings');
     return this.mapping.saveSettings(this.sessionId, this.settingsModel);
   }
 
   saveSyncSelectionSettings() {
     this.savingSettings = true;
     // Only update sync selection related settings
-    console.log('saving sync selection settings', this.settingsModel);
+    console.log('saving sync selection settings');
     return this.mapping.saveSettings(this.sessionId, this.settingsModel);
   }
 
@@ -1155,7 +1155,7 @@ export class SyncConnectComponent implements OnInit {
     if (this.settingsModel.syncReimbursementsCreateContact) {
       this.settingsModel.reimbursementsAplosContactId = 0;
     }
-    console.log('saving contact options settings', this.settingsModel);
+    console.log('saving contact options settings');
     return this.mapping.saveSettings(this.sessionId, this.settingsModel);
   }
 
@@ -1164,7 +1164,7 @@ export class SyncConnectComponent implements OnInit {
     // Update expense account mappings and tag mappings from forms
     this.updateSettingsFromExpenseAccountForm();
     this.updateSettingsFromTagMappingForm();
-    console.log('saving mapping options settings', this.settingsModel);
+    console.log('saving mapping options settings');
     return this.mapping.saveSettings(this.sessionId, this.settingsModel);
   }
 
@@ -1175,7 +1175,7 @@ export class SyncConnectComponent implements OnInit {
     this.updateSettingsFromTransferTagMappingsForm();
     this.updateSettingsFromFeeTagMappingsForm();
     this.updateSettingsFromRebateTagMappingsForm();
-    console.log('saving transaction options settings', this.settingsModel);
+    console.log('saving transaction options settings');
     return this.mapping.saveSettings(this.sessionId, this.settingsModel);
   }
 }

@@ -95,7 +95,7 @@ export class SyncManageComponent implements OnInit {
     this.mapping.getSettings(this.sessionId).subscribe(settings => {
       if (settings) {
         this.settings = { ...settings };
-        console.log('got settings', this.settings);
+        console.log('got settings');
         this.isPrepaid = this.settings.pexFundingSource == FundingSource.Prepaid;
         this.isCredit = this.settings.pexFundingSource == FundingSource.Credit;
         this.invoiceMethodRequiresRebateFund = this.settings.syncInvoicesMethod === SyncInvoicesMethod.Simple

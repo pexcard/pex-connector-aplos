@@ -12,6 +12,7 @@ using AplosConnector.Common.Models.Aplos;
 using AplosConnector.Common.Models.Settings;
 using AplosConnector.Common.Services.Abstractions;
 using AplosConnector.Common.Storage;
+using AplosConnector.Common.Tracing;
 using AplosConnector.Common.VendorCards;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -542,7 +543,7 @@ namespace AplosConnector.Common.Services
                     }
                 }
 
-                using (_logger.BeginScope(GetLoggingScopeForSync(mapping)))
+                using (var syncContext = SyncTelemetry.BeginItemContext(_logger, "sync-business", GetLoggingScopeForSync(mapping)))
                 {
 
                     // Let's refresh Aplos API tokens before sync start and interrupt sync processor in case of invalidity
@@ -1172,7 +1173,7 @@ namespace AplosConnector.Common.Services
 
                 foreach (var transaction in transactions)
                 {
-                    using (_logger.BeginScope(GetLoggingScopeForTransaction(transaction)))
+                    using (var syncContext = SyncTelemetry.BeginItemContext(_logger, "sync-transaction", GetLoggingScopeForTransaction(transaction), "purchase"))
                     {
                         _logger.LogDebug($"Starting sync for PEX transaction {transaction.TransactionId}");
 
@@ -1390,6 +1391,7 @@ namespace AplosConnector.Common.Services
                             catch (Exception ex)
                             {
                                 transactionSyncResult = TransactionSyncResult.Failed;
+                                SyncTelemetry.RecordError(syncContext.Span, ex);
                                 _logger.LogError(ex, $"Error syncing transaction {transaction.TransactionId}.");
                             }
 
@@ -1409,6 +1411,7 @@ namespace AplosConnector.Common.Services
                         catch (Exception ex)
                         {
                             failureCount++;
+                            SyncTelemetry.RecordError(syncContext.Span, ex);
                             _logger.LogError(ex, $"Error processing transaction {transaction.TransactionId}.");
                         }
                     }
@@ -1552,7 +1555,7 @@ namespace AplosConnector.Common.Services
 
             foreach (var transaction in rebatesToSync)
             {
-                using (_logger.BeginScope(GetLoggingScopeForRebate(transaction)))
+                using (var syncContext = SyncTelemetry.BeginItemContext(_logger, "sync-transaction", GetLoggingScopeForRebate(transaction), "rebate"))
                 {
                     _logger.LogDebug($"Starting sync for PEX rebate {transaction.TransactionId}");
 
@@ -1598,6 +1601,7 @@ namespace AplosConnector.Common.Services
                         catch (Exception ex)
                         {
                             transactionSyncResult = TransactionSyncResult.Failed;
+                            SyncTelemetry.RecordError(syncContext.Span, ex);
                             _logger.LogError(ex, $"Error syncing rebate {transaction.TransactionId}.");
                         }
 
@@ -1615,6 +1619,7 @@ namespace AplosConnector.Common.Services
                     catch (Exception ex)
                     {
                         failureCount++;
+                        SyncTelemetry.RecordError(syncContext.Span, ex);
                         _logger.LogError(ex, $"Error processing rebate {transaction.TransactionId}.");
                     }
                 }
@@ -1666,6 +1671,12 @@ namespace AplosConnector.Common.Services
                     continue;
                 }
 
+                if (invoice.PendingAmount > 0)
+                {
+                    _logger.LogWarning($"Skipping invoice {invoice.InvoiceId}: a payment of {invoice.PendingAmount} is still pending; it syncs on a later run.");
+                    continue;
+                }
+
                 invoicesToSync.Add(invoice);
             }
 
@@ -1676,7 +1687,7 @@ namespace AplosConnector.Common.Services
 
             foreach (var invoiceModel in invoicesToSync)
             {
-                using (_logger.BeginScope(GetLoggingScopeForInvoice(invoiceModel)))
+                using (var syncContext = SyncTelemetry.BeginItemContext(_logger, "sync-invoice", GetLoggingScopeForInvoice(invoiceModel)))
                 {
                     _logger.LogDebug($"Starting sync for PEX invoice {invoiceModel.InvoiceId}");
 
@@ -1702,6 +1713,13 @@ namespace AplosConnector.Common.Services
                             continue;
                         }
 
+                        // Keep after IsInvoiceFullyPaid: Balance Engine never marks a short statement past the return window.
+                        if (!invoiceModel.IsPastReturnWindow)
+                        {
+                            _logger.LogInformation($"Skipping invoice {invoiceModel.InvoiceId}: still inside the ACH return window; it syncs on a later run.");
+                            continue;
+                        }
+
                         var invoiceAllocations = await _pexApiClient.GetInvoiceAllocations(mapping.PEXExternalAPIToken, invoiceModel.InvoiceId, cancellationToken);
 
                         var transactionSyncResult = TransactionSyncResult.Failed;
@@ -1724,6 +1742,7 @@ namespace AplosConnector.Common.Services
                         catch (Exception ex)
                         {
                             transactionSyncResult = TransactionSyncResult.Failed;
+                            SyncTelemetry.RecordError(syncContext.Span, ex);
                             _logger.LogError(ex, $"Error syncing invoice {invoiceModel.InvoiceId}.");
                         }
 
@@ -1741,6 +1760,7 @@ namespace AplosConnector.Common.Services
                     catch (PexApiClientException ex)
                     {
                         failureCount++;
+                        SyncTelemetry.RecordError(syncContext.Span, ex);
                         _logger.LogError(ex, $"Error processing invoice {invoiceModel.InvoiceId}.");
                     }
                 }
@@ -2068,7 +2088,6 @@ namespace AplosConnector.Common.Services
         {
             if (invoice.Status != InvoiceStatus.Closed) return $"status is {invoice.Status}, not Closed";
             if (invoice.InvoiceAmount <= 0) return $"amount is {invoice.InvoiceAmount}";
-            if (!invoice.IsPastReturnWindow) return "still inside the ACH return window; it syncs on a later run";
             if (WasPexTransactionSyncedToAplos(aplosTransactions, invoice.InvoiceId.ToString())) return "already synced to Aplos";
             return null;
         }
@@ -2334,7 +2353,7 @@ namespace AplosConnector.Common.Services
 
             foreach (var transaction in transactionsToSync)
             {
-                using (_logger.BeginScope(GetLoggingScopeForTransaction(transaction)))
+                using (var syncContext = SyncTelemetry.BeginItemContext(_logger, "sync-transaction", GetLoggingScopeForTransaction(transaction), "transfer"))
                 {
                     _logger.LogDebug($"Starting sync for PEX transfer {transaction.TransactionId}");
 
@@ -2379,6 +2398,7 @@ namespace AplosConnector.Common.Services
                         catch (Exception ex)
                         {
                             transactionSyncResult = TransactionSyncResult.Failed;
+                            SyncTelemetry.RecordError(syncContext.Span, ex);
                             _logger.LogError(ex, $"Error syncing transfer {transaction.TransactionId}.");
                         }
 
@@ -2396,6 +2416,7 @@ namespace AplosConnector.Common.Services
                     catch (Exception ex)
                     {
                         failureCount++;
+                        SyncTelemetry.RecordError(syncContext.Span, ex);
                         _logger.LogError(ex, $"Error processing transfer {transaction.TransactionId}.");
                     }
                 }
@@ -2453,7 +2474,7 @@ namespace AplosConnector.Common.Services
             var failureCount = 0;
             foreach (var transaction in transactionsToSync)
             {
-                using (_logger.BeginScope(GetLoggingScopeForTransaction(transaction)))
+                using (var syncContext = SyncTelemetry.BeginItemContext(_logger, "sync-transaction", GetLoggingScopeForTransaction(transaction), "fee"))
                 {
                     _logger.LogDebug($"Starting sync for PEX fee {transaction.TransactionId}");
 
@@ -2499,6 +2520,7 @@ namespace AplosConnector.Common.Services
                         catch (Exception ex)
                         {
                             transactionSyncResult = TransactionSyncResult.Failed;
+                            SyncTelemetry.RecordError(syncContext.Span, ex);
                             _logger.LogError(ex, $"Error syncing PEX account fee {transaction.TransactionId}.");
                         }
 
@@ -2516,6 +2538,7 @@ namespace AplosConnector.Common.Services
                     catch (Exception ex)
                     {
                         failureCount++;
+                        SyncTelemetry.RecordError(syncContext.Span, ex);
                         _logger.LogError(ex, $"Error processing PEX account fee {transaction.TransactionId}.");
                     }
                 }
@@ -2995,7 +3018,7 @@ namespace AplosConnector.Common.Services
 
             foreach (var pr in reimbursementsToSync)
             {
-                using (logger.BeginScope(GetLoggingScopeForReimbursement(pr)))
+                using (var syncContext = SyncTelemetry.BeginItemContext(logger, "sync-reimbursement", GetLoggingScopeForReimbursement(pr)))
                 {
                     logger.LogDebug($"Starting sync for PEX reimbursement {pr.PaymentRequestId}");
 
@@ -3256,6 +3279,7 @@ namespace AplosConnector.Common.Services
                     catch (Exception ex)
                     {
                         failureCount++;
+                        SyncTelemetry.RecordError(syncContext.Span, ex);
                         logger.LogError(ex, $"Error processing reimbursement {pr.PaymentRequestId}.");
                     }
                 }

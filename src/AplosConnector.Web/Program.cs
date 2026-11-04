@@ -1,6 +1,8 @@
 using System;
+using Azure.Identity;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 
 #if !DEBUG
 using PexCard.Shared.Encryption.AspNetCore;
@@ -30,6 +32,12 @@ public class Program
                     }
 #endif
 
+                // KeyVault:Uri comes from the app's KeyVault__Uri setting, never git; the vault supplies TelemetryConfig--Exporter--BaseUrl.
+                var kvUri = cb.Build()["KeyVault:Uri"];
+                if (!string.IsNullOrWhiteSpace(kvUri))
+                {
+                    cb.AddAzureKeyVault(new Uri(kvUri), new DefaultAzureCredential());
+                }
             })
             .UseStartup<Startup>();
 }
