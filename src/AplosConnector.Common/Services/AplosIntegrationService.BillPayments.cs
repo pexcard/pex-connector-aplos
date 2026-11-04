@@ -133,7 +133,7 @@ public partial class AplosIntegrationService
                 {
                     aplosOriginated.Add((paymentRequest, billMapping));
                 }
-                else if (paymentRequest.PayoutDate is not null && CameFromAplosImport(paymentRequest))
+                else if ((paymentRequest.PayoutDate is not null || IsNonPlatformPayment(paymentRequest)) && CameFromAplosImport(paymentRequest))
                 {
                     failureCount++;
                     failureNotes.Add($"Bill {paymentRequest.BillRefNo ?? paymentRequest.PaymentRequestId.ToString()}: this bill was imported from Aplos but the connector has no usable record of the import, so its payment was not synced. Mark it paid in Aplos.");
@@ -248,12 +248,13 @@ public partial class AplosIntegrationService
                 var (cashAccountNumber, checkedSettingName) = rail.Key;
                 var isCardRail = rail.Any(bill => IsCardPayment(bill.PaymentRequest));
 
-                // No setting can fix this one, so it takes the retry window, and the stopped-bill check closes it once
-                // it is paid in Aplos.
+                // No setting can fix this one, so report it until the customer pays it in Aplos or the retry window ends.
                 if (cashAccountNumber <= 0m)
                 {
-                    foreach (var (_, billMapping) in rail)
+                    foreach (var (paymentRequest, billMapping) in rail)
                     {
+                        if (await TryClosePaidBill(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken)) continue;
+
                         failureCount++;
                         if (billMapping.FirstFailedUtc is null)
                         {
@@ -1109,9 +1110,12 @@ public partial class AplosIntegrationService
 
             if (paymentRequest is null) continue;
 
-            // Switching a bill to Non Platform leaves the request's destination as created (often a vendor card), so the
-            // bill's latest transfer is the one record of how it was paid.
-            if (bill.PaymentTransferType == PaymentTransferType.BillPayNonPlatform)
+            // Switching to Non Platform leaves the original destination on the request; marking it paid manually uses
+            // PaidViaExternalMethod instead. Neither should hide evidence of an actual payout or linked card charge.
+            var paidManually = paymentRequest.PaymentRequestStatus == PaymentRequestStatus.Closed
+                               && paymentRequest.PaymentRequestStatusTrigger == PaymentRequestStatusTrigger.PaidViaExternalMethod;
+            if (paymentRequest.PayoutDate is null && GetSettlementTransactionId(paymentRequest) is null
+                && (bill.PaymentTransferType == PaymentTransferType.BillPayNonPlatform || paidManually))
             {
                 paymentRequest.PayeeFundsDestinationType = PayeeFundsDestinationType.NonPlatform;
             }
