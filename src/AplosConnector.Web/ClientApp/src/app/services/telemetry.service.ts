@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 
 export interface SumoTelemetry {
-  // Tokenized per-env (__SumoRumIsEnabled__) and replaced at deploy, so it can
-  // arrive as a string. Coerced to bool in setupTelemetry (see below).
+  // Set per stage by the release's File Transform. Coerced to bool in
+  // setupTelemetry (see below) in case it arrives as a string.
   isEnabled: boolean | string;
   collectionSourceUrl: string;
   applicationName: string;
@@ -39,7 +39,7 @@ export class TelemetryService {
 
   public setupTelemetry(): Promise<void> {
     return this.getSumoConfig().then(async (config) => {
-      // A deploy-time .token swap delivers isEnabled as a string; unreplaced tokens coerce to false.
+      // Accept "true" as well as true; anything else leaves telemetry off.
       const enabled = config?.isEnabled === true || String(config?.isEnabled).toLowerCase() === 'true';
       if (!enabled || this.initialized) {
         return;

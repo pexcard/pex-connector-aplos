@@ -247,7 +247,7 @@ Cloned from the QBO connector (marketplace `legacy-apps/pex-connector-qbo`); its
 |---|---|---|
 | Web API | `pex-connector-aplos-api` | `Startup.ConfigureServices`: Azure App Service detector, then `ConfigurePexTelemetry`, then `AddPexHttpLogging` |
 | SyncWorker | `pex-connector-aplos-func` | `Program.cs`: `UseFunctionsWorkerDefaults`, then `ConfigurePexTelemetry`, then `AlwaysOnSampler` + `AddSource(SyncTelemetry.ActivitySourceName)`, then the `deployment.environment.name` strip |
-| Browser | `pex-connector-aplos-web` | `ClientApp/src/app/services/telemetry-setup.ts`, configured by `assets/config/sumo-telemetry.json` (off unless the release swaps in the `.token` file) |
+| Browser | `pex-connector-aplos-web` | `ClientApp/src/app/services/telemetry-setup.ts`, configured by `assets/config/sumo-telemetry.json` (off in git; the release's File Transform sets `isEnabled`, `collectionSourceUrl` and `deploymentEnvironment` per stage) |
 
 - `TelemetryConfig` lives in `appsettings*.json` and is shared by both hosts through the linked files. `Exporter.BaseUrl` stays `REPLACE`; Key Vault supplies the real endpoint.
 - The vault address is never committed (this repo is public). Each web and function app sets it with a `KeyVault__Uri` app setting.
