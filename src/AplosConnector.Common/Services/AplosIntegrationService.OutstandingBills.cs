@@ -238,7 +238,7 @@ namespace AplosConnector.Common.Services
                 SyncType = SyncTypes.OutstandingBills,
                 SyncStatus = syncStatus.ToString(),
                 SyncedRecords = syncCount,
-                SyncNotes = JoinFailureNotes(failureCount, "1 bill from Aplos needs attention.", $"{failureCount} bills from Aplos need attention.", failureNotes)
+                SyncNotes = JoinFailureNotes(failureCount, "PEX bill", "PEX bills", "from Aplos", failureNotes)
             };
             await _historyStorage.CreateAsync(result, cancellationToken);
         }

@@ -27,8 +27,8 @@ public class OutstandingBillsFailureCountTests : VendorSetupTestBase
         await RunSync();
 
         var notes = Assert.Single(HistoryRows).SyncNotes;
-        Assert.StartsWith("2 bills from Aplos need attention. Bill INV-9001: ", notes);
-        Assert.Contains("Bill INV-9002: ", notes);
+        Assert.StartsWith("Failed to sync 2 PEX bills from Aplos.\nBill INV-9001: ", notes);
+        Assert.Contains("\nBill INV-9002: ", notes);
     }
 
     [Theory]
@@ -42,7 +42,7 @@ public class OutstandingBillsFailureCountTests : VendorSetupTestBase
 
         await RunSync();
 
-        Assert.StartsWith("1 bill from Aplos needs attention. Bill Acme Supplies, 2026-09-01, $10.00: ", Assert.Single(HistoryRows).SyncNotes);
+        Assert.StartsWith("Failed to sync 1 PEX bill from Aplos.\nBill Acme Supplies, 2026-09-01, $10.00: ", Assert.Single(HistoryRows).SyncNotes);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class OutstandingBillsFailureCountTests : VendorSetupTestBase
 
         await RunSync();
 
-        Assert.StartsWith("1 bill from Aplos needs attention. Bill 2026-09-01, $10.00: ", Assert.Single(HistoryRows).SyncNotes);
+        Assert.StartsWith("Failed to sync 1 PEX bill from Aplos.\nBill 2026-09-01, $10.00: ", Assert.Single(HistoryRows).SyncNotes);
     }
 
     [Fact]
