@@ -94,6 +94,63 @@ public class BillPaymentRailTests : BillPaymentsTestBase
         Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
     }
 
+    [Theory]
+    [InlineData(PaymentTransferType.BillPayAch)]
+    [InlineData(PaymentTransferType.ReimbursementAch)]
+    public async Task AnAchPaymentToAVendorThatPrefersCardIsPaidFromTheAchBankAccount(PaymentTransferType transferType)
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, linkedCardCharge: false, transferType: transferType);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+
+        await RunSync(useBillPay: true);
+
+        Assert.Equal(AchClearingAccountNumber, Assert.Single(_payments).CashAccountNumber);
+        Assert.Equal(SyncStatus.Success.ToString(), Assert.Single(_historyRows).SyncStatus);
+    }
+
+    [Fact]
+    public async Task AnAchPaymentToAVendorThatPrefersCardWaitsUntilSettled()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, linkedCardCharge: false, transferType: PaymentTransferType.BillPayAch);
+        SetupAchPayment(PaymentStatusTrigger.Settling);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        _mockPexApiClient.Verify(client => client.GetPayments(
+            It.IsAny<string>(), It.IsAny<PaymentListRequestModel>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ACardPaymentToAVendorTypedAsBankAccountWaitsForItsCardCharge()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.BankAccount, transferType: PaymentTransferType.BillPayVirtualCards);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        _mockPexApiClient.Verify(client => client.GetPayments(
+            It.IsAny<string>(), It.IsAny<PaymentListRequestModel>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ANonPlatformPaymentToAVendorThatPrefersCardFailsInsteadOfWaitingForACardCharge()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, linkedCardCharge: false, transferType: PaymentTransferType.BillPayNonPlatform);
+        SetupLivePayable(amount: 125.50m, paid: 0m);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        Assert.Contains("no Aplos account to pay it from", Assert.Single(_historyRows).SyncNotes);
+    }
+
     [Fact]
     public async Task AVendorCardPaymentNeverReadsAchPayments()
     {

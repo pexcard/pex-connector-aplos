@@ -10,6 +10,7 @@ using PexCard.Api.Client.Core.Enums;
 using PexCard.Api.Client.Core.Models;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -52,6 +53,15 @@ namespace AplosConnector.Common.Services
                 .Where(payable => DateOnly.FromDateTime(payable.BillDate) >= firstBillDate
                                   && DateOnly.FromDateTime(payable.BillDate) <= lastBillDate)
                 .ToList();
+
+        // Aplos sends a missing reference as "", which would leave the note naming no bill.
+        private static string DescribePayable(AplosApiPayableDetail payable)
+        {
+            if (!string.IsNullOrWhiteSpace(payable.ReferenceNumber)) return payable.ReferenceNumber.Trim();
+            var dateAndAmount = $"{payable.BillDate:yyyy-MM-dd}, {AplosPayableFilter.NormalizeAmount(payable.Amount).ToString("$0.00", CultureInfo.InvariantCulture)}";
+            var contactName = AplosPayableFilter.GetContactName(payable.Contact);
+            return string.IsNullOrWhiteSpace(contactName) ? dateAndAmount : $"{contactName}, {dateAndAmount}";
+        }
 
         internal async Task SyncOutstandingBills(
             ILogger logger,
@@ -109,7 +119,7 @@ namespace AplosConnector.Common.Services
                 foreach (var payable in unpaid.Where(payable => string.IsNullOrEmpty(payable.Id)))
                 {
                     failureCount++;
-                    failureNotes.Add($"Bill {payable.ReferenceNumber}: Aplos returned it without an id, so it cannot be imported; add it in PEX by hand.");
+                    failureNotes.Add($"Bill {DescribePayable(payable)}: Aplos returned it without an id, so it cannot be imported; add it in PEX by hand.");
                     logger.LogWarning($"Skipping Aplos payable {payable.ReferenceNumber} with no id for business {mapping.PEXBusinessAcctId}.");
                 }
                 unpaid.RemoveAll(payable => string.IsNullOrEmpty(payable.Id));
@@ -172,7 +182,7 @@ namespace AplosConnector.Common.Services
                                 var reason = unresolvedContactMessages.TryGetValue(payable.Contact?.Id ?? 0, out var message)
                                     ? message
                                     : $"Add a billing address for the {contactName} contact in Aplos.";
-                                failureNotes.Add($"Bill {payable.ReferenceNumber ?? payable.Id}: {reason}");
+                                failureNotes.Add($"Bill {DescribePayable(payable)}: {reason}");
                                 logger.LogWarning($"Could not resolve a PEX vendor for Aplos payable {payable.Id} for business {mapping.PEXBusinessAcctId}. {reason}");
                                 continue;
                             }
@@ -188,13 +198,13 @@ namespace AplosConnector.Common.Services
                             if (problems.Count > 0)
                             {
                                 failureCount++;
-                                failureNotes.Add($"Bill {payable.ReferenceNumber ?? payable.Id}: {string.Join(" ", problems)}");
+                                failureNotes.Add($"Bill {DescribePayable(payable)}: {string.Join(" ", problems)}");
                             }
                         }
                         catch (Exception ex)
                         {
                             failureCount++;
-                            failureNotes.Add($"Bill {payable.ReferenceNumber ?? payable.Id}: {ex.Message}");
+                            failureNotes.Add($"Bill {DescribePayable(payable)}: {ex.Message}");
                             logger.LogError(ex, $"Failed to create a PEX bill inbox item for Aplos payable {payable.Id} for business {mapping.PEXBusinessAcctId}.");
                         }
                     }
@@ -322,7 +332,7 @@ namespace AplosConnector.Common.Services
                 {
                     PEXBusinessAcctId = mapping.PEXBusinessAcctId,
                     AplosPayableId = payable.Id,
-                    AplosReferenceNumber = payable.ReferenceNumber,
+                    AplosReferenceNumber = DescribePayable(payable),
                     PexBillInboxId = billInboxId,
                     MetadataRelationId = metadataId,
                     Amount = AplosPayableFilter.NormalizeAmount(payable.Amount)

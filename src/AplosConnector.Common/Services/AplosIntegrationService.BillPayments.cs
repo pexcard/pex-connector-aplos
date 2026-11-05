@@ -719,6 +719,16 @@ public partial class AplosIntegrationService
     private static bool IsNonPlatformPayment(BillPaymentRequestModel paymentRequest)
         => paymentRequest.PayeeFundsDestinationType == PayeeFundsDestinationType.NonPlatform;
 
+    // The request's destination type is the vendor's preferred method (card first), not the one the payer chose.
+    // A linked card charge outranks a Non Platform transfer type, so the charge is still claimed.
+    private static PayeeFundsDestinationType GetPaidDestinationType(PaymentTransferType? transferType, PayeeFundsDestinationType requestedType, bool hasCardCharge) => transferType switch
+    {
+        PaymentTransferType.BillPayAch or PaymentTransferType.ReimbursementAch => PayeeFundsDestinationType.BankAccount,
+        PaymentTransferType.BillPayVirtualCards when requestedType != PayeeFundsDestinationType.SingleUseVendorVirtualCard => PayeeFundsDestinationType.VendorVirtualCard,
+        PaymentTransferType.BillPayNonPlatform when !hasCardCharge => PayeeFundsDestinationType.NonPlatform,
+        _ => requestedType
+    };
+
     private static long? GetSettlementTransactionId(BillPaymentRequestModel paymentRequest)
         => long.TryParse(paymentRequest.SettlementTransactionId, out var transactionId) && transactionId > 0 ? transactionId : null;
 
@@ -1110,12 +1120,14 @@ public partial class AplosIntegrationService
 
             if (paymentRequest is null) continue;
 
-            // Switching to Non Platform leaves the original destination on the request; marking it paid manually uses
-            // PaidViaExternalMethod instead. Neither should hide evidence of an actual payout or linked card charge.
+            var hasCardCharge = GetSettlementTransactionId(paymentRequest) is not null;
+            paymentRequest.PayeeFundsDestinationType = GetPaidDestinationType(bill.PaymentTransferType, paymentRequest.PayeeFundsDestinationType, hasCardCharge);
+
+            // Marking a bill paid manually uses PaidViaExternalMethod and keeps the original destination. It should not
+            // hide evidence of an actual payout or linked card charge.
             var paidManually = paymentRequest.PaymentRequestStatus == PaymentRequestStatus.Closed
                                && paymentRequest.PaymentRequestStatusTrigger == PaymentRequestStatusTrigger.PaidViaExternalMethod;
-            if (paymentRequest.PayoutDate is null && GetSettlementTransactionId(paymentRequest) is null
-                && (bill.PaymentTransferType == PaymentTransferType.BillPayNonPlatform || paidManually))
+            if (paidManually && paymentRequest.PayoutDate is null && !hasCardCharge)
             {
                 paymentRequest.PayeeFundsDestinationType = PayeeFundsDestinationType.NonPlatform;
             }

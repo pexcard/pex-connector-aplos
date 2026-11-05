@@ -149,8 +149,7 @@ public abstract class BillPaymentsTestBase
                     BillRefNo = "INV-9001",
                     Amount = 125.50m,
                     PaymentRequestStatus = PaymentRequestStatus.Closed,
-                    PaymentRequestStatusTrigger = PaymentRequestStatusTrigger.Paid,
-                    PaymentTransferType = transferType
+                    PaymentRequestStatusTrigger = PaymentRequestStatusTrigger.Paid, PaymentTransferType = transferType
                 }],
                 PageInfo = new PageInfoModel { Page = 1, PageSize = 50, TotalItems = 1 }
             });
