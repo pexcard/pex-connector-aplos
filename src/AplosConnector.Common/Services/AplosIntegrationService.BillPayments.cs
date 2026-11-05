@@ -1155,13 +1155,13 @@ public partial class AplosIntegrationService
             SyncType = SyncTypes.BillPayments,
             SyncStatus = syncStatus.ToString(),
             SyncedRecords = syncCount,
-            SyncNotes = JoinFailureNotes(failureCount, "1 bill payment needs attention.", $"{failureCount} bill payments need attention.", failureNotes)
+            SyncNotes = JoinFailureNotes(failureCount, "bill payment", "bill payments", "to Aplos", failureNotes)
         };
         await _historyStorage.CreateAsync(result, cancellationToken);
     }
 
-    private static string JoinFailureNotes(int failureCount, string oneFailed, string manyFailed, List<string> failureNotes)
+    private static string JoinFailureNotes(int failureCount, string one, string many, string direction, List<string> failureNotes)
         => failureCount == 0
-            ? string.Join(" ", failureNotes)
-            : string.Join(" ", [failureCount == 1 ? oneFailed : manyFailed, .. failureNotes]);
+            ? string.Join("\n", failureNotes)
+            : string.Join("\n", [$"Failed to sync {failureCount} {(failureCount == 1 ? one : many)} {direction}.", .. failureNotes]);
 }
