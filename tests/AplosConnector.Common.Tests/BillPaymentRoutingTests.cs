@@ -30,6 +30,35 @@ namespace AplosConnector.Common.Tests;
 
 public class BillPaymentRoutingTests : BillPaymentsTestBase
 {
+    [Theory]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, false)]
+    public async Task OnlyAnOutsidePaidAplosOrphanIsReported(bool imported, bool awaitingCard, bool reported)
+    {
+        _billMappingStorage.Seed(new AplosBillMappingModel
+        {
+            PEXBusinessAcctId = PexBusinessAcctId,
+            AplosPayableId = "unrelated-payable",
+            MetadataRelationId = MetadataRelationId + 1,
+            PexBillInboxId = PexBillId + 1
+        });
+        SetupPaidPexBill(PayeeFundsDestinationType.SingleUseVendorVirtualCard, hasPayoutDate: false,
+            linkedCardCharge: false, transferType: awaitingCard ? null : PaymentTransferType.BillPayNonPlatform,
+            metadata: imported ? new PaymentRequestMetadataModel
+            {
+                Notes = [new TransactionNoteModel { NoteText = AplosIntegrationService.GetAplosBillSyncedNote(AplosPayableId) }]
+            } : null);
+
+        await RunSync(useBillPay: true);
+
+        VerifyNoPayCall();
+        var history = Assert.Single(_historyRows);
+        Assert.Equal((reported ? SyncStatus.Failed : SyncStatus.Success).ToString(), history.SyncStatus);
+        Assert.Equal(reported, history.SyncNotes.Contains("no usable record of the import"));
+        if (reported) Assert.Contains("Mark it paid in Aplos", history.SyncNotes);
+    }
+
     [Fact]
     public async Task PayingAnAplosBillByVendorCardMarksThePayablePaidAndTheCardCharge()
     {

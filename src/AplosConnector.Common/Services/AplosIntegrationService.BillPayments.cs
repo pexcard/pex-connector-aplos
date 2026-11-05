@@ -133,7 +133,7 @@ public partial class AplosIntegrationService
                 {
                     aplosOriginated.Add((paymentRequest, billMapping));
                 }
-                else if (paymentRequest.PayoutDate is not null && CameFromAplosImport(paymentRequest))
+                else if ((paymentRequest.PayoutDate is not null || IsNonPlatformPayment(paymentRequest)) && CameFromAplosImport(paymentRequest))
                 {
                     failureCount++;
                     failureNotes.Add($"Bill {paymentRequest.BillRefNo ?? paymentRequest.PaymentRequestId.ToString()}: this bill was imported from Aplos but the connector has no usable record of the import, so its payment was not synced. Mark it paid in Aplos.");
@@ -200,7 +200,7 @@ public partial class AplosIntegrationService
                     continue;
                 }
 
-                if (paymentRequest.PayoutDate is null)
+                if (paymentRequest.PayoutDate is null && !IsNonPlatformPayment(paymentRequest))
                 {
                     var awaitingNote = await CheckAwaitingCardCharge(logger, mapping, billMapping, paymentRequest, GetCardRailOnce, utcNow, cancellationToken);
                     if (awaitingNote is not null)
@@ -248,12 +248,13 @@ public partial class AplosIntegrationService
                 var (cashAccountNumber, checkedSettingName) = rail.Key;
                 var isCardRail = rail.Any(bill => IsCardPayment(bill.PaymentRequest));
 
-                // No setting can fix this one, so it takes the retry window, and the stopped-bill check closes it once
-                // it is paid in Aplos.
+                // No setting can fix this one, so report it until the customer pays it in Aplos or the retry window ends.
                 if (cashAccountNumber <= 0m)
                 {
-                    foreach (var (_, billMapping) in rail)
+                    foreach (var (paymentRequest, billMapping) in rail)
                     {
+                        if (await TryClosePaidBill(logger, mapping, billMapping, paymentRequest, utcNow, cancellationToken)) continue;
+
                         failureCount++;
                         if (billMapping.FirstFailedUtc is null)
                         {
@@ -715,12 +716,16 @@ public partial class AplosIntegrationService
     private static bool IsCardPayment(BillPaymentRequestModel paymentRequest)
         => paymentRequest.PayeeFundsDestinationType is PayeeFundsDestinationType.SingleUseVendorVirtualCard or PayeeFundsDestinationType.VendorVirtualCard;
 
+    private static bool IsNonPlatformPayment(BillPaymentRequestModel paymentRequest)
+        => paymentRequest.PayeeFundsDestinationType == PayeeFundsDestinationType.NonPlatform;
+
     // The request's destination type is the vendor's preferred method (card first), not the one the payer chose.
-    private static PayeeFundsDestinationType GetPaidDestinationType(PaymentTransferType? transferType, PayeeFundsDestinationType requestedType) => transferType switch
+    // A linked card charge outranks a Non Platform transfer type, so the charge is still claimed.
+    private static PayeeFundsDestinationType GetPaidDestinationType(PaymentTransferType? transferType, PayeeFundsDestinationType requestedType, bool hasCardCharge) => transferType switch
     {
         PaymentTransferType.BillPayAch or PaymentTransferType.ReimbursementAch => PayeeFundsDestinationType.BankAccount,
         PaymentTransferType.BillPayVirtualCards when requestedType != PayeeFundsDestinationType.SingleUseVendorVirtualCard => PayeeFundsDestinationType.VendorVirtualCard,
-        PaymentTransferType.BillPayNonPlatform => PayeeFundsDestinationType.NonPlatform,
+        PaymentTransferType.BillPayNonPlatform when !hasCardCharge => PayeeFundsDestinationType.NonPlatform,
         _ => requestedType
     };
 
@@ -1115,11 +1120,22 @@ public partial class AplosIntegrationService
 
             if (paymentRequest is null) continue;
 
-            paymentRequest.PayeeFundsDestinationType = GetPaidDestinationType(bill.PaymentTransferType, paymentRequest.PayeeFundsDestinationType);
+            var hasCardCharge = GetSettlementTransactionId(paymentRequest) is not null;
+            paymentRequest.PayeeFundsDestinationType = GetPaidDestinationType(bill.PaymentTransferType, paymentRequest.PayeeFundsDestinationType, hasCardCharge);
 
-            // PayoutDate is the one paid signal both rails set; the status trigger differs between them. A payment that
-            // failed after payout keeps its payout date, so a reversal is recognised from the status instead.
-            if (paymentRequest.PayoutDate is null && !IsBillPaymentReversed(paymentRequest) && !IsAwaitingCardCharge(paymentRequest)) continue;
+            // Marking a bill paid manually uses PaidViaExternalMethod and keeps the original destination. It should not
+            // hide evidence of an actual payout or linked card charge.
+            var paidManually = paymentRequest.PaymentRequestStatus == PaymentRequestStatus.Closed
+                               && paymentRequest.PaymentRequestStatusTrigger == PaymentRequestStatusTrigger.PaidViaExternalMethod;
+            if (paidManually && paymentRequest.PayoutDate is null && !hasCardCharge)
+            {
+                paymentRequest.PayeeFundsDestinationType = PayeeFundsDestinationType.NonPlatform;
+            }
+
+            // PayoutDate is the paid signal of the ACH and card rails; the status trigger differs between them. A payment
+            // that failed after payout keeps its payout date, so a reversal is recognised from the status instead. A Non
+            // Platform payment moves no money and never gets a payout date.
+            if (paymentRequest.PayoutDate is null && !IsBillPaymentReversed(paymentRequest) && !IsAwaitingCardCharge(paymentRequest) && !IsNonPlatformPayment(paymentRequest)) continue;
 
             requests.Add(paymentRequest);
         }

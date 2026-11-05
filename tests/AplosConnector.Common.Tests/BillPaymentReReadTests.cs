@@ -16,6 +16,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using PexCard.Api.Client.Core;
 using PexCard.Api.Client.Core.Enums;
 using PexCard.Api.Client.Core.Models;
@@ -30,6 +32,51 @@ namespace AplosConnector.Common.Tests;
 
 public class BillPaymentReReadTests : BillPaymentsTestBase
 {
+    [Fact]
+    public async Task BillSearchReadsTwoPagesAndProcessesTheSecondPage()
+    {
+        SeedUnpaidMapping();
+        SetupPaidPexBill();
+        SetupLivePayable(BillAmount, paid: 0m);
+        var firstPageIds = Enumerable.Range(1, 50).ToArray();
+        BillPaymentListResponseModel Page(int page, IEnumerable<int> ids) =>
+            JsonConvert.DeserializeObject<BillPaymentListResponseModel>(new JObject
+            {
+                ["Items"] = new JArray(ids.Select(id => new JObject
+                {
+                    ["BillId"] = id,
+                    ["BillRefNo"] = $"TEST-{id}",
+                    ["Amount"] = BillAmount,
+                    ["PaymentRequestStatus"] = "Closed",
+                    ["PaymentRequestStatusTrigger"] = "Paid"
+                })),
+                ["PageInfo"] = new JObject { ["TotalCount"] = 51, ["PageNumber"] = page, ["PageSize"] = 50, ["TotalPages"] = 2 }
+            }.ToString());
+        foreach (var id in firstPageIds)
+            _mockPexApiClient.Setup(client => client.GetBillPaymentRequest(It.IsAny<string>(), id, false, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new BillPaymentRequestModel
+                {
+                    PaymentRequestId = id,
+                    PaymentRequestStatus = PaymentRequestStatus.Closed,
+                    PaymentRequestStatusTrigger = PaymentRequestStatusTrigger.Paid,
+                    PayeeFundsDestinationType = PayeeFundsDestinationType.NonPlatform,
+                    Amount = BillAmount
+                });
+        _mockPexApiClient.Setup(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), 1, 50, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Page(1, firstPageIds));
+        _mockPexApiClient.Setup(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), 2, 50, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Page(2, [PexBillId]));
+
+        await RunSync(useBillPay: true);
+
+        foreach (var page in new[] { 1, 2 })
+            _mockPexApiClient.Verify(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), page, 50, It.IsAny<CancellationToken>()), Times.Once);
+        _mockPexApiClient.Verify(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), 3, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        foreach (var id in firstPageIds.Append(PexBillId))
+            _mockPexApiClient.Verify(client => client.GetBillPaymentRequest(It.IsAny<string>(), id, false, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Single(_payments);
+        Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+    }
 
     [Fact]
     public async Task ThePayableIsRefetchedFromAplosImmediatelyBeforeTheDecision()
