@@ -158,6 +158,23 @@ public class ClearingMarkerTests : CardChargeTransferTestBase
     }
 
     [Fact]
+    public async Task AVoidedBillLosesItsMarkerSoAHandPaymentAfterRestoringItGetsNoTransfer()
+    {
+        SetupCardBill(CreditCardAccount);
+        _billMappingStorage.Rows.Values.Single().PaidFromClearingAccountNumber = CardClearingAccountNumber;
+        _mockAplosApiClient
+            .Setup(client => client.GetPayables(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        await RunCardSync();
+        SetupLivePayableWithLines(paid: BillAmount, [(BillAmount, FundId)]);
+        await RunCardSync();
+
+        VerifyNoPayCall();
+        Assert.Empty(_aplosTransactions);
+    }
+
+    [Fact]
     public async Task AStoppedBillThatReadsUnpaidLosesItsMarkerSoAHandPaymentGetsNoTransfer()
     {
         SetupCardBill(CreditCardAccount);
