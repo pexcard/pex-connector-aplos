@@ -225,6 +225,10 @@ public abstract class BillPaymentReversalTestBase
             .ReturnsAsync(() => [NewPayable(_payablePaidAmount)]);
 
         _mockAplosApiClient
+            .Setup(client => client.GetPayables(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => [NewPayable(_payablePaidAmount)]);
+
+        _mockAplosApiClient
             .Setup(client => client.CreateTransaction(It.IsAny<AplosApiTransactionDetail>(), It.IsAny<CancellationToken>()))
             .Callback<AplosApiTransactionDetail, CancellationToken>((aplosTransaction, _) => _createdAplosTransactions.Add(aplosTransaction))
             .ReturnsAsync(() => new AplosApiTransactionResponse

@@ -310,6 +310,10 @@ public abstract class BillPaymentsTestBase
             });
 
         _mockAplosApiClient
+            .Setup(client => client.GetPayables(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new AplosApiPayableDetail { Id = AplosPayableId }]);
+
+        _mockAplosApiClient
             .Setup(client => client.GetPayableForUpdate(AplosPayableId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => (JObject)_payableForUpdate?.DeepClone());
 

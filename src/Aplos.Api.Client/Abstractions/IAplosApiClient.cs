@@ -31,6 +31,7 @@ namespace Aplos.Api.Client.Abstractions
         Task<List<AplosApiTransactionDetail>> GetTransactions(DateTime startDate, CancellationToken cancellationToken = default);
         Task<AplosApiTransactionListResponse> GetTransactions(DateTime startDate, int pageSize, int pageNum, CancellationToken cancellationToken = default);
         Task<List<AplosApiPayableDetail>> GetPayables(DateOnly rangeStart, CancellationToken cancellationToken = default);
+        Task<List<AplosApiPayableDetail>> GetPayables(DateOnly rangeStart, DateOnly rangeEnd, int? contactId, CancellationToken cancellationToken = default);
         Task<AplosApiPayableResponse> GetPayable(string aplosPayableId, CancellationToken cancellationToken = default);
         Task<JObject> GetPayableForUpdate(string aplosPayableId, CancellationToken cancellationToken = default);
         Task UpdatePayable(string aplosPayableId, JObject payable, CancellationToken cancellationToken = default);

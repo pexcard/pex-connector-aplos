@@ -579,11 +579,20 @@ namespace Aplos.Api.Client
             return _auth?.AplosAccessToken;
         }
 
-        public async Task<List<AplosApiPayableDetail>> GetPayables(DateOnly rangeStart, CancellationToken cancellationToken = default)
+        public Task<List<AplosApiPayableDetail>> GetPayables(DateOnly rangeStart, CancellationToken cancellationToken = default)
+            => GetPayablePages($"{APLOS_ENDPOINT_PAYABLES}?f_rangestart={rangeStart:yyyy-MM-dd}", cancellationToken);
+
+        public Task<List<AplosApiPayableDetail>> GetPayables(DateOnly rangeStart, DateOnly rangeEnd, int? contactId, CancellationToken cancellationToken = default)
+        {
+            var contactFilter = contactId is { } id ? $"&f_contact={id}" : "";
+            return GetPayablePages($"{APLOS_ENDPOINT_PAYABLES}?f_rangestart={rangeStart:yyyy-MM-dd}&f_rangeend={rangeEnd:yyyy-MM-dd}{contactFilter}", cancellationToken);
+        }
+
+        private async Task<List<AplosApiPayableDetail>> GetPayablePages(string firstPage, CancellationToken cancellationToken)
         {
             var response = await InvokeAplosApiWithAccessToken<AplosApiPayablesListResponse>(
                 HttpMethod.Get,
-                $"{APLOS_ENDPOINT_PAYABLES}?f_rangestart={rangeStart:yyyy-MM-dd}",
+                firstPage,
                 cancellationToken: cancellationToken);
 
             var result = new List<AplosApiPayableDetail>(response.Data.Payables);
