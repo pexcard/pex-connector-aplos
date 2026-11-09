@@ -96,7 +96,38 @@ namespace AplosConnector.Web.Tests
                     new KeyValuePair<string, object>("Attempt", 2),
                 },
                 masked);
-            Assert.DoesNotContain("abc-123", masked.ToString());
+            Assert.Equal("RequestId:0HN:1 RequestPath:/finish-pex-login/{sessionId} Attempt:2", masked.ToString());
+        }
+
+        /// <summary>
+        /// A scope whose own text writes the session path differently from its values never renders the session id;
+        /// it falls back to its masked pairs.
+        /// </summary>
+        [Fact]
+        public void MaskScope_ScopeTextDiffersFromValues_NeverRendersSessionId()
+        {
+            var pairs = new List<KeyValuePair<string, object>> { new("RequestPath", "/finish-pex-login/abc-123") };
+            var scope = new Mock<IEnumerable<KeyValuePair<string, object>>>();
+            scope.Setup(s => s.GetEnumerator()).Returns(() => pairs.GetEnumerator());
+            scope.Setup(s => s.ToString()).Returns("GET /FINISH-PEX-LOGIN/abc-123");
+
+            var rendered = SessionIdMaskingScopeProvider.MaskScope(scope.Object).ToString();
+
+            Assert.Equal("RequestPath:/finish-pex-login/{sessionId}", rendered);
+        }
+
+        /// <summary>
+        /// A request path held as a <see cref="PathString"/> is masked like a string path.
+        /// </summary>
+        [Fact]
+        public void MaskScope_MasksPathStringValue()
+        {
+            var scope = new Dictionary<string, object> { ["Path"] = new PathString("/finish-pex-login/abc-123") };
+
+            var masked = Assert.IsAssignableFrom<IEnumerable<KeyValuePair<string, object>>>(SessionIdMaskingScopeProvider.MaskScope(scope));
+
+            Assert.Equal(new KeyValuePair<string, object>("Path", SessionPathRedaction.RedactedFinishPexLoginPath), Assert.Single(masked));
+            Assert.Equal("Path:/finish-pex-login/{sessionId}", masked.ToString());
         }
 
         /// <summary>

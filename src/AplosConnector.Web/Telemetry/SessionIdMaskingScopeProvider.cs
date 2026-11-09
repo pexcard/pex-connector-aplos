@@ -1,7 +1,9 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using AplosConnector.Common.Tracing;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace AplosConnector.Web.Telemetry;
@@ -108,7 +110,8 @@ public sealed class SessionIdMaskingScopeProvider : IExternalScopeProvider
         List<KeyValuePair<string, string>>? replacements = null;
         foreach (var pair in pairs)
         {
-            if (pair.Value is string text)
+            var text = AsMaskableText(pair.Value);
+            if (text != null)
             {
                 var redacted = SessionIdRedaction.RedactUrl(text);
                 if (!string.Equals(redacted, text, StringComparison.Ordinal))
@@ -127,15 +130,43 @@ public sealed class SessionIdMaskingScopeProvider : IExternalScopeProvider
             return null;
         }
 
-        return new MaskedLogScope(copy, RenderMasked(scope, replacements));
+        return new MaskedLogScope(copy, RenderMasked(scope, copy, replacements));
     }
 
     /// <summary>
-    /// Renders <paramref name="scope"/> as it renders itself (a formatted scope renders its message), with each raw
-    /// value replaced by its masked form.
+    /// Returns the text of a scope value that can carry a request path, so it can be masked.
     /// </summary>
+    /// <param name="value">
+    /// A scope value.
+    /// </param>
+    /// <returns>
+    /// The value's text for a string, <see cref="PathString"/> or <see cref="Uri"/>; otherwise null.
+    /// </returns>
+    private static string? AsMaskableText(object? value)
+    {
+        return value switch
+        {
+            string text => text,
+            PathString path => path.ToString(),
+            Uri uri => uri.OriginalString,
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Renders the masked scope as text without the session id.
+    /// </summary>
+    /// <remarks>
+    /// A scope that renders as its own text (a formatted scope renders its message) keeps that text with each raw
+    /// value replaced by its masked form. A collection scope, which renders as its type name, or a scope whose text
+    /// still carries a session id after the replacement (the value is written differently there), renders its masked
+    /// pairs instead, which always pass through <see cref="RedactText"/> as a last guard.
+    /// </remarks>
     /// <param name="scope">
     /// The original scope.
+    /// </param>
+    /// <param name="maskedPairs">
+    /// The scope's key/value pairs with session ids masked.
     /// </param>
     /// <param name="replacements">
     /// Raw values (keys) and their masked forms (values).
@@ -143,15 +174,58 @@ public sealed class SessionIdMaskingScopeProvider : IExternalScopeProvider
     /// <returns>
     /// The rendered scope without the session id.
     /// </returns>
-    private static string RenderMasked(object scope, IEnumerable<KeyValuePair<string, string>> replacements)
+    private static string RenderMasked(object scope, IReadOnlyList<KeyValuePair<string, object?>> maskedPairs, IEnumerable<KeyValuePair<string, string>> replacements)
     {
-        var rendered = scope.ToString() ?? string.Empty;
+        var rendered = scope.ToString();
+        if (rendered == null || string.Equals(rendered, scope.GetType().ToString(), StringComparison.Ordinal))
+        {
+            return RedactText(RenderPairs(maskedPairs));
+        }
+
         foreach (var replacement in replacements)
         {
             rendered = rendered.Replace(replacement.Key, replacement.Value, StringComparison.Ordinal);
         }
 
+        if (!string.Equals(RedactText(rendered), rendered, StringComparison.Ordinal))
+        {
+            return RedactText(RenderPairs(maskedPairs));
+        }
+
         return rendered;
+    }
+
+    /// <summary>
+    /// Masks session ids in free text word by word.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="SessionIdRedaction.RedactUrl"/> is built for a single URL and would swallow the text after a session
+    /// path up to the next <c>/</c>, <c>?</c> or <c>#</c>; a session id never contains a space, so masking each
+    /// space-separated word keeps the rest of the text.
+    /// </remarks>
+    /// <param name="text">
+    /// The text to mask.
+    /// </param>
+    /// <returns>
+    /// The text with every session id masked.
+    /// </returns>
+    private static string RedactText(string text)
+    {
+        return string.Join(" ", text.Split(' ').Select(SessionIdRedaction.RedactUrl));
+    }
+
+    /// <summary>
+    /// Renders key/value pairs as <c>Key:Value</c> separated by spaces, the way ASP.NET Core renders its hosting scope.
+    /// </summary>
+    /// <param name="pairs">
+    /// The pairs to render.
+    /// </param>
+    /// <returns>
+    /// The rendered pairs.
+    /// </returns>
+    private static string RenderPairs(IEnumerable<KeyValuePair<string, object?>> pairs)
+    {
+        return string.Join(" ", pairs.Select(pair => $"{pair.Key}:{pair.Value}"));
     }
 
     #endregion
