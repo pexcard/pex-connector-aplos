@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using AplosConnector.Web.Telemetry;
 using Microsoft.AspNetCore.Builder;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Moq;
 using OpenTelemetry.Logs;
 using Xunit;
 
@@ -98,6 +100,25 @@ namespace AplosConnector.Web.Tests
         }
 
         /// <summary>
+        /// A scope opened with a message template still renders its message, with the session id masked, while its
+        /// key/value pairs carry the masked value and the untouched template.
+        /// </summary>
+        [Fact]
+        public void MaskScope_FormattedScope_KeepsRenderedMessage()
+        {
+            object scope = null;
+            var logger = new Mock<ILogger>();
+            logger.Setup(l => l.BeginScope(It.IsAny<It.IsAnyType>())).Callback(new InvocationAction(invocation => scope = invocation.Arguments[0]));
+            logger.Object.BeginScope("GET {RequestPath} for {Caller}", "/finish-pex-login/abc-123", "browser");
+
+            var masked = Assert.IsAssignableFrom<IReadOnlyList<KeyValuePair<string, object>>>(SessionIdMaskingScopeProvider.MaskScope(scope));
+
+            Assert.Equal("GET /finish-pex-login/{sessionId} for browser", masked.ToString());
+            Assert.Contains(new KeyValuePair<string, object>("RequestPath", SessionPathRedaction.RedactedFinishPexLoginPath), masked);
+            Assert.Contains(new KeyValuePair<string, object>("{OriginalFormat}", "GET {RequestPath} for {Caller}"), masked);
+        }
+
+        /// <summary>
         /// A plain string scope carrying a session id is masked too.
         /// </summary>
         [Fact]
@@ -152,10 +173,12 @@ namespace AplosConnector.Web.Tests
                 .Build();
             // Created before the masking is installed at startup, like loggers of singletons built with the host.
             earlyLogger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("EarlyLogger");
-            await host.StartAsync();
+            // xUnit 2 has no test-run token; the timeout fails a stuck request instead of hanging the run.
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await host.StartAsync(timeout.Token);
 
-            await host.GetTestClient().GetAsync(path);
-            await host.StopAsync();
+            await host.GetTestClient().GetAsync(path, timeout.Token);
+            await host.StopAsync(timeout.Token);
 
             return processor;
         }

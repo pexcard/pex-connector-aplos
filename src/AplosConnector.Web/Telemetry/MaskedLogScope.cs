@@ -1,7 +1,6 @@
 #nullable enable
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace AplosConnector.Web.Telemetry;
 
@@ -17,14 +16,23 @@ public sealed class MaskedLogScope : IReadOnlyList<KeyValuePair<string, object?>
     private readonly IReadOnlyList<KeyValuePair<string, object?>> _pairs;
 
     /// <summary>
-    /// Creates a scope over already-masked pairs.
+    /// The original scope's rendered text with the session id masked.
+    /// </summary>
+    private readonly string _rendered;
+
+    /// <summary>
+    /// Creates a scope over already-masked pairs and text.
     /// </summary>
     /// <param name="pairs">
     /// The masked key/value pairs, in the original order.
     /// </param>
-    public MaskedLogScope(IReadOnlyList<KeyValuePair<string, object?>> pairs)
+    /// <param name="rendered">
+    /// The original scope's rendered text with the session id masked.
+    /// </param>
+    public MaskedLogScope(IReadOnlyList<KeyValuePair<string, object?>> pairs, string rendered)
     {
         _pairs = pairs;
+        _rendered = rendered;
     }
 
     /// <summary>
@@ -66,14 +74,14 @@ public sealed class MaskedLogScope : IReadOnlyList<KeyValuePair<string, object?>
     }
 
     /// <summary>
-    /// Renders the scope as <c>Key:Value</c> pairs, the way ASP.NET Core renders its own hosting scope, so text-only
-    /// log providers also see the masked values.
+    /// Renders the scope as the original scope rendered itself, with the session id masked, so text-only log providers
+    /// see the same message they would have seen.
     /// </summary>
     /// <returns>
     /// The rendered scope.
     /// </returns>
     public override string ToString()
     {
-        return string.Join(" ", _pairs.Select(pair => $"{pair.Key}:{pair.Value}"));
+        return _rendered;
     }
 }

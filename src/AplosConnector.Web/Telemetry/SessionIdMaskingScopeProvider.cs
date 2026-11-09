@@ -82,7 +82,7 @@ public sealed class SessionIdMaskingScopeProvider : IExternalScopeProvider
             case string text:
                 return SessionIdRedaction.RedactUrl(text);
             case IEnumerable<KeyValuePair<string, object?>> pairs:
-                return MaskPairs(pairs) ?? scope;
+                return MaskPairs(scope, pairs) ?? scope;
             default:
                 return scope;
         }
@@ -93,16 +93,19 @@ public sealed class SessionIdMaskingScopeProvider : IExternalScopeProvider
     /// <summary>
     /// Copies <paramref name="pairs"/> with session ids masked in their string values.
     /// </summary>
+    /// <param name="scope">
+    /// The original scope, whose rendered text the copy keeps with the same values masked.
+    /// </param>
     /// <param name="pairs">
     /// The scope's key/value pairs.
     /// </param>
     /// <returns>
     /// The masked copy, or null when no value carries a session id.
     /// </returns>
-    private static MaskedLogScope? MaskPairs(IEnumerable<KeyValuePair<string, object?>> pairs)
+    private static MaskedLogScope? MaskPairs(object scope, IEnumerable<KeyValuePair<string, object?>> pairs)
     {
         var copy = new List<KeyValuePair<string, object?>>();
-        var masked = false;
+        List<KeyValuePair<string, string>>? replacements = null;
         foreach (var pair in pairs)
         {
             if (pair.Value is string text)
@@ -110,7 +113,7 @@ public sealed class SessionIdMaskingScopeProvider : IExternalScopeProvider
                 var redacted = SessionIdRedaction.RedactUrl(text);
                 if (!string.Equals(redacted, text, StringComparison.Ordinal))
                 {
-                    masked = true;
+                    (replacements ??= new List<KeyValuePair<string, string>>()).Add(new KeyValuePair<string, string>(text, redacted));
                     copy.Add(new KeyValuePair<string, object?>(pair.Key, redacted));
                     continue;
                 }
@@ -119,7 +122,36 @@ public sealed class SessionIdMaskingScopeProvider : IExternalScopeProvider
             copy.Add(pair);
         }
 
-        return masked ? new MaskedLogScope(copy) : null;
+        if (replacements == null)
+        {
+            return null;
+        }
+
+        return new MaskedLogScope(copy, RenderMasked(scope, replacements));
+    }
+
+    /// <summary>
+    /// Renders <paramref name="scope"/> as it renders itself (a formatted scope renders its message), with each raw
+    /// value replaced by its masked form.
+    /// </summary>
+    /// <param name="scope">
+    /// The original scope.
+    /// </param>
+    /// <param name="replacements">
+    /// Raw values (keys) and their masked forms (values).
+    /// </param>
+    /// <returns>
+    /// The rendered scope without the session id.
+    /// </returns>
+    private static string RenderMasked(object scope, IEnumerable<KeyValuePair<string, string>> replacements)
+    {
+        var rendered = scope.ToString() ?? string.Empty;
+        foreach (var replacement in replacements)
+        {
+            rendered = rendered.Replace(replacement.Key, replacement.Value, StringComparison.Ordinal);
+        }
+
+        return rendered;
     }
 
     #endregion
