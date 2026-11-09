@@ -5,7 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpLogging;
 using AplosConnector.Common.Tracing;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry.Instrumentation.AspNetCore;
 
 namespace AplosConnector.Web.Telemetry;
@@ -54,6 +57,8 @@ public static class SessionPathRedactionServiceCollectionExtensions
             };
         });
         services.AddHttpLoggingInterceptor<SessionPathHttpLoggingInterceptor>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider, LoggerScopeProviderCapture>());
+        services.TryAddEnumerable(ServiceDescriptor.Transient<IStartupFilter, SessionIdScopeMaskingStartupFilter>());
         services.AddSessionIdRedaction();
         return services;
     }

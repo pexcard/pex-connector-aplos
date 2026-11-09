@@ -69,7 +69,7 @@ namespace AplosConnector.Web.Tests
             Assert.Equal("ext-aplos-test", activity.GetTagItem("pex.correlation_id"));
         }
 
-        private static IConfiguration LoadAppSettings(string environment)
+        internal static IConfiguration LoadAppSettings(string environment)
         {
             var webRoot = FindWebProjectRoot();
             var builder = new ConfigurationBuilder().AddJsonFile(Path.Combine(webRoot, "appsettings.json"), optional: false);
