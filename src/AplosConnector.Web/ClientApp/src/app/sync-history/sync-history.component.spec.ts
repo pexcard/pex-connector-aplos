@@ -29,14 +29,6 @@ describe('SyncHistoryComponent', () => {
     fixture.detectChanges();
   });
 
-  it('marks only the new sync types with the New badge', () => {
-    expect(component.isNewSyncType('Outstanding Bills')).toBeTrue();
-    expect(component.isNewSyncType('Bill Payments')).toBeTrue();
-    expect(component.isNewSyncType('Reimbursements')).toBeTrue();
-    expect(component.isNewSyncType('Transactions')).toBeFalse();
-    expect(component.isNewSyncType('Rebates')).toBeFalse();
-  });
-
   it('should create', () => {
     expect(component).toBeTruthy();
   });

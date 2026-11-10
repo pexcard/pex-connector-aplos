@@ -19,8 +19,6 @@ export class SyncHistoryComponent implements OnInit, OnDestroy {
   syncing = false;
   loadingHistory = false;
 
-  private static readonly NEW_SYNC_TYPES = ['Outstanding Bills', 'Bill Payments', 'Reimbursements'];
-
   private readonly CONNECTION_POLLING_INTERVAL_MS = 60 * 1000; // 60 sec
   private _connectionPollingSubscription: Subscription = Subscription.EMPTY;
 
@@ -76,10 +74,6 @@ export class SyncHistoryComponent implements OnInit, OnDestroy {
         this.loadingHistory = false;
       }
     );
-  }
-
-  isNewSyncType(syncType: string): boolean {
-    return SyncHistoryComponent.NEW_SYNC_TYPES.includes(syncType);
   }
 
   sync() {
