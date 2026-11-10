@@ -13,6 +13,7 @@ using PexCard.Api.Client.Core.Models;
 using AplosConnector.Common.Services.Abstractions;
 using System.Threading;
 using AplosConnector.Common.Storage;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace AplosConnector.Web.Controllers
 {
@@ -25,6 +26,11 @@ namespace AplosConnector.Web.Controllers
         private readonly IHttpClientFactory _clientFactory;
         private readonly IPexApiClient _pexApiClient;
         private readonly IAplosIntegrationService _aplosIntegrationService;
+        private readonly ITimeLimitedDataProtector _callbackProtector;
+        private readonly ITimeLimitedDataProtector _browserProtector;
+
+        public const string PexLoginCookieName = "PexLogin";
+        private static readonly TimeSpan PexLoginLifetime = TimeSpan.FromHours(1);
 
         public SessionController(
             PexOAuthSessionStorage pexOAuthSessionStorage,
@@ -32,7 +38,8 @@ namespace AplosConnector.Web.Controllers
             IOptions<AppSettingsModel> appSettings,
             IHttpClientFactory clientFactory,
             IPexApiClient pexApiClient,
-            IAplosIntegrationService aplosIntegrationService)
+            IAplosIntegrationService aplosIntegrationService,
+            IDataProtectionProvider dataProtectionProvider)
         {
             _pexOAuthSessionStorage = pexOAuthSessionStorage;
             _pex2AplosMappingStorage = pex2AplosMappingStorage;
@@ -40,6 +47,8 @@ namespace AplosConnector.Web.Controllers
             _clientFactory = clientFactory;
             _pexApiClient = pexApiClient;
             _aplosIntegrationService = aplosIntegrationService;
+            _callbackProtector = dataProtectionProvider?.CreateProtector("PexLogin.Callback").ToTimeLimitedDataProtector();
+            _browserProtector = dataProtectionProvider?.CreateProtector("PexLogin.Browser").ToTimeLimitedDataProtector();
         }
 
         [HttpGet, Route("OAuthURL")]
@@ -49,11 +58,21 @@ namespace AplosConnector.Web.Controllers
             httpClient.BaseAddress = _appSettings.PexConnectorBaseURL;
 
             var sessionId = Guid.NewGuid();
+            var state = Uri.EscapeDataString(_callbackProtector.Protect(sessionId.ToString(), PexLoginLifetime));
+            Response.Cookies.Append(PexLoginCookieName, _browserProtector.Protect(sessionId.ToString(), PexLoginLifetime), new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Path = "/",
+                MaxAge = PexLoginLifetime,
+            });
+
             var pexOAuthRequest = new OAuthRequestModel
             {
                 AppId = _appSettings.PexApiClientId,
                 AppSecret = _appSettings.PexApiClientSecret,
-                ServerCallbackUrl = $"{_appSettings.AplosConnectorBaseURL}/api/Session/?sessionId={sessionId}",
+                ServerCallbackUrl = $"{_appSettings.AplosConnectorBaseURL}/api/Session/?sessionId={sessionId}&state={state}",
                 BrowserClosingUrl = $"{_appSettings.AplosConnectorBaseURL}/finish-pex-login/{sessionId}"
             };
             var result = await httpClient.PostAsJsonAsync("Auth/Partner", pexOAuthRequest);
@@ -62,11 +81,31 @@ namespace AplosConnector.Web.Controllers
             return response;
         }
 
+        [HttpPost, Route("FinishLogin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult> FinishLogin(string sessionId, CancellationToken cancellationToken)
+        {
+            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
+
+            var cookie = Request.Cookies[PexLoginCookieName];
+            Response.Cookies.Delete(PexLoginCookieName, new CookieOptions { Path = "/", Secure = true, SameSite = SameSiteMode.Lax });
+
+            if (!IsProtectedSessionId(_browserProtector, cookie, sessionGuid)) return Unauthorized();
+
+            var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
+            if (session == null) return Unauthorized();
+
+            return Ok();
+        }
+
         [HttpPost, Route("AplosToken")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> CreateAplosToken(string sessionId, [FromBody] AplosTokenRequestModel model, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
@@ -75,6 +114,7 @@ namespace AplosConnector.Web.Controllers
             if (session == null) return Unauthorized();
 
             Pex2AplosMappingModel mapping = await _pex2AplosMappingStorage.GetByBusinessAcctIdAsync(session.PEXBusinessAcctId, cancellationToken);
+            if (mapping == null) return NotFound();
 
             if (!string.IsNullOrWhiteSpace(model.AplosClientId))
             {
@@ -119,12 +159,19 @@ namespace AplosConnector.Web.Controllers
         }
 
         [HttpPost, Route("")]
-        public async Task CreateSession(string sessionId, [FromBody] TokenModel model, CancellationToken cancellationToken)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult> CreateSession(string sessionId, string state, [FromBody] TokenModel model, CancellationToken cancellationToken)
         {
+            if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
+            if (!IsProtectedSessionId(_callbackProtector, state, sessionGuid)) return Unauthorized();
+            if (string.IsNullOrWhiteSpace(model?.Token)) return BadRequest();
+
             var business = await _pexApiClient.GetBusinessDetails(model.Token);
             var session = new PexOAuthSessionModel
             {
-                SessionGuid = new Guid(sessionId),
+                SessionGuid = sessionGuid,
                 ExternalToken = model.Token,
                 CreatedUtc = DateTime.UtcNow,
                 LastRenewedUtc = DateTime.UtcNow,
@@ -133,6 +180,21 @@ namespace AplosConnector.Web.Controllers
             await _pexOAuthSessionStorage.CreateAsync(session, cancellationToken);
 
             await _aplosIntegrationService.EnsureMappingInstalled(session, cancellationToken);
+
+            return Ok();
+        }
+
+        private static bool IsProtectedSessionId(ITimeLimitedDataProtector protector, string protectedValue, Guid sessionGuid)
+        {
+            if (string.IsNullOrEmpty(protectedValue)) return false;
+            try
+            {
+                return Guid.TryParse(protector.Unprotect(protectedValue), out var value) && value == sessionGuid;
+            }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                return false;
+            }
         }
 
         [HttpDelete, Route("")]

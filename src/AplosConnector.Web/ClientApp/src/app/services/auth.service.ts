@@ -28,7 +28,7 @@ export class AuthService {
 
   getOauthURL() {
     this.httpClient
-      .get<OAuthURLResponse>(this.baseUrl + "api/Session/OAuthURL")
+      .get<OAuthURLResponse>(this.baseUrl + "api/Session/OAuthURL", { withCredentials: true })
       .pipe(retryWithBackoff())
       .subscribe(
         result => {
@@ -55,6 +55,12 @@ export class AuthService {
         aplosClientId: aplosClientId,
         aplosPrivateKey: aplosPrivateKey
       });
+  }
+
+  finishPexLogin(sessionId: string): Observable<void> {
+    return this.httpClient
+      .post<void>(`${this.baseUrl}api/Session/FinishLogin?sessionId=${sessionId}`, null, { withCredentials: true })
+      .pipe(concatMap(() => this.login(sessionId)));
   }
 
   login(sessionId: string): Observable<void> {

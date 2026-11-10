@@ -1,3 +1,14 @@
-<p>
-  Login complete.
-</p>
+@if (!loginFailed) {
+  <p>
+    Completing login...
+  </p>
+}
+@if (loginFailed) {
+  <clr-alert [clrAlertType]="'danger'" [clrAlertSizeSmall]="false" [clrAlertClosed]="false">
+    <clr-alert-item>
+      <span class="alert-text">
+        Login could not be completed. Please start again from the login page.
+      </span>
+    </clr-alert-item>
+  </clr-alert>
+}
