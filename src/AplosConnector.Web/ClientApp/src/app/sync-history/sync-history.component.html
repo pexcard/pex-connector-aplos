@@ -30,7 +30,7 @@
         @for (item of syncResults; track item) {
           <tr>
             <td>{{ item.createdUtc | date:"yyyy-MM-dd hh:mm a" }}</td>
-            <td>{{item.syncType}} @if (item.syncType === 'Reimbursements') {
+            <td>{{item.syncType}} @if (item.syncType === 'Outstanding Bills' || item.syncType === 'Bill Payments' || item.syncType === 'Reimbursements') {
               <span class="badge-new">New</span>
             }</td>
             <td><span
