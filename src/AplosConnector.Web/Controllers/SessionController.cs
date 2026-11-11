@@ -85,18 +85,22 @@ namespace AplosConnector.Web.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> FinishLogin(string sessionId, CancellationToken cancellationToken)
         {
             if (!Guid.TryParse(sessionId, out var sessionGuid)) return BadRequest();
 
-            var cookie = Request.Cookies[PexLoginCookieName];
-            Response.Cookies.Delete(PexLoginCookieName, new CookieOptions { Path = "/", Secure = true, SameSite = SameSiteMode.Lax });
+            if (!IsProtectedSessionId(_browserProtector, Request.Cookies[PexLoginCookieName], sessionGuid))
+            {
+                DeletePexLoginCookie();
+                return Unauthorized();
+            }
 
-            if (!IsProtectedSessionId(_browserProtector, cookie, sessionGuid)) return Unauthorized();
-
+            // Keep the cookie so the client can retry until the PEX callback has created the session.
             var session = await _pexOAuthSessionStorage.GetBySessionGuidAsync(sessionGuid, cancellationToken);
-            if (session == null) return Unauthorized();
+            if (session == null) return NotFound();
 
+            DeletePexLoginCookie();
             return Ok();
         }
 
@@ -183,6 +187,9 @@ namespace AplosConnector.Web.Controllers
 
             return Ok();
         }
+
+        private void DeletePexLoginCookie() =>
+            Response.Cookies.Delete(PexLoginCookieName, new CookieOptions { Path = "/", Secure = true, SameSite = SameSiteMode.Lax });
 
         private static bool IsProtectedSessionId(ITimeLimitedDataProtector protector, string protectedValue, Guid sessionGuid)
         {

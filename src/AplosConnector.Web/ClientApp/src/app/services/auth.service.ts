@@ -1,4 +1,4 @@
-import { Injectable, Inject } from "@angular/core";
+﻿import { Injectable, Inject } from "@angular/core";
 import { BehaviorSubject, Observable, of } from "rxjs";
 import { HttpClient } from "@angular/common/http";
 import { retryWithBackoff } from '../operators/retryWithBackoff.operator';
@@ -60,7 +60,10 @@ export class AuthService {
   finishPexLogin(sessionId: string): Observable<void> {
     return this.httpClient
       .post<void>(`${this.baseUrl}api/Session/FinishLogin?sessionId=${sessionId}`, null, { withCredentials: true })
-      .pipe(concatMap(() => this.login(sessionId)));
+      .pipe(
+        retryWithBackoff(500, 5, 500),
+        concatMap(() => this.login(sessionId))
+      );
   }
 
   login(sessionId: string): Observable<void> {

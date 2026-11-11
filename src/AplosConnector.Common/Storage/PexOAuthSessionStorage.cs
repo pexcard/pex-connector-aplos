@@ -17,7 +17,7 @@ namespace AplosConnector.Common.Storage
 
         public PexOAuthSessionStorage(TableClient tableClient) : base(tableClient) { }
 
-        public async Task CreateAsync(PexOAuthSessionModel model, CancellationToken cancellationToken)
+        public virtual async Task CreateAsync(PexOAuthSessionModel model, CancellationToken cancellationToken)
         {
             var entity = new PexOAuthSessionEntity(model, PARTITION_KEY);
             await TableClient.AddEntityAsync(entity, cancellationToken);
