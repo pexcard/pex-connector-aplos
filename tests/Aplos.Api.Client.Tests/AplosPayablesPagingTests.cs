@@ -67,6 +67,32 @@ namespace Aplos.Api.Client.Tests
             Assert.Equal(1, handler.RequestUris.Count(uri => uri.AbsolutePath == "/payables/"));
         }
 
+        [Fact]
+        public async Task GetPayables_ForADayAndVendor_SendsBothFiltersAndFollowsEveryPage()
+        {
+            var handler = new SequencedHttpMessageHandler();
+            handler.Enqueue("/auth/clientid", File.ReadAllText("Samples/Response/GET_auth.json"));
+            handler.Enqueue("/payables/", PayablesPage(["9001"], next: "/api/v1/payables/?f_rangestart=2026-11-05&f_rangeend=2026-11-05&f_contact=26597732&page_size=50&page_num=2"));
+            handler.Enqueue("/payables/", PayablesPage(["9002"], next: null));
+
+            var payables = await NewClient(handler).GetPayables(new DateOnly(2026, 11, 5), new DateOnly(2026, 11, 5), 26597732);
+
+            Assert.Equal(new[] { "9001", "9002" }, payables.Select(p => p.Id));
+            Assert.Equal("?f_rangestart=2026-11-05&f_rangeend=2026-11-05&f_contact=26597732", handler.RequestUris.First(uri => uri.AbsolutePath == "/payables/").Query);
+        }
+
+        [Fact]
+        public async Task GetPayables_ForADayWithNoVendor_LeavesOutTheContactFilter()
+        {
+            var handler = new SequencedHttpMessageHandler();
+            handler.Enqueue("/auth/clientid", File.ReadAllText("Samples/Response/GET_auth.json"));
+            handler.Enqueue("/payables/", PayablesPage(["9001"], next: null));
+
+            await NewClient(handler).GetPayables(new DateOnly(2026, 11, 5), new DateOnly(2026, 11, 5), null);
+
+            Assert.Equal("?f_rangestart=2026-11-05&f_rangeend=2026-11-05", handler.RequestUris.Single(uri => uri.AbsolutePath == "/payables/").Query);
+        }
+
         private AplosApiClient NewClient(HttpMessageHandler handler)
         {
             // A real IHttpClientFactory hands back a fresh HttpClient per call; reusing one here would trip

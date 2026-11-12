@@ -347,6 +347,14 @@ public partial class AplosIntegrationService
     private static bool CameFromAplosImport(BillPaymentRequestModel paymentRequest)
         => paymentRequest.Metadata?.Notes?.Any(note => note.NoteText?.Contains(AplosBillSyncedNotePrefix, StringComparison.OrdinalIgnoreCase) == true) == true;
 
+    // A voided payable still reads unchanged by id; its only trace is dropping off the payables list.
+    private async Task<bool> IsAplosPayableListed(Pex2AplosMappingModel mapping, AplosApiPayableDetail payable, CancellationToken cancellationToken)
+    {
+        var billDate = DateOnly.FromDateTime(payable.BillDate);
+        var listed = await MakeAplosApiClient(mapping).GetPayables(billDate, billDate, payable.Contact?.Id, cancellationToken);
+        return listed.Any(listedPayable => listedPayable.Id == payable.Id);
+    }
+
     // False when the live payable said there was nothing to pay.
     private async Task<bool> MarkAplosPayablePaid(
         ILogger logger,
@@ -358,7 +366,7 @@ public partial class AplosIntegrationService
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        // Aplos has no void, so decide on the live payable, never on the snapshot from import time.
+        // The bill can change in Aplos after import, so decide on the live payable, never on the snapshot from import time.
         AplosApiPayableDetail payable;
         try
         {
@@ -389,6 +397,11 @@ public partial class AplosIntegrationService
         }
 
         await TryClearPaidFromClearing(logger, mapping, billMapping, cancellationToken);
+
+        if (!await IsAplosPayableListed(mapping, payable, cancellationToken))
+        {
+            throw new ManualFixRequiredException($"Aplos shows this bill voided, so the PEX payment of {paymentRequest.Amount:0.00} was not recorded. Record the payment in Aplos or reverse it in PEX.");
+        }
 
         if (action == AplosPayableAction.SkipPartiallyPaid)
         {
