@@ -41,7 +41,7 @@ public class BillPaymentsFailureCountTests : BillPaymentsTestBase
 
         await RunSync(useBillPay: true);
 
-        Assert.StartsWith("1 bill payment needs attention. Bill INV-9001: ", Assert.Single(_historyRows).SyncNotes);
+        Assert.StartsWith("Failed to sync 1 bill payment to Aplos.\nBill INV-9001: ", Assert.Single(_historyRows).SyncNotes);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class BillPaymentsFailureCountTests : BillPaymentsTestBase
         await RunSync(useBillPay: true, achClearingAccountNumber: 0m, pexFundsAccountNumber: 0m);
 
         var notes = Assert.Single(_historyRows).SyncNotes;
-        Assert.StartsWith("2 bill payments need attention. ", notes);
+        Assert.StartsWith("Failed to sync 2 bill payments to Aplos.\n", notes);
         Assert.Contains("INV-9001", notes);
         Assert.Contains("INV-9002", notes);
     }
@@ -80,7 +80,7 @@ public class BillPaymentsFailureCountTests : BillPaymentsTestBase
         var row = Assert.Single(_historyRows);
         Assert.Equal(SyncStatus.Failed.ToString(), row.SyncStatus);
         Assert.Contains("PEX is unavailable.", row.SyncNotes);
-        Assert.DoesNotContain("attention", row.SyncNotes);
+        Assert.DoesNotContain("Failed to sync", row.SyncNotes);
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class BillPaymentsFailureCountTests : BillPaymentsTestBase
         VerifyNoPayCall();
         var row = Assert.Single(_historyRows);
         Assert.Equal(SyncStatus.Failed.ToString(), row.SyncStatus);
-        Assert.StartsWith("1 bill payment needs attention. Bill INV-9002: ", row.SyncNotes);
-        Assert.EndsWith("PEX payments are unavailable.", row.SyncNotes);
+        Assert.StartsWith("Failed to sync 1 bill payment to Aplos.\nBill INV-9002: ", row.SyncNotes);
+        Assert.EndsWith("\nPEX payments are unavailable.", row.SyncNotes);
     }
 }

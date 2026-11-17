@@ -6,6 +6,14 @@
   margin-bottom: 22px;
 }
 
+.sync-note-line + .sync-note-line {
+  margin-top: 6px;
+}
+
+.sync-note-line:first-child:not(:last-child) {
+  margin-bottom: 12px;
+}
+
 .table th,
 .table td {
   text-align: left;

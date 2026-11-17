@@ -41,7 +41,9 @@
             @if (item.syncNotes?.length > 0) {
               <clr-signpost>
                 <clr-signpost-content *clrIfOpen [clrPosition]="'top-left'">
-                  <span>{{item.syncNotes}}</span>
+                  @for (line of item.syncNotes.split('\n'); track $index) {
+                    <div class="sync-note-line">{{line}}</div>
+                  }
                 </clr-signpost-content>
               </clr-signpost>
             }
