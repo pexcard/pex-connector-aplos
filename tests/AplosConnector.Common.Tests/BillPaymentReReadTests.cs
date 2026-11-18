@@ -62,20 +62,35 @@ public class BillPaymentReReadTests : BillPaymentsTestBase
                     PayeeFundsDestinationType = PayeeFundsDestinationType.NonPlatform,
                     Amount = BillAmount
                 });
-        _mockPexApiClient.Setup(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), 1, 50, It.IsAny<CancellationToken>()))
+        _mockPexApiClient.Setup(client => client.GetBillPayments(It.IsAny<string>(), It.Is<BillPaymentListRequestModel>(r => r.BillDateFrom != null), 1, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Page(1, firstPageIds));
-        _mockPexApiClient.Setup(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), 2, 50, It.IsAny<CancellationToken>()))
+        _mockPexApiClient.Setup(client => client.GetBillPayments(It.IsAny<string>(), It.Is<BillPaymentListRequestModel>(r => r.BillDateFrom != null), 2, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Page(2, [PexBillId]));
 
         await RunSync(useBillPay: true);
 
-        foreach (var page in new[] { 1, 2 })
-            _mockPexApiClient.Verify(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), page, 50, It.IsAny<CancellationToken>()), Times.Once);
-        _mockPexApiClient.Verify(client => client.GetBillPayments(It.IsAny<string>(), It.IsAny<BillPaymentListRequestModel>(), 3, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         foreach (var id in firstPageIds.Append(PexBillId))
             _mockPexApiClient.Verify(client => client.GetBillPaymentRequest(It.IsAny<string>(), id, false, It.IsAny<CancellationToken>()), Times.Once);
         Assert.Single(_payments);
         Assert.Equal(UtcNow, Assert.Single(_billMappingStorage.Rows.Values).PaidSyncedUtc);
+    }
+
+    // The Start date is stored as the server's local midnight: UTC midnight when deployed, the evening before from a server east of UTC (157312).
+    [Theory]
+    [InlineData("2026-08-01T00:00:00Z")]
+    [InlineData("2026-07-31T22:00:00Z")]
+    public async Task BillsAreSearchedFromThePickedStartDay(string storedStartDateUtc)
+    {
+        await RunSync(useBillPay: true, configure: mapping => mapping.EarliestTransactionDateToSync = DateTimeOffset.Parse(storedStartDateUtc).UtcDateTime);
+
+        _mockPexApiClient.Verify(client => client.GetBillPayments(
+            It.IsAny<string>(),
+            It.Is<BillPaymentListRequestModel>(r => r.BillDateFrom == new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc)),
+            1, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockPexApiClient.Verify(client => client.GetBillPayments(
+            It.IsAny<string>(),
+            It.Is<BillPaymentListRequestModel>(r => r.PayoutDateFrom == new DateTime(2026, 8, 1, 4, 0, 0, DateTimeKind.Utc)),
+            1, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

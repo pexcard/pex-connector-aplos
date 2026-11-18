@@ -156,9 +156,15 @@
           </tr>
           @if (settings.useBillPayEnabled) {
             <tr>
-              <th>Sync outstanding bills <span class="badge-new">New</span></th>
-              <td><app-status-icon [value]="settings.syncOutstandingBills"></app-status-icon></td>
+              <th>Sync bill payments <span class="badge-new">New</span></th>
+              <td><app-status-icon [value]="settings.syncBillPayments"></app-status-icon></td>
             </tr>
+            @if (settings.syncBillPayments || settings.syncOutstandingBills) {
+              <tr>
+                <th>Import unpaid Aplos bills <span class="badge-new">New</span></th>
+                <td><app-status-icon [value]="settings.syncOutstandingBills"></app-status-icon></td>
+              </tr>
+            }
           }
           <tr>
             <th>Sync 990 tag</th>
@@ -241,7 +247,7 @@
           </tr>
         </table>
       }
-      @if (settings.syncTransfers || settings.syncInvoices || settings.syncPexFees || settings.syncRebates || settings.syncReimbursements || settings.syncOutstandingBills) {
+      @if (settings.syncTransfers || settings.syncInvoices || settings.syncPexFees || settings.syncRebates || settings.syncReimbursements || settings.syncBillPayments || settings.syncOutstandingBills) {
         <table class="table table-vertical">
           <tbody>
             @if ((settings.syncTransfers || settings.syncInvoices) && transferContact) {
@@ -344,7 +350,7 @@
                 <td>{{reimbursementsBankAccount | aplosAccount}}</td>
               </tr>
             }
-            @if (settings.syncOutstandingBills && billPaymentsAchClearingAccount) {
+            @if ((settings.syncBillPayments || settings.syncOutstandingBills) && billPaymentsAchClearingAccount) {
               <tr class="left">
                 <th>ACH bank account for bill payments</th>
                 <td>{{billPaymentsAchClearingAccount | aplosAccount}}</td>

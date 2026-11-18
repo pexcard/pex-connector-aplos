@@ -28,6 +28,7 @@ namespace AplosConnector.Common.Models
             SyncRebates = mapping.SyncRebates;
             SyncReimbursements = mapping.SyncReimbursements;
             SyncOutstandingBills = mapping.SyncOutstandingBills;
+            SyncBillPayments = mapping.SyncBillPayments;
             BillPaymentsAchClearingAccountNumber = mapping.BillPaymentsAchClearingAccountNumber;
             BillPaymentsCardClearingAccountNumber = mapping.BillPaymentsCardClearingAccountNumber;
             LastSyncUtc = mapping.LastSync;
@@ -117,6 +118,7 @@ namespace AplosConnector.Common.Models
                 SyncRebates = SyncRebates,
                 SyncReimbursements = SyncReimbursements,
                 SyncOutstandingBills = SyncOutstandingBills,
+                SyncBillPayments = SyncBillPayments,
                 BillPaymentsAchClearingAccountNumber = BillPaymentsAchClearingAccountNumber,
                 BillPaymentsCardClearingAccountNumber = BillPaymentsCardClearingAccountNumber,
                 LastSync = LastSyncUtc,
@@ -206,6 +208,7 @@ namespace AplosConnector.Common.Models
         public bool SyncRebates { get; set; }
         public bool SyncReimbursements { get; set; }
         public bool SyncOutstandingBills { get; set; }
+        public bool SyncBillPayments { get; set; }
 
         // Live PEX business-account flags, refreshed on each read via RefreshBusinessSettings. UseBillPayEnabled is also
         // persisted as the last-known value, so a run whose refresh fails keeps the bill pay claim it had.

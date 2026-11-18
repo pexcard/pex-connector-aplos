@@ -34,17 +34,9 @@ namespace AplosConnector.Common.Services
                 .ToList();
         }
 
-        // f_rangestart is date-only and read as a local calendar day, so the window is EST calendar days. The Start date is a
-        // calendar day stored as the server's local midnight (UTC midnight when deployed), which reads as the day before in EST;
-        // rounding to the nearest UTC day recovers it for servers from UTC-12 to UTC+12. A later lookback or one-year start is
-        // a real instant and reads as its EST day.
+        // f_rangestart is date-only and read as a local calendar day, so the window is EST calendar days.
         private (DateOnly FirstBillDate, DateOnly LastBillDate) GetOutstandingBillsWindow(Pex2AplosMappingModel mapping, DateTime utcNow)
-        {
-            var pickedDate = DateOnly.FromDateTime(mapping.EarliestTransactionDateToSync.AddHours(12));
-            var startDate = GetStartDateUtc(mapping, utcNow, _syncSettings).ToEstCalendarDate();
-            var firstBillDate = pickedDate > startDate ? pickedDate : startDate;
-            return (firstBillDate, GetEndDateUtc(mapping.EndDateUtc, utcNow).ToEstCalendarDate());
-        }
+            => (GetStartEstCalendarDate(mapping, GetStartDateUtc(mapping, utcNow, _syncSettings)), GetEndDateUtc(mapping.EndDateUtc, utcNow).ToEstCalendarDate());
 
         // Only f_rangestart is sent, and Aplos ignores filters it doesn't honour. A bill dated outside the window
         // would miss the bill-inbox dedup search and import every run, so the window is enforced here too.

@@ -11,6 +11,7 @@ import { of, throwError } from 'rxjs';
 import { SyncConnectComponent } from './sync-connect.component';
 import { AplosAccountPipe } from '../pipes/aplosAccount';
 import { AplosService } from '../services/aplos.service';
+import { MappingService } from '../services/mapping.service';
 
 describe('SyncConnectComponent', () => {
   let component: SyncConnectComponent;
@@ -67,16 +68,16 @@ describe('SyncConnectComponent', () => {
     expect(component.defaultCategoryForm.get('billPaymentsAchClearingAccountNumber').value).toBe(1500);
   });
 
-  // PEX picks the rail only when a bill is paid, so importing bills needs the ACH bank account up front.
-  it('requires the bill payment ACH bank account only while Aplos bills are imported', () => {
+  // PEX picks the rail only when a bill is paid, so syncing bill payments needs the ACH bank account up front.
+  it('requires the bill payment ACH bank account only while bill payments sync', () => {
     const achControl = component.defaultCategoryForm.get('billPaymentsAchClearingAccountNumber');
     achControl.setValue(0);
 
-    component.settingsModel.syncOutstandingBills = false;
+    component.settingsModel.syncBillPayments = false;
     component.updateOtherOptionsValidators();
     expect(achControl.valid).toBeTrue();
 
-    component.settingsModel.syncOutstandingBills = true;
+    component.settingsModel.syncBillPayments = true;
     component.updateOtherOptionsValidators();
     expect(achControl.valid).toBeFalse();
 
@@ -84,9 +85,91 @@ describe('SyncConnectComponent', () => {
     expect(achControl.valid).toBeTrue();
   });
 
+  // Bill payments book through the purchases mapping, so a business without tags syncing only bill payments needs its defaults.
+  it('requires the shared default fund and expense account for a business without tags syncing only bill payments', () => {
+    const fundControl = component.defaultCategoryForm.get('defaultAplosFundId');
+    const accountControl = component.defaultCategoryForm.get('defaultAplosTransactionAccountNumber');
+    fundControl.setValue(0);
+    accountControl.setValue(0);
+    component.hasTagsAvailable = false;
+    component.settingsModel.syncTransactions = false;
+    component.settingsModel.syncReimbursements = false;
+    component.settingsModel.syncBillPayments = true;
+
+    component.updateOtherOptionsValidators();
+
+    expect(fundControl.valid).toBeFalse();
+    expect(accountControl.valid).toBeFalse();
+  });
+
+  it('saves the shared default fund and expense account for a business without tags syncing only bill payments', () => {
+    component.defaultCategoryForm.get('defaultAplosFundId').setValue(225);
+    component.defaultCategoryForm.get('defaultAplosTransactionAccountNumber').setValue(6000);
+    component.hasTagsAvailable = false;
+    component.settingsModel.syncTransactions = false;
+    component.settingsModel.syncReimbursements = false;
+    component.settingsModel.syncBillPayments = true;
+
+    component.updateSettingsFromDefaultCategoryForm();
+
+    expect(component.settingsModel.defaultAplosFundId).toBe(225);
+    expect(component.settingsModel.defaultAplosTransactionAccountNumber).toBe(6000);
+  });
+
+  // A business that imported Aplos bills before Sync bill payments existed still pays them back through these accounts.
+  it('requires the bill payment accounts for a credit business importing Aplos bills without Sync bill payments', () => {
+    const achControl = component.defaultCategoryForm.get('billPaymentsAchClearingAccountNumber');
+    const clearingControl = component.defaultCategoryForm.get('billPaymentsCardClearingAccountNumber');
+    achControl.setValue(0);
+    clearingControl.setValue(0);
+    component.isCredit = true;
+    component.settingsModel.syncBillPayments = false;
+    component.settingsModel.syncOutstandingBills = true;
+
+    component.updateOtherOptionsValidators();
+
+    expect(achControl.valid).toBeFalse();
+    expect(clearingControl.valid).toBeFalse();
+  });
+
+  it('turns the Aplos bill import off with Sync bill payments', () => {
+    component.settingsModel.syncBillPayments = true;
+    component.settingsModel.syncOutstandingBills = true;
+
+    component.onSyncBillPaymentsChange(false);
+
+    expect(component.settingsModel.syncOutstandingBills).toBeFalse();
+  });
+
+  it('marks an import-only business from the loaded settings, not the live toggles', () => {
+    spyOn(TestBed.inject(MappingService), 'getSettings').and.returnValue(of({ ...component.settingsModel, syncBillPayments: false, syncOutstandingBills: true }));
+
+    component.getSettings();
+    expect(component.legacyImportOnly).toBeTrue();
+
+    component.settingsModel.syncOutstandingBills = false;
+    expect(component.legacyImportOnly).toBeTrue();
+  });
+
+  it('shows the Aplos bill import without Sync bill payments only to an import-only business', () => {
+    component.isAuthenticated = true;
+    component.settingsModel.useBillPayEnabled = true;
+    component.settingsModel.syncBillPayments = false;
+    const importToggle = () => fixture.nativeElement.querySelector('input[name="syncOutstandingBills"]');
+
+    // The wizard settles its page state a pass later than Angular's no-changes check expects.
+    fixture.detectChanges(false);
+    expect(importToggle()).toBeNull();
+
+    component.legacyImportOnly = true;
+    fixture.detectChanges(false);
+    expect(importToggle()).not.toBeNull();
+  });
+
   it('requires the vendor card clearing account only for a credit business importing bills', () => {
     const clearingControl = component.defaultCategoryForm.get('billPaymentsCardClearingAccountNumber');
     clearingControl.setValue(0);
+    component.settingsModel.syncBillPayments = true;
     component.settingsModel.syncOutstandingBills = true;
 
     component.isCredit = false;
