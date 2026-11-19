@@ -18,6 +18,16 @@ public class OutstandingBillsFailureCountTests : VendorSetupTestBase
         Assert.Equal(string.Empty, Assert.Single(HistoryRows).SyncNotes);
     }
 
+    // A business that turned the import on before Sync bill payments existed keeps importing.
+    [Fact]
+    public async Task TheImportRunsWithSyncBillPaymentsOff()
+    {
+        await RunSync(syncBillPayments: false);
+
+        AssertSucceeded();
+        Assert.Single(CreatedBillInbox);
+    }
+
     [Fact]
     public async Task TwoFailedBillsAreCountedBeforeTheirReasons()
     {

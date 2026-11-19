@@ -112,6 +112,7 @@ export interface SettingsModel {
   syncReimbursements: boolean;
   useReimbursementsEnabled: boolean;
   syncOutstandingBills: boolean;
+  syncBillPayments: boolean;
   useBillPayEnabled: boolean;
   billPaymentsAchClearingAccountNumber: number;
   billPaymentsCardClearingAccountNumber: number;

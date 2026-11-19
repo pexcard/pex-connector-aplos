@@ -162,5 +162,29 @@ namespace AplosConnector.Common.Storage
 
             model.CardTransactionId = cardTransactionId;
         }
+
+        // Upsert: a retried post claims the same charge again.
+        public async Task ClaimPexCreatedCardChargeAsync(int pexBusinessAcctId, int pexPaymentRequestId, long cardTransactionId, CancellationToken cancellationToken)
+        {
+            var claim = new AplosBillMappingEntity(new AplosBillMappingModel
+            {
+                PEXBusinessAcctId = pexBusinessAcctId,
+                PexPaymentRequestId = pexPaymentRequestId,
+                CardTransactionId = cardTransactionId
+            });
+
+            await TableClient.UpsertEntityAsync(claim, TableUpdateMode.Merge, cancellationToken);
+        }
+
+        // Update, never upsert: only a claimed charge can have been posted.
+        public async Task MarkPexCreatedClaimPostedAsync(int pexBusinessAcctId, int pexPaymentRequestId, DateTime postedUtc, CancellationToken cancellationToken)
+        {
+            var postedColumn = new TableEntity(pexBusinessAcctId.ToString(), AplosBillMappingEntity.GetPexCreatedRowKey(pexPaymentRequestId))
+            {
+                [nameof(AplosBillMappingEntity.PaidSyncedUtc)] = postedUtc.ToUniversalTime()
+            };
+
+            await TableClient.UpdateEntityAsync(postedColumn, ETag.All, TableUpdateMode.Merge, cancellationToken);
+        }
     }
 }

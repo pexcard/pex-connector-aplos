@@ -96,7 +96,7 @@ public abstract class VendorSetupTestBase
             .ReturnsAsync(new BillInboxModel { BillInboxId = 100, MetadataId = 100 });
     }
 
-    protected async Task RunSync()
+    protected async Task RunSync(bool syncBillPayments = true)
     {
         var mapping = new Pex2AplosMappingModel
         {
@@ -108,6 +108,7 @@ public abstract class VendorSetupTestBase
             AplosPrivateKey = "privateKey",
             EarliestTransactionDateToSync = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
             SyncOutstandingBills = true,
+            SyncBillPayments = syncBillPayments,
             UseBillPayEnabled = true,
             BillPaymentsAchClearingAccountNumber = 1010m,
             BillPaymentsCardClearingAccountNumber = 1020m,

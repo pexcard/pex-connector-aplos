@@ -104,20 +104,6 @@ public class BillPaymentRetryTests : BillPaymentsTestBase
     }
 
     [Fact]
-    public async Task ABillNoLongerRetriedStopsHoldingTheFetchWindowBack()
-    {
-        SeedUnpaidMapping(createdUtc: new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc), firstFailedUtc: UtcNow.AddDays(-31));
-        SetupPaidPexBill();
-
-        await RunSync(useBillPay: true);
-
-        _mockPexApiClient.Verify(client => client.GetBillPayments(
-            It.IsAny<string>(),
-            It.Is<BillPaymentListRequestModel>(r => r.CreatedDateFrom <= new DateTime(2026, 7, 1)),
-            It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
     public async Task ACardPaidBillUnlinkedPastTheGracePeriodStaysOpenOnceAplosShowsItPaid()
     {
         SeedUnpaidMapping();
@@ -147,36 +133,4 @@ public class BillPaymentRetryTests : BillPaymentsTestBase
         Assert.Contains(_cardTransactionNotes, note => note.Contains(AplosIntegrationService.SyncedAsBillPaymentNote));
     }
 
-    [Fact]
-    public async Task AnImportLateInTheEstDayReachesBackToThatDaysEstMidnight()
-    {
-        // 23:30 Eastern on 31 May, which is already 1 June in UTC.
-        SeedUnpaidMapping(createdUtc: new DateTime(2026, 6, 1, 3, 30, 0, DateTimeKind.Utc));
-        SetupPaidPexBill();
-        SetupLivePayable(amount: 125.50m, paid: 0m);
-
-        await RunSync(useBillPay: true);
-
-        _mockPexApiClient.Verify(client => client.GetBillPayments(
-            It.IsAny<string>(),
-            It.Is<BillPaymentListRequestModel>(r => r.CreatedDateFrom == new DateTime(2026, 5, 31, 4, 0, 0, DateTimeKind.Utc)),
-            It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
-    }
-
-    [Fact]
-    public async Task ABillImportedBeforeTheSyncWindowIsStillLookedUp()
-    {
-        SeedUnpaidMapping(createdUtc: new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc));
-        SetupPaidPexBill();
-        SetupLivePayable(amount: 125.50m, paid: 0m);
-
-        await RunSync(useBillPay: true);
-
-        _mockPexApiClient.Verify(client => client.GetBillPayments(
-            It.IsAny<string>(),
-            // EST midnight of 1 June, as a UTC instant.
-            It.Is<BillPaymentListRequestModel>(r => r.CreatedDateFrom == new DateTime(2026, 6, 1, 4, 0, 0, DateTimeKind.Utc)),
-            It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
-        Assert.Single(_payments);
-    }
 }

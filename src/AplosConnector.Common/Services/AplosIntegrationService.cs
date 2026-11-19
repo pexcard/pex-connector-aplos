@@ -852,8 +852,9 @@ namespace AplosConnector.Common.Services
                 }
             }
 
-            if (mapping.SyncOutstandingBills && !businessSettings.UseBillPay)
+            if ((mapping.SyncBillPayments || mapping.SyncOutstandingBills) && !businessSettings.UseBillPay)
             {
+                mapping.SyncBillPayments = false;
                 mapping.SyncOutstandingBills = false;
                 if (persistChanges)
                 {
@@ -1163,7 +1164,7 @@ namespace AplosConnector.Common.Services
             {
                 _logger.LogInformation($"Getting transactions for business {mapping.PEXBusinessAcctId} in time period {syncTimePeriod} in batches of {fetchBatchSizeDays} day(s) (batchSizeSource={fetchBatchSizeSource}).");
 
-                var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, includeVendorBillPay: true, cancelToken: cancellationToken);
+                var cardholderTransactions = await _pexApiClient.GetAllCardholderTransactions(mapping.PEXExternalAPIToken, dateRangeBatch.Start, dateRangeBatch.End, includeVendorBillPay: IncludeVendorBillPay(mapping), cancelToken: cancellationToken);
                 allCardholderTransactions.AddRange(cardholderTransactions);
                 var transactions = FilterCardholderTransactions(mapping, cardholderTransactions, claimedCardCharges).ToList();
 
@@ -1469,8 +1470,14 @@ namespace AplosConnector.Common.Services
                     continue;
                 }
 
-                // Already booked by the bill stage as the payment of an imported Aplos bill.
+                // Already booked by the bill stage as a bill payment.
                 if (transaction.TransactionNotes.Any(x => x.NoteText.Contains(SyncedAsBillPaymentNote, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                // An auto-billed vendor card charge shares its bill's notes.
+                if (transaction.TransactionNotes.Any(x => IsBillPaymentSyncedNote(x.NoteText)))
                 {
                     continue;
                 }
@@ -1478,6 +1485,10 @@ namespace AplosConnector.Common.Services
                 yield return transaction;
             }
         }
+
+        // With Sync bill payments on, PEX leaves vendor card charges out and the bill stage books them; off, they are purchases
+        // again, which the claims and notes keep from booking twice.
+        private static bool IncludeVendorBillPay(Pex2AplosMappingModel mapping) => !(mapping.UseBillPayEnabled && mapping.SyncBillPayments);
 
         private static string GetSyncedNote(TransactionModel transaction) => GetSyncedNote(transaction.TransactionId);
 
@@ -2781,6 +2792,16 @@ namespace AplosConnector.Common.Services
             return startDate;
         }
 
+        // The Start date is a calendar day stored as the server's local midnight (UTC midnight when deployed), which reads as the
+        // day before in EST; rounding to the nearest UTC day recovers it for servers from UTC-12 to UTC+12. A later lookback or
+        // one-year start is a real instant and reads as its EST day.
+        internal static DateOnly GetStartEstCalendarDate(Pex2AplosMappingModel mapping, DateTime startDateUtc)
+        {
+            var pickedDate = DateOnly.FromDateTime(mapping.EarliestTransactionDateToSync.AddHours(12));
+            var startDate = startDateUtc.ToEstCalendarDate();
+            return pickedDate > startDate ? pickedDate : startDate;
+        }
+
         public DateTime GetEndDateUtc(DateTime? configuredEndDateUtc, DateTime utcNow)
         {
             DateTime endDateUtc = utcNow;
@@ -2811,11 +2832,7 @@ namespace AplosConnector.Common.Services
             // Reimbursements" wizard page): fund, expense account, category tags, and 990
             // resolve from the shared mappings and their defaults.
             var defaultReimbursementsFundId = mapping.DefaultAplosFundId;
-            var defaultReimbursementsAccountNumber = mapping.ExpenseAccountMappings?.FirstOrDefault(m => m.DefaultAplosTransactionAccountNumber > 0)?.DefaultAplosTransactionAccountNumber ?? 0;
-            if (defaultReimbursementsAccountNumber <= 0)
-            {
-                defaultReimbursementsAccountNumber = mapping.DefaultAplosTransactionAccountNumber;
-            }
+            var defaultReimbursementsAccountNumber = GetSharedDefaultExpenseAccountNumber(mapping);
 
             var hasFundConfig = defaultReimbursementsFundId > 0 || !string.IsNullOrEmpty(mapping.PexFundsTagId);
             var hasAccountConfig = defaultReimbursementsAccountNumber > 0
@@ -3317,6 +3334,11 @@ namespace AplosConnector.Common.Services
         /// date is utcNow on the same UTC day (work item 144293). The purchases and business-account
         /// syncs inline this same conversion and could adopt this helper.
         /// </summary>
+        private static decimal GetSharedDefaultExpenseAccountNumber(Pex2AplosMappingModel mapping)
+            => mapping.ExpenseAccountMappings?.FirstOrDefault(row => row.DefaultAplosTransactionAccountNumber > 0m)?.DefaultAplosTransactionAccountNumber is > 0m and var number
+                ? number
+                : mapping.DefaultAplosTransactionAccountNumber;
+
         public static (DateTime StartDate, DateTime EndDate) GetEstDayWindow(DateTime startDateUtc, DateTime endDateUtc)
         {
             return (startDateUtc.ToStartOfDay(TimeZones.EST), endDateUtc.ToEndOfDay(TimeZones.EST));
