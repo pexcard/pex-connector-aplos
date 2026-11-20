@@ -993,6 +993,42 @@ namespace AplosConnector.Common.Tests
         }
 
         [Fact]
+        public void Pex2AplosMappingModel_UpdateFromSettings_KeepsServerOwnedCredentialFields()
+        {
+            var expiresAt = DateTime.UtcNow.AddHours(1);
+            var mapping = new Pex2AplosMappingModel
+            {
+                AplosAuthenticationMode = AplosAuthenticationMode.PartnerAuthentication,
+                AplosClientId = "clientId",
+                AplosPrivateKey = "privateKey",
+                AplosAccessToken = "accessToken",
+                AplosAccessTokenExpiresAt = expiresAt,
+            };
+            var settings = new Pex2AplosMappingModel().ToStorageModel();
+            settings.AplosAuthenticationMode = AplosAuthenticationMode.ClientAuthentication;
+            settings.AplosClientId = "otherClientId";
+            settings.AplosPrivateKey = "otherPrivateKey";
+            settings.AplosAccessToken = "otherAccessToken";
+
+            mapping.UpdateFromSettings(settings);
+
+            Assert.Equal(AplosAuthenticationMode.PartnerAuthentication, mapping.AplosAuthenticationMode);
+            Assert.Equal("clientId", mapping.AplosClientId);
+            Assert.Equal("privateKey", mapping.AplosPrivateKey);
+            Assert.Equal("accessToken", mapping.AplosAccessToken);
+            Assert.Equal(expiresAt, mapping.AplosAccessTokenExpiresAt);
+        }
+
+        [Fact]
+        public void Pex2AplosMappingModel_ToStorageModel_OmitsSecrets()
+        {
+            var settings = new Pex2AplosMappingModel { AplosPrivateKey = "privateKey", AplosAccessToken = "accessToken" }.ToStorageModel();
+
+            Assert.Null(settings.AplosPrivateKey);
+            Assert.Null(settings.AplosAccessToken);
+        }
+
+        [Fact]
         public void Pex2AplosMappingModel_UpdateFromSettings_KeepsServerOwnedPartnerFields()
         {
             //Arrange

@@ -9,15 +9,20 @@ import { AuthService } from '../services/auth.service';
   standalone: false
 })
 export class FinishPexLoginComponent implements OnInit {
+  loginFailed = false;
 
   constructor(private activatedRoute: ActivatedRoute, private router: Router, private auth: AuthService) { }
 
   ngOnInit() {
     this.activatedRoute.params.subscribe(params => {
       const sessionId = params.sessionId;
-      this.auth.login(sessionId).subscribe(() => {
-        console.log('navigating away');
-        this.router.navigate(['connect']);
+      this.auth.finishPexLogin(sessionId).subscribe({
+        next: () => {
+          void this.router.navigate(['connect']);
+        },
+        error: () => {
+          this.loginFailed = true;
+        }
       });
     });
   }
